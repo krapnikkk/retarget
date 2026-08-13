@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 2,
+  "validatorVersion": 2,
+  "sourceRepository": "https://github.com/Mesh2Motion/mesh2motion-app",
+  "sourceCommit": "a9bf18a6007d7e12d197657f023f77a5e33473fe",
+  "license": "CC0-1.0",
+  "outputCapabilities": [
+    "rig-motion-json-v2",
+    "gltf-animation",
+    "animated-glb"
+  ],
+  "bindingContract": {
+    "rigSignature": "rest-node-skin-v2",
+    "contactMetric": "world-space-including-root-translation"
+  },
+  "cases": [
+    {
+      "rigDefinitionId": "quadruped-v1",
+      "family": "quadruped",
+      "profileId": "mesh2motion-fox",
+      "status": "active",
+      "solver": {
+        "id": "definition-mapped-swing-twist-v1",
+        "specialization": "shared-definition-mapped"
+      },
+      "sourceFixtures": [
+        {
+          "filename": "fox-animations.glb",
+          "sha256": "1e01b7c224fa135ead67978a0840d115e99a959f9f745384e7b308f173dfebf2"
+        }
+      ],
+      "targetFixtures": [
+        {
+          "filename": "fox-base.glb",
+          "sha256": "df056636ba771c1ab76f4dd1cfed6931a9d430352709e62e7a3691351041f056"
+        },
+        {
+          "filename": "fox-dog.glb",
+          "sha256": "b7eed87d95d91eb05605cefd591e5931c52f1152305db5337335ce792138678b"
+        },
+        {
+          "filename": "fox-horse.glb",
+          "sha256": "435b20d31234ab11da3242d30df1464d70a39221f801d13e0ddb87deff118fde"
+        }
+      ],
+      "actions": [
+        "Idle",
+        "Walk",
+        "Run",
+        "Jump"
+      ],
+      "evidence": {
+        "structural": {
+          "status": "passed",
+          "result": "Animated GLB reload has the expected channel count for every active family.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        },
+        "semantic": {
+          "status": "passed",
+          "result": "Identity/rest, required-chain coverage, family isolation, and family solver assertions pass.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
+        },
+        "ecosystem": {
+          "status": "passed",
+          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        }
+      }
+    },
+    {
+      "rigDefinitionId": "avian-v1",
+      "family": "avian",
+      "profileId": "mesh2motion-bird",
+      "status": "active",
+      "solver": {
+        "id": "definition-mapped-swing-twist-v1",
+        "specialization": "shared-definition-mapped"
+      },
+      "sourceFixtures": [
+        {
+          "filename": "bird-animations.glb",
+          "sha256": "9624b0bf70abe400ed0445c2423c69d5e046bd7d60074e399e2be161763c4f99"
+        }
+      ],
+      "targetFixtures": [
+        {
+          "filename": "bird-eagle.glb",
+          "sha256": "8321c6df6ddba0a17e204e7ba704f65d3737e7677cb9682d62a6ea2befca9e56"
+        }
+      ],
+      "evidence": {
+        "structural": {
+          "status": "passed",
+          "result": "Animated GLB reload has the expected channel count for every active family.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        },
+        "semantic": {
+          "status": "passed",
+          "result": "Identity/rest, required-chain coverage, family isolation, and family solver assertions pass.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
+        },
+        "ecosystem": {
+          "status": "passed",
+          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        }
+      }
+    },
+    {
+      "rigDefinitionId": "serpentine-v1",
+      "family": "serpentine",
+      "profileId": "mesh2motion-snake",
+      "status": "active",
+      "solver": {
+        "id": "serpentine-chain-resample-v1",
+        "specialization": "axial-chain-resample"
+      },
+      "sourceFixtures": [
+        {
+          "filename": "snake-animations.glb",
+          "sha256": "795e4c62ba1e02f3f33e900832cdc6a1ca5a4aa4f6fe426fccd3aaa0f7f6ac25"
+        }
+      ],
+      "targetFixtures": [],
+      "targetDerivation": "Pinned rig with scaled rest translations and an 8-joint axial-chain acceptance target.",
+      "evidence": {
+        "structural": {
+          "status": "passed",
+          "result": "Animated GLB reload has the expected channel count for every active family.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        },
+        "semantic": {
+          "status": "passed",
+          "result": "Identity/rest, required-chain coverage, family isolation, and family solver assertions pass.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
+        },
+        "ecosystem": {
+          "status": "passed",
+          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        }
+      }
+    },
+    {
+      "rigDefinitionId": "arachnid-v1",
+      "family": "arachnid",
+      "profileId": "mesh2motion-spider",
+      "status": "active",
+      "solver": {
+        "id": "definition-mapped-swing-twist-v1",
+        "specialization": "shared-definition-mapped"
+      },
+      "sourceFixtures": [
+        {
+          "filename": "spider-animations.glb",
+          "sha256": "a321c1617c7f74cf86c050694bc254e74409c6c69db26fe542338f2f7c43d07a"
+        }
+      ],
+      "targetFixtures": [],
+      "targetDerivation": "Pinned rig with scaled rest translations.",
+      "evidence": {
+        "structural": {
+          "status": "passed",
+          "result": "Animated GLB reload has the expected channel count for every active family.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        },
+        "semantic": {
+          "status": "passed",
+          "result": "Identity/rest, required-chain coverage, family isolation, and family solver assertions pass.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
+        },
+        "ecosystem": {
+          "status": "passed",
+          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        }
+      }
+    },
+    {
+      "rigDefinitionId": "creature-v1",
+      "family": "creature",
+      "profileId": "mesh2motion-dragon",
+      "status": "active",
+      "solver": {
+        "id": "definition-mapped-swing-twist-v1",
+        "specialization": "shared-definition-mapped"
+      },
+      "sourceFixtures": [
+        {
+          "filename": "dragon-animations.glb",
+          "sha256": "73262041b09aa0499778818162b34955e76e17548212825548799643d5c925b3"
+        }
+      ],
+      "targetFixtures": [],
+      "targetDerivation": "Pinned rig with scaled rest translations.",
+      "evidence": {
+        "structural": {
+          "status": "passed",
+          "result": "Animated GLB reload has the expected channel count for every active family.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        },
+        "semantic": {
+          "status": "passed",
+          "result": "Identity/rest, required-chain coverage, family isolation, and family solver assertions pass.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
+        },
+        "ecosystem": {
+          "status": "passed",
+          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
+        }
+      }
+    }
+  ],
+  "certificationHash": "20d32f13201a0a8a993e4c412ce85818caa2e04dd0a3333720612c69c2b2c8aa"
+}

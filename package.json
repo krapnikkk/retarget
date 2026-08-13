@@ -1,0 +1,83 @@
+{
+  "name": "3dretarget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
+  "license": "UNLICENSED",
+  "type": "module",
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": "24.11.x"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser/index.d.ts",
+      "import": "./dist/browser/index.js"
+    },
+    "./io": {
+      "types": "./dist/io.d.ts",
+      "import": "./dist/io.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "import": "./dist/node.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.js"
+    },
+    "./certification": {
+      "types": "./dist/certification/index.d.ts",
+      "import": "./dist/certification/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:correctness-coverage": "vitest run --config vitest.correctness.config.ts --coverage",
+    "verify:package": "pnpm build && node scripts/verify-package.mjs",
+    "verify:package:only": "node scripts/verify-package.mjs",
+    "verify:fixtures": "pnpm check:mesh2motion-fixtures && pnpm check:gltf-extension-fixtures && pnpm check:non-humanoid-certification",
+    "verify": "pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
+    "validate-asset": "node scripts/validate-asset.mjs",
+    "fetch:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs",
+    "check:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs --check",
+    "test:mmd-research-corpus": "pnpm check:mmd-research-corpus && vitest run tests/mmd-research-corpus.test.ts",
+    "fetch:mesh2motion-fixtures": "node scripts/fetch-mesh2motion-cc0-fixtures.mjs",
+    "check:mesh2motion-fixtures": "node scripts/fetch-mesh2motion-cc0-fixtures.mjs --check",
+    "fetch:gltf-extension-fixtures": "node scripts/fetch-gltf-extension-fixtures.mjs",
+    "check:gltf-extension-fixtures": "node scripts/fetch-gltf-extension-fixtures.mjs --check",
+    "generate:non-humanoid-certification": "node scripts/generate-non-humanoid-certification.mjs",
+    "check:non-humanoid-certification": "node scripts/generate-non-humanoid-certification.mjs --check"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "4.3.0",
+    "@moeru/three-mmd": "0.1.1",
+    "@moeru/three-mmd-physics-ammo": "0.1.1",
+    "@pixiv/three-vrm": "3.5.3",
+    "@pixiv/three-vrm-animation": "3.5.3",
+    "gltf-transform-vrm-extensions": "0.1.6",
+    "three": "0.184.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/three": "^0.184.1",
+    "@vitest/coverage-v8": "4.1.6",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vite": "8.2.1",
+    "vitest": "4.1.6"
+  }
+}

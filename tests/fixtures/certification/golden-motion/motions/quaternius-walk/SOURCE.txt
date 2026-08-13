@@ -1,0 +1,6 @@
+Quaternius Walk
+
+Original creator: Quaternius
+Source asset: Universal Animation Library Standard
+Source URL: https://quaternius.itch.io/universal-animation-library
+Source file / clip: UAL1_Standard_RM.glb#Walk_Loop

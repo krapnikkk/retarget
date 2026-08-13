@@ -1,0 +1,4 @@
+Studio Mannequin Male
+
+Adaptation / conversion: 3D Retarget Online
+Changes made: Adjusted to project-specific male proportions, added a canonical humanoid rig and neutral diagnostic materials, and removed source animations.

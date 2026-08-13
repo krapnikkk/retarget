@@ -1,0 +1,4 @@
+Quaternius Walk
+
+Adaptation / conversion: 3D Retarget Online
+Changes made: Selected Walk_Loop and converted the source skeleton and animation to the canonical humanoid rig without copying source meshes.

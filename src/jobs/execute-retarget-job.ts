@@ -1,0 +1,306 @@
+import { importBVH } from "@/import/bvh";
+import { importGLTFAnimation } from "@/import/gltf-animation";
+import { importVMD } from "@/import/vmd";
+import { importVRMA } from "@/import/vrma";
+import {
+  importRigMotionDocument,
+  listRigMotionActions,
+} from "@/import/rig-motion-gltf";
+import { readGLTFDocument } from "@/import/gltf-document";
+import { importFBXHumanoidMotionBytes } from "@/import/fbx-motion";
+import {
+  ACTORCORE_PROFILE,
+  GENERIC_FBX_HUMANOID_PROFILE,
+  MIXAMO_RIG_PROFILE,
+} from "@/profiles";
+import { serializeMotionClip } from "@/retarget";
+import { validateHumanoidMotionSemantics } from "@/validation";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
+import { getRigSolver } from "@/solvers";
+import { inspectGLTFRig } from "@/rigs";
+import { createTransferableAssetPackageResolver } from "@/import/asset-package";
+import {
+  assertMotionProcessingBudget,
+  assertOutputBytes,
+  assertRigMotionProcessingBudget,
+  createProcessingDeadline,
+} from "./processing-budget";
+import type {
+  RetargetJobPhase,
+  RetargetJobRequest,
+  RetargetJobTask,
+} from "./types";
+import { serializeRigInspection } from "./serialize-rig-inspection";
+
+export type RetargetJobReporter = (
+  phase: RetargetJobPhase,
+  progress: number,
+) => void;
+
+export async function executeRetargetJob(
+  request: RetargetJobRequest,
+  report: RetargetJobReporter = () => undefined,
+) {
+  const deadline = createProcessingDeadline(request.deadlineMs);
+  report("validate", 0.02);
+  deadline.checkpoint("validate");
+
+  const result = await executeTask(request.task, report, deadline);
+  deadline.checkpoint("complete");
+  report("complete", 1);
+  return result;
+}
+
+async function executeTask(
+  task: RetargetJobTask,
+  report: RetargetJobReporter,
+  deadline: ReturnType<typeof createProcessingDeadline>,
+) {
+  if (task.type === "convert-mmd-avatar") {
+    report("parse", 0.08);
+    const [{ WebIO }, { convertMMDModelToGLBDocument }] = await Promise.all([
+      import("@gltf-transform/core"),
+      import("@/export/avatar-conversion"),
+    ]);
+    const resolveResource = createTransferableAssetPackageResolver(
+      task.assetPackage,
+    );
+    const document = convertMMDModelToGLBDocument(
+      new Uint8Array(task.bytes),
+      task.filename,
+      resolveResource,
+    );
+    deadline.checkpoint("convert-mmd-avatar");
+    report("export", 0.78);
+    const bytes = await new WebIO().writeBinary(document);
+    assertOutputBytes(bytes.byteLength);
+    return bytes;
+  }
+
+  if (task.type === "inspect-rigged-gltf") {
+    report("parse", 0.1);
+    const document = await readGLTFDocument(
+      new Uint8Array(task.bytes),
+      undefined,
+      restoreGLTFResources(task.resources),
+    );
+    deadline.checkpoint("parse-rigged-gltf");
+    const inspection = inspectGLTFRig(document);
+    report("normalize", 0.82);
+    return {
+      inspection: serializeRigInspection(inspection),
+      actions: listRigMotionActions(document),
+    };
+  }
+
+  if (task.type === "import-motion") {
+    report("parse", 0.1);
+    const bytes = new Uint8Array(task.bytes);
+    const clip =
+      task.formatId === "mixamo-fbx" ||
+      task.formatId === "actorcore-fbx" ||
+      task.formatId === "generic-fbx"
+        ? importFBXHumanoidMotionBytes({
+            bytes: task.bytes,
+            filename: task.filename,
+            kind: task.formatId,
+            profile:
+              task.formatId === "mixamo-fbx"
+                ? MIXAMO_RIG_PROFILE
+                : task.formatId === "actorcore-fbx"
+                  ? ACTORCORE_PROFILE
+                  : GENERIC_FBX_HUMANOID_PROFILE,
+          })
+        : task.formatId === "bvh"
+        ? importBVH(bytes, task.filename)
+        : task.formatId === "vmd"
+          ? importVMD(bytes, task.filename)
+          : task.formatId === "vrma"
+            ? await importVRMA(bytes, task.filename)
+            : await importGLTFAnimation(bytes, task.filename);
+    deadline.checkpoint("parse");
+    report("normalize", 0.82);
+    assertMotionProcessingBudget(clip);
+    return clip;
+  }
+
+  if (task.type === "solve-humanoid") {
+    assertMotionProcessingBudget(task.motion);
+    report("solve", 0.18);
+    const targetRig = task.targetRig
+      ? { ...task.targetRig, bones: new Set(task.targetRig.bones) }
+      : undefined;
+    const clip = solveHumanoidCustomRigMotion(
+      task.motion,
+      task.mapping,
+      targetRig,
+      task.options,
+    );
+    deadline.checkpoint("solve");
+    report("refine", 0.82);
+    assertMotionProcessingBudget(clip);
+    return clip;
+  }
+
+  if (task.type === "retarget-rigged-gltf") {
+    report("parse", 0.08);
+    const sourceDocument = await readGLTFDocument(
+      new Uint8Array(task.motionBytes),
+      undefined,
+      restoreGLTFResources(task.motionResources),
+    );
+    deadline.checkpoint("parse-source-rig");
+    const sourceOptions = {
+      familyOverride: task.recipe?.family ?? "auto",
+      profileId: task.recipe?.sourceProfileId ?? "auto",
+      roleOverrides: task.recipe?.sourceRoleOverrides,
+    } as const;
+    const targetOptions = {
+      familyOverride: task.recipe?.family ?? "auto",
+      profileId: task.recipe?.targetProfileId ?? "auto",
+      roleOverrides: task.recipe?.targetRoleOverrides,
+    } as const;
+    const sourceInspection = inspectGLTFRig(sourceDocument, sourceOptions);
+    if (!task.targetInspection && !task.targetBytes) {
+      throw new Error(
+        "Rigged glTF retarget jobs require target bytes or a structural target inspection.",
+      );
+    }
+    const targetInspection =
+      task.targetInspection ??
+      inspectGLTFRig(
+        await readGLTFDocument(
+          new Uint8Array(task.targetBytes!),
+          undefined,
+          restoreGLTFResources(task.targetResources),
+        ),
+        targetOptions,
+      );
+    const serializedTargetInspection = serializeRigInspection(targetInspection);
+    deadline.checkpoint("inspect-rigs");
+    const solver = getRigSolver(
+      sourceInspection.definition.id,
+      targetInspection.definition.id,
+    );
+    if (!solver) {
+      throw new Error(
+        `No active solver for ${sourceInspection.definition.id} -> ${targetInspection.definition.id}.`,
+      );
+    }
+    const sourceMotion = importRigMotionDocument(
+      sourceDocument,
+      task.motionFilename,
+      {
+        ...sourceOptions,
+        animationIndex: task.animationIndex,
+        animationName: task.animationName,
+      },
+    );
+    assertRigMotionProcessingBudget(sourceMotion);
+    report("solve", 0.55);
+    const motion = solver.solve({
+      motion: sourceMotion,
+      target: targetInspection,
+      targetFilename: task.targetFilename,
+    });
+    deadline.checkpoint("solve-rig-motion");
+    assertRigMotionProcessingBudget(motion);
+    return {
+      motion,
+      sourceMotion,
+      sourceInspection: serializeRigInspection(sourceInspection),
+      targetInspection: serializedTargetInspection,
+      solver: solver.id,
+    };
+  }
+
+  if (task.type === "export-motion") {
+    assertMotionProcessingBudget(task.clip);
+    report("export", 0.15);
+    const bytes = await exportMotion(task);
+    deadline.checkpoint("export");
+    assertOutputBytes(bytes.byteLength);
+    return bytes;
+  }
+
+  if (task.type === "validate-motion-export") {
+    report("structural-validate", 0.15);
+    const { validateMotionExportReload, validateMotionExportSemantics } =
+      await import("@/export/reload-validation");
+    const bytes = new Uint8Array(task.bytes);
+    const structural = await validateMotionExportReload(task.formatId, bytes);
+    deadline.checkpoint("structural-validate");
+    report("semantic-validate", 0.55);
+    const semantic = structural.ok
+      ? await validateMotionExportSemantics(
+          task.formatId,
+          bytes,
+          task.expected,
+        )
+      : null;
+    return { structural, semantic };
+  }
+
+  if (task.type === "validate-avatar-export") {
+    report("structural-validate", 0.15);
+    const { validateAvatarExportReload, validateAvatarExportSemantics } =
+      await import("@/export/reload-validation");
+    const bytes = new Uint8Array(task.bytes);
+    const structural = await validateAvatarExportReload(task.formatId, bytes);
+    deadline.checkpoint("structural-validate");
+    report("semantic-validate", 0.55);
+    const semantic = structural.ok
+      ? await validateAvatarExportSemantics(
+          task.formatId,
+          bytes,
+          task.expected,
+        )
+      : null;
+    return { structural, semantic };
+  }
+
+  report("semantic-validate", 0.15);
+  assertMotionProcessingBudget(task.actual);
+  assertMotionProcessingBudget(task.expected);
+  return validateHumanoidMotionSemantics({
+    actual: task.actual,
+    expected: task.expected,
+    restPose: task.restPose ? new Map(task.restPose) : undefined,
+  });
+}
+
+function restoreGLTFResources(
+  resources?: Readonly<Record<string, ArrayBuffer>>,
+) {
+  if (!resources) return undefined;
+  return Object.fromEntries(
+    Object.entries(resources).map(([uri, bytes]) => [uri, new Uint8Array(bytes)]),
+  );
+}
+
+async function exportMotion(
+  task: Extract<RetargetJobTask, { type: "export-motion" }>,
+) {
+  if (task.formatId === "motion-json") {
+    return new TextEncoder().encode(serializeMotionClip(task.clip));
+  }
+  if (task.formatId === "vrma") {
+    return (await import("@/export/vrma")).exportVRMA(task.clip, task.options);
+  }
+  if (task.formatId === "vmd") {
+    return (await import("@/export/vmd")).exportVMD(task.clip);
+  }
+  if (task.formatId === "gltf-animation") {
+    return (await import("@/export/gltf-animation")).exportGLTFAnimation(
+      task.clip,
+      task.options,
+    );
+  }
+  if (task.formatId === "bvh") {
+    return (await import("@/export/bvh")).exportBVH(task.clip, task.options);
+  }
+  return (await import("@/export/fbx")).exportFBXAnimation(
+    task.clip,
+    task.options,
+  );
+}

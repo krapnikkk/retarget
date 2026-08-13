@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.glb binary
+*.vrm binary
+*.vmd binary
+*.bin binary
+*.png binary
+*.jpg binary

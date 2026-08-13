@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 2,
+  "sourceRepository": "https://github.com/KhronosGroup/glTF-Sample-Assets",
+  "sourceCommit": "2bac6f8c57bf471df0d2a1e8a8ec023c7801dddf",
+  "cases": [
+    {
+      "id": "box-draco",
+      "extension": "KHR_draco_mesh_compression",
+      "support": "probe-only",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "texture-transform",
+      "extension": "KHR_texture_transform",
+      "support": "probe-only",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "meshopt",
+      "extension": "KHR_meshopt_compression",
+      "support": "probe-only",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "materials-variants",
+      "extension": "KHR_materials_variants",
+      "support": "probe-only",
+      "license": "CC-BY-4.0"
+    },
+    {
+      "id": "lights-punctual",
+      "extension": "KHR_lights_punctual",
+      "support": "probe-only",
+      "license": "CC-BY-4.0"
+    }
+  ],
+  "files": [
+    {
+      "source": "Models/Box/glTF-Draco/Box.gltf",
+      "output": "tests/fixtures/gltf-extensions/khronos/box-draco/Box.gltf",
+      "sha256": "3c46acecdfa90b012ec9052d8a1dfa61358e6d56a9e333504189cc78a2de4d1b"
+    },
+    {
+      "source": "Models/Box/glTF-Draco/Box.bin",
+      "output": "tests/fixtures/gltf-extensions/khronos/box-draco/Box.bin",
+      "sha256": "610dc6e08aba7c2720c8e4ec0578efd91cf2d88a5e638dab7811a22f0235bf2e"
+    },
+    {
+      "source": "Models/Box/LICENSE.md",
+      "output": "tests/fixtures/gltf-extensions/khronos/box-draco/LICENSE.md",
+      "sha256": "634623c7bef43aa4b16a3556ac55ae71b671daf4509437d403e4f2a0273928dc"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/TextureTransformTest.gltf",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/TextureTransformTest.gltf",
+      "sha256": "c22c8c6c96c0ea4bcbb9b47ea245a093c5ef59acc5fd425effa4c00da4cdf164"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/TextureTransformTest.bin",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/TextureTransformTest.bin",
+      "sha256": "d0cdd23f2fa0996a0db99d4932fb9912a51a34e27c8bf832d072dc856ee9a7af"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/Arrow.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/Arrow.png",
+      "sha256": "5df5b251fed0ac306cf859a30b59a4953d152483a4bed2b84e5bba1c667a1e64"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/Correct.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/Correct.png",
+      "sha256": "3a14b12635ebbcee3ea427fbdb4d20da73e4740ec7a51683d700a2d6b4b7861a"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/Error.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/Error.png",
+      "sha256": "8d1032ef535a5c379bf78f9f565d3180ee3fc2d1cfef6892dee6e567728b619c"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/NotSupported.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/NotSupported.png",
+      "sha256": "1fbdeca7e5c105d677a39578e4bab82b89c8aa9f406ee681ede05635ea0f8c74"
+    },
+    {
+      "source": "Models/TextureTransformTest/glTF/UV.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/UV.png",
+      "sha256": "ac37ff52fe06a4c8c35ad4e1e7e8da039dfa8afc9b629d40a44ca8b8cfe9d03d"
+    },
+    {
+      "source": "Models/TextureTransformTest/LICENSE.md",
+      "output": "tests/fixtures/gltf-extensions/khronos/texture-transform/LICENSE.md",
+      "sha256": "2756f452c3dd14860ace0f63abc5899755a1efbd63d63671fd6eec16e5fce2c1"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/MeshoptCubeTest.gltf",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/MeshoptCubeTest.gltf",
+      "sha256": "b5947609f3d8aba58de3d43101df3b635ffaaab5849431f8518af6a98a040433"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/MeshoptCubeTest.bin",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/MeshoptCubeTest.bin",
+      "sha256": "6578c1d82c5cc2b228e9513e37f348ca89cdb24b5985aa0567efef8d3c014360"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/col0.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/col0.png",
+      "sha256": "250410286de74c532ee877b51b039228742a2e4d7fd611dce29230e841ab75f7"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/col1.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/col1.png",
+      "sha256": "10a6db3432385dceaacb15a66f94ce79c6c2460d9b1ef1f25c3399bd2d0ee521"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/col2.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/col2.png",
+      "sha256": "28f15b21a88b213315e13cdcb7914007934e69f3ed8b8dc9495f469d865d57e7"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/col3.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/col3.png",
+      "sha256": "d518c528b85d9c2c5915c5822b152ac8c162da1bc11a9581e5486d53ebaeb11a"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/col4.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/col4.png",
+      "sha256": "8f5659a0451392c567217b432a6c83f65a6c22eb3a225e853daa45ec847abdb3"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/row0.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/row0.png",
+      "sha256": "a26715d56e91e83b19e336174494bd3e39cfc3a5f1b6f1166951a9ec38bf6baa"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/row1.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/row1.png",
+      "sha256": "8b005615419b1efb98d3cce2fd9529fc53bd34337a317aece8cd4a7558053ec4"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/row2.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/row2.png",
+      "sha256": "b4e1d53d2a5492adc2d148b19b421733fb23edf1a0aded6fea1ec11c710f11b0"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/row3.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/row3.png",
+      "sha256": "ae96accde34a0a35ffe63a2fa4f777eaeacf6d3157e6ef69ba5da285949d7f77"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/glTF-Meshopt/row4.png",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/row4.png",
+      "sha256": "689cf0ae16c22125a4a1ad44e0431aed1a92a101def096161d133ec56906bca3"
+    },
+    {
+      "source": "Models/MeshoptCubeTest/LICENSE.md",
+      "output": "tests/fixtures/gltf-extensions/khronos/meshopt/LICENSE.md",
+      "sha256": "63fc4b5080289c3640c904dcf5adb3a6122a707928164d7520f46b3051da8ac3"
+    },
+    {
+      "source": "Models/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb",
+      "output": "tests/fixtures/gltf-extensions/khronos/materials-variants/MaterialsVariantsShoe.glb",
+      "sourceSha256": "e1d7cb190382111e5a5b37b51e9a7f007f7eb2ab1b6185e0188e8d0a0d1265a7",
+      "transformation": "minimal-glb-extension-declaration-v1",
+      "extension": "KHR_materials_variants",
+      "sha256": "13f8de1b664bdf533a10bfcc3ed9b8272bb692ff770f29023bd5671de68bb762"
+    },
+    {
+      "source": "Models/MaterialsVariantsShoe/LICENSE.md",
+      "output": "tests/fixtures/gltf-extensions/khronos/materials-variants/LICENSE.md",
+      "sha256": "005d13a91ab71b75d4e734a7301c67fcbcab28cc7187a5ddacf94dd650d332df"
+    },
+    {
+      "source": "Models/LightsPunctualLamp/glTF-Binary/LightsPunctualLamp.glb",
+      "output": "tests/fixtures/gltf-extensions/khronos/lights-punctual/LightsPunctualLamp.glb",
+      "sourceSha256": "b9a95cd0e17dea5284117e54807b49b746960038457a31a0011b9344acc11104",
+      "transformation": "minimal-glb-extension-declaration-v1",
+      "extension": "KHR_lights_punctual",
+      "sha256": "9a94842af9e95bcde661209def123eabd75bc82c69508cc1fd2ca5134c0ed942"
+    },
+    {
+      "source": "Models/LightsPunctualLamp/LICENSE.md",
+      "output": "tests/fixtures/gltf-extensions/khronos/lights-punctual/LICENSE.md",
+      "sha256": "44100aecf907abd0460eff3c437323643c565929f61df7c408a3d6966332e8b6"
+    }
+  ]
+}

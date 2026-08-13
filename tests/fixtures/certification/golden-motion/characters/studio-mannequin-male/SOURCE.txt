@@ -1,0 +1,6 @@
+Studio Mannequin Male
+
+Original creator: Quaternius
+Source asset: Universal Animation Library Standard Mannequin
+Source URL: https://quaternius.com/packs/universalanimationlibrary.html
+Source file / clip: studio-mannequin-male.blend
