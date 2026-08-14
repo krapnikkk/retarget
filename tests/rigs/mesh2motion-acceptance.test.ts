@@ -90,6 +90,67 @@ describe("Mesh2Motion CC0 non-humanoid acceptance", () => {
     }
   });
 
+  it("remaining-family-animated-glb-beta: exports every pinned non-rest action with independent world-space semantics", async () => {
+    const cases = [
+      {
+        source: "bird-animations.glb",
+        target: "bird-eagle.glb",
+        actions: ["Flap", "Glide", "Idle", "Walk"],
+        scaleTarget: false,
+      },
+      {
+        source: "snake-animations.glb",
+        target: "snake-animations.glb",
+        actions: ["Bite", "Coiled", "Dance", "Death", "Hit", "Idle", "Side winding"],
+        scaleTarget: true,
+      },
+      {
+        source: "spider-animations.glb",
+        target: "spider-animations.glb",
+        actions: ["Attack", "Bite", "Death", "Death 2", "Eating", "Hit", "Idle", "Jump", "Walk"],
+        scaleTarget: true,
+      },
+      {
+        source: "dragon-animations.glb",
+        target: "dragon-animations.glb",
+        actions: ["Fly Flap", "Fly Glide", "Idle", "Walk"],
+        scaleTarget: true,
+      },
+    ] as const;
+
+    for (const familyCase of cases) {
+      for (const actionName of familyCase.actions) {
+        const avatarFile = familyCase.scaleTarget
+          ? await createScaledTargetFile(familyCase.target, 1.15)
+          : await readFileAsWebFile(familyCase.target);
+        const result = await runRiggedGLTFPipeline({
+          motionFile: await readFileAsWebFile(familyCase.source),
+          avatarFile,
+          animationName: actionName,
+        });
+        const validation = await validateRigMotionGLTFReload(
+          result.output.bytes,
+          result.motion,
+        );
+
+        expect(result.output.format).toBe("animated-glb");
+        expect(result.motion.diagnostics.mapping.requiredChainCoverage).toBe(1);
+        expect(
+          validation,
+          `${familyCase.source}:${actionName} -> ${familyCase.target}`,
+        ).toMatchObject({
+          ok: true,
+          semantic: {
+            ok: true,
+            level: "semantic",
+            issues: [],
+            missingTracks: [],
+          },
+        });
+      }
+    }
+  });
+
   it("preserves rest input and exact signatures as identity for every family", async () => {
     const cases = [
       ["fox-animations.glb", "Rest Pose"],
