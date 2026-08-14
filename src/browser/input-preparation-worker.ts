@@ -8,7 +8,7 @@ import {
   type ReadableDirectoryHandle,
 } from "@/import/asset-package";
 import { assertInputByteLength } from "@/jobs/asset-memory-policy";
-import { createProcessingDeadline } from "@/jobs/processing-budget";
+import { createProcessingDeadline } from "@/processing-budget";
 import { RetargetError, isRetargetError } from "@/retarget/errors";
 import { inspectImportContent } from "@/adapters/probe";
 import {

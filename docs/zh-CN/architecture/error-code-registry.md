@@ -11,6 +11,8 @@
 | `FBX_PARSE_FAILED` | 导入 | FBX 加载器拒绝文件；检查二进制/ASCII 完整性。 |
 | `FBX_NOT_MIXAMO` | 探测/导入 | 已选择 Mixamo，但骨骼证据不匹配；改用通用 FBX 或显式映射。 |
 | `FBX_NO_ANIMATION` | 导入 | 未找到可用的 FBX 动画栈。 |
+| `FBX_ANIMATION_SELECTION_REQUIRED` | 导入 | FBX 包含多个动作或重名动作，必须提供显式索引或唯一名称。 |
+| `FBX_ANIMATION_NOT_FOUND` | 导入 | 请求的 FBX 动作索引/名称不存在，或两个选择器互相冲突。 |
 | `VRMA_PARSE_FAILED` | 导入 | VRMA 或其必需扩展数据无效。 |
 | `BVH_PARSE_FAILED` | 导入 | BVH 层级或动作采样无效。 |
 | `VMD_PARSE_FAILED` | 导入 | VMD 头部/骨骼动作无效或不受支持。 |

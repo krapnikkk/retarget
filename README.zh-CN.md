@@ -21,9 +21,12 @@
 
 ```powershell
 pnpm install
+pnpm hooks:install # 每个 checkout 只需执行一次
 pnpm verify
 pnpm verify:ecosystem # 需要固定版本的 Blender 与 Godot
 ```
+
+本私有仓库默认使用纳入版本控制的本地 pre-commit hook 作为提交门禁。每次提交都会运行 `pnpm verify`；托管 CI 仅保留给人工发布或审查，避免日常提交消耗有限次数。`git commit --no-verify` 只是紧急绕过方式，不能作为变更已通过验证的证据；交接前仍必须补跑并记录一次成功的 `pnpm verify`。
 
 大型研究语料下载到被 Git 忽略的 `references/` 目录。已提交的固定资源均包含来源和哈希记录。
 

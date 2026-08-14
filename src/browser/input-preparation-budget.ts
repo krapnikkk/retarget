@@ -4,7 +4,7 @@ import {
   MAX_MOTION_FILE_BYTES,
   MAX_RANGE_LOADABLE_AVATAR_BYTES,
 } from "@/jobs/asset-memory-policy";
-import { DEFAULT_PROCESSING_BUDGET } from "@/jobs/processing-budget";
+import { DEFAULT_PROCESSING_BUDGET } from "@/processing-budget";
 import { RetargetError } from "@/retarget/errors";
 import type { BrowserInputPreparationBudget } from "./input-preparation-types";
 

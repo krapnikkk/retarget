@@ -45,6 +45,8 @@
   "sideEffects": false,
   "scripts": {
     "build": "tsup",
+    "hooks:install": "node scripts/install-git-hooks.mjs",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:correctness-coverage": "vitest run --config vitest.correctness.config.ts --coverage",
@@ -53,7 +55,8 @@
     "verify:ecosystem": "node scripts/verify-humanoid-ecosystem.mjs --check",
     "update:ecosystem-receipt": "node scripts/verify-humanoid-ecosystem.mjs --update",
     "verify:fixtures": "pnpm check:mesh2motion-fixtures && pnpm check:gltf-extension-fixtures && pnpm check:non-humanoid-certification",
-    "verify": "pnpm check:docs-localization && pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
+    "verify": "pnpm check:docs-localization && pnpm check:architecture && pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
+    "verify:precommit": "pnpm verify",
     "validate-asset": "node scripts/validate-asset.mjs",
     "fetch:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs",
     "check:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs --check",

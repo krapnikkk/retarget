@@ -13,6 +13,8 @@ the stable code for support and telemetry.
 | `FBX_PARSE_FAILED` | import | FBX loader rejected the file; verify binary/ASCII integrity. |
 | `FBX_NOT_MIXAMO` | probe/import | Mixamo was selected but bone evidence does not match; use generic FBX or mapping. |
 | `FBX_NO_ANIMATION` | import | No usable FBX animation stack was found. |
+| `FBX_ANIMATION_SELECTION_REQUIRED` | import | Multiple or duplicate-named FBX actions require an explicit index or unique name. |
+| `FBX_ANIMATION_NOT_FOUND` | import | The requested FBX action index/name is absent or conflicts with the other selector. |
 | `VRMA_PARSE_FAILED` | import | VRMA or its required extension data is invalid. |
 | `BVH_PARSE_FAILED` | import | BVH hierarchy or motion samples are invalid. |
 | `VMD_PARSE_FAILED` | import | VMD header/body motion is invalid or unsupported. |

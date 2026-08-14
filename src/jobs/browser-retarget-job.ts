@@ -1,7 +1,7 @@
 import {
   DEFAULT_PROCESSING_BUDGET,
   ProcessingBudgetError,
-} from "./processing-budget";
+} from "@/processing-budget";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "./types";
 import type {
   RetargetJobProgress,

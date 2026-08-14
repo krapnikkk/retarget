@@ -1,5 +1,5 @@
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
-import { DEFAULT_PROCESSING_BUDGET } from "@/jobs/processing-budget";
+import { DEFAULT_PROCESSING_BUDGET } from "@/processing-budget";
 import { RetargetError } from "@/retarget";
 import type { NodeToolBudget } from "./types";
 

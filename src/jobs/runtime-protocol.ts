@@ -8,7 +8,7 @@ import { RETARGET_ERROR_CODES, RetargetError } from "@/retarget/errors";
 import {
   assertMotionProcessingBudget,
   assertRigMotionProcessingBudget,
-} from "./processing-budget";
+} from "@/processing-budget";
 import {
   RETARGET_JOB_PROTOCOL_VERSION,
   type RetargetJobRequest,

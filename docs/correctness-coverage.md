@@ -2,7 +2,8 @@
 
 [简体中文](zh-CN/correctness-coverage.md)
 
-CI and immutable releases run `pnpm test:correctness-coverage`. The gate covers
+The local pre-commit gate and immutable release preparation run
+`pnpm test:correctness-coverage`. Optional hosted CI may repeat it. The gate covers
 the parser, source normalization, pose sampling, target binding, and
 non-humanoid solver modules whose mutations can change exported motion.
 

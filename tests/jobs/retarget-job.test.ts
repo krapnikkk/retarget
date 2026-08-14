@@ -5,7 +5,7 @@ import {
   ProcessingBudgetError,
   assertRigMotionProcessingBudget,
   assertRetargetSolveBudget,
-} from "@/jobs/processing-budget";
+} from "@/processing-budget";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 import type { RigMotionV2 } from "@/rig-motion";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";

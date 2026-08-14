@@ -18,8 +18,14 @@ Before every controlled release, the local release operator must record:
 - the tarball filename, byte length, SHA-256, package version, and verification
   results in a committed release receipt.
 
+For routine commits in this private repository, run `pnpm hooks:install` once
+per checkout. The versioned pre-commit hook runs the complete `pnpm verify`
+gate, including the domain-layer import rule. Hosted CI is an optional manual
+release/review confirmation rather than a per-commit dependency. Bypassing the
+hook does not waive the requirement to record a successful local verification.
+
 The tarball remains ignored by Git and is transferred separately. Registry
-publication, registry credentials, automated consumer updates, CI, and release
-SBOMs remain deferred under the local maintenance profile. The MIT license
+publication, registry credentials, automated consumer updates, required hosted
+CI, and release SBOMs remain deferred under the local maintenance profile. The MIT license
 covers the library code only; consumer assets and generated outputs retain
 their own provenance and license obligations.

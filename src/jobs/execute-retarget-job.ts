@@ -33,7 +33,7 @@ import {
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
   DEFAULT_PROCESSING_BUDGET,
-} from "./processing-budget";
+} from "@/processing-budget";
 import type {
   RetargetJobPhase,
   RetargetJobRequest,

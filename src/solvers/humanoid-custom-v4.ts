@@ -15,7 +15,7 @@ import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertMotionProcessingBudget,
   assertRetargetSolveBudget,
-} from "@/jobs/processing-budget";
+} from "@/processing-budget";
 import {
   applyAxisCorrectionToQuaternion,
   applyAxisCorrectionToVector,

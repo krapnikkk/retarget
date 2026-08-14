@@ -7,7 +7,7 @@ import {
 import {
   MMD_EXPORT_BONE_NAMES,
   resolveExportBoneName,
-} from "@/export/bone-naming";
+} from "./bone-naming";
 import type { RigProfile, RigProfileBone } from "./types";
 
 function mixamoAliasesFor(bone: HumanoidBoneName) {

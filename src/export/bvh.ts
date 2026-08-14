@@ -17,7 +17,7 @@ import {
   type BoneNamingOptions,
   type BoneNamingProfileId,
 } from "./bone-naming";
-import { assertGeneratedExportBudget } from "@/jobs/processing-budget";
+import { assertGeneratedExportBudget } from "@/processing-budget";
 
 type BVHNode = {
   bone: HumanoidBoneName;

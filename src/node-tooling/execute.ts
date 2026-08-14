@@ -24,7 +24,7 @@ import {
   assertOutputBytes,
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
-} from "@/jobs/processing-budget";
+} from "@/processing-budget";
 import { serializeRigInspection } from "@/jobs/serialize-rig-inspection";
 import {
   RetargetError,

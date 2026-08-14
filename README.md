@@ -30,9 +30,16 @@ the consuming application.
 
 ```powershell
 pnpm install
+pnpm hooks:install # once per checkout
 pnpm verify
 pnpm verify:ecosystem # requires the pinned Blender and Godot builds
 ```
+
+This private repository uses the versioned local pre-commit hook as its normal
+commit gate. Every commit runs `pnpm verify`; hosted CI is reserved for manual
+release/review use so limited CI capacity is not spent on routine commits.
+`git commit --no-verify` is an emergency bypass, not proof of a passing change,
+and must be followed by a recorded successful `pnpm verify` before handoff.
 
 Large research corpora are downloaded into the ignored `references/` directory.
 Committed fixtures include provenance and hashes.

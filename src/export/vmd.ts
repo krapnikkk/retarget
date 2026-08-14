@@ -12,7 +12,7 @@ import {
   type VMDBoneFrame,
 } from "@/mmd/vmd-document";
 import { MMD_EXPORT_BONE_NAMES } from "./bone-naming";
-import { assertGeneratedExportBudget } from "@/jobs/processing-budget";
+import { assertGeneratedExportBudget } from "@/processing-budget";
 
 const MAX_EXPORTED_VMD_KEYFRAMES = 2_000_000;
 
