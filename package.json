@@ -50,7 +50,7 @@
     "verify:package": "pnpm build && node scripts/verify-package.mjs",
     "verify:package:only": "node scripts/verify-package.mjs",
     "verify:fixtures": "pnpm check:mesh2motion-fixtures && pnpm check:gltf-extension-fixtures && pnpm check:non-humanoid-certification",
-    "verify": "pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
+    "verify": "pnpm check:docs-localization && pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
     "validate-asset": "node scripts/validate-asset.mjs",
     "fetch:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs",
     "check:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs --check",
@@ -60,7 +60,8 @@
     "fetch:gltf-extension-fixtures": "node scripts/fetch-gltf-extension-fixtures.mjs",
     "check:gltf-extension-fixtures": "node scripts/fetch-gltf-extension-fixtures.mjs --check",
     "generate:non-humanoid-certification": "node scripts/generate-non-humanoid-certification.mjs",
-    "check:non-humanoid-certification": "node scripts/generate-non-humanoid-certification.mjs --check"
+    "check:non-humanoid-certification": "node scripts/generate-non-humanoid-certification.mjs --check",
+    "check:docs-localization": "node scripts/check-doc-localizations.mjs"
   },
   "dependencies": {
     "@gltf-transform/core": "4.3.0",

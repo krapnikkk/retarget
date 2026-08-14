@@ -1,5 +1,7 @@
 # Humanoid motion semantics
 
+[简体中文](../zh-CN/architecture/humanoid-motion-semantics.md)
+
 The humanoid pipeline has three explicit semantic stages. Format adapters may
 parse source data, but they must not label raw source-local values as canonical
 motion.

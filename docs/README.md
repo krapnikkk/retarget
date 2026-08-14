@@ -1,5 +1,7 @@
 # Documentation ownership
 
+[简体中文](zh-CN/README.md) · [Handoff inventory](handoff-inventory.md)
+
 The normative engine documentation was migrated from `3dretarget-online` at the
 source commit recorded in `migration/source-provenance.md`.
 

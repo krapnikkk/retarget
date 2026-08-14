@@ -1,5 +1,7 @@
 # Format certification checklist
 
+[简体中文](../zh-CN/checklists/format-certification.md)
+
 - [ ] Name the exact source profile, avatar profile, export format, versions,
       fixture provenance, and expected coordinate/unit/root-motion semantics.
 - [ ] Run the supported UI path, not only a registry or direct function call.

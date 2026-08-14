@@ -1,5 +1,7 @@
 # Export Combination Contract
 
+[简体中文](zh-CN/export-combination-plan.md)
+
 This document describes dispatch and evidence boundaries. It deliberately does
 not duplicate the live format or adapter matrices.
 

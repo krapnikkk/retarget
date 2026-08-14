@@ -1,5 +1,7 @@
 # ActorCore 3D Motion Analysis
 
+[简体中文](../zh-CN/research/actorcore-3d-motion-analysis.md)
+
 ## Overview
 
 [ActorCore 3D Motion](https://actorcore.reallusion.com/3d-motion) is Reallusion's commercial 3D motion asset platform. Its core product is not automatic character rigging like Mixamo, but a catalog of production-oriented mocap motions, motion packs, rigged characters, and software-specific download/retarget workflows.

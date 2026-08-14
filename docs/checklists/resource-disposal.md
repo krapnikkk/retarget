@@ -1,5 +1,7 @@
 # Browser resource-disposal checklist
 
+[简体中文](../zh-CN/checklists/resource-disposal.md)
+
 - [x] Terminate Workers on success, failure, cancellation, component teardown,
       and deadline expiry; ignore stale job completions.
 - [x] Revoke object URLs and package registries when selection changes or unmounts.

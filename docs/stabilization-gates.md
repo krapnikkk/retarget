@@ -1,5 +1,7 @@
 # Stabilization gates before consumer installation
 
+[简体中文](zh-CN/stabilization-gates.md)
+
 `3dretarget-online` must not install `3dretarget` merely because the initial
 extraction builds. Consumer integration requires a separate approval after all
 of these conditions are met:

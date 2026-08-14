@@ -1,5 +1,7 @@
 # ADR-0001: Canonical motion is the only cross-format boundary
 
+[简体中文](../zh-CN/architecture/ADR-0001-canonical-motion-boundary.md)
+
 - Status: accepted
 - Date: 2026-08-13
 

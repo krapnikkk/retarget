@@ -1,5 +1,7 @@
 # mesh2motion-app Analysis
 
+[简体中文](../zh-CN/research/mesh2motion-app-analysis.md)
+
 ## Overview
 
 `references/mesh2motion-app` is an open-source browser tool for applying skeletons and animations to 3D models. Its product shape is similar to Mixamo, but it is more extensible: it supports multiple built-in rig families and includes an experimental animation retargeting flow.

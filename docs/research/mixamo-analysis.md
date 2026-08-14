@@ -1,5 +1,7 @@
 # Mixamo Analysis
 
+[简体中文](../zh-CN/research/mixamo-analysis.md)
+
 ## Overview
 
 [Mixamo](https://www.mixamo.com/) is Adobe's browser-based 3D character auto-rigging and animation service. Its core value is compressing a difficult character-animation pipeline into a short web workflow:

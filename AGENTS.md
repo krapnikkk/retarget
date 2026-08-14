@@ -1,5 +1,7 @@
 # Project purpose
 
+[简体中文](AGENTS.zh-CN.md)
+
 `3dretarget` is the sole intended owner of reusable animation-retargeting logic.
 It is being stabilized independently before any web consumer installs it.
 

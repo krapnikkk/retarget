@@ -1,5 +1,7 @@
 # 3dretarget
 
+[简体中文](README.zh-CN.md)
+
 `3dretarget` is the standalone motion-retargeting engine extracted from
 `3dretarget-online`. It owns format probing, source normalization, canonical
 motion, rig inspection, target solving, validation, export, processing budgets,
@@ -37,3 +39,6 @@ Committed fixtures include provenance and hashes.
 
 Consumer installation and synchronization are deliberately deferred until this
 repository passes its independent stability gates.
+
+See `docs/handoff-inventory.md` for the migration inventory and current
+ownership matrix.

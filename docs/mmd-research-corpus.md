@@ -1,5 +1,7 @@
 # MMD research corpus
 
+[简体中文](zh-CN/mmd-research-corpus.md)
+
 This local corpus prepares real PMX, PMD, and VMD inputs for MMD format-family
 research and conversion tests. The binaries live under the gitignored
 `references/mmd/research-corpus/` tree. They are not public catalog inputs and

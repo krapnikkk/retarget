@@ -1,5 +1,7 @@
 # Supply-chain security
 
+[简体中文](zh-CN/supply-chain-security.md)
+
 The package is private and is not consumed by the web application yet.
 
 Before the first consumer integration, CI must require:

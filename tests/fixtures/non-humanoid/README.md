@@ -1,5 +1,7 @@
 # Non-humanoid fixture inventory
 
+[简体中文](README.zh-CN.md)
+
 `mesh2motion/` contains pinned acceptance fixtures from the official
 [Mesh2Motion application repository](https://github.com/Mesh2Motion/mesh2motion-app).
 The upstream `LICENSE-CC0.MD` states that all 3D models, rigs, and animations are

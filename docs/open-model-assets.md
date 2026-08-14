@@ -1,5 +1,7 @@
 # Open Model Assets
 
+[简体中文](zh-CN/open-model-assets.md)
+
 Local files were collected under `references/open-models/`. The `references/`
 directory is ignored by git, so these assets are intended for local manual
 testing, import/export checks, and fixture exploration rather than repository

@@ -1,5 +1,7 @@
 # MMD format-family compatibility
 
+[简体中文](zh-CN/mmd-format-family-compatibility.md)
+
 Status snapshot: 2026-08-13.
 
 This document is the implementation contract for PMX, PMD, and VMD. It keeps
@@ -59,7 +61,6 @@ pnpm check:mmd-research-corpus
 pnpm test:mmd-research-corpus
 pnpm test
 pnpm typecheck
-pnpm lint
 pnpm build
 ```
 

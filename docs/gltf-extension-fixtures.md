@@ -1,5 +1,7 @@
 # glTF extension fixture matrix
 
+[简体中文](zh-CN/gltf-extension-fixtures.md)
+
 The extension corpus is generated from a commit-pinned Khronos
 `glTF-Sample-Assets` source. Source copies are verified byte-for-byte; the two
 GLB declaration probes are deterministic minimal containers whose provenance

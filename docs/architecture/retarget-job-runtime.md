@@ -1,5 +1,7 @@
 # Retarget job runtime
 
+[简体中文](../zh-CN/architecture/retarget-job-runtime.md)
+
 Browser-local processing still treats uploaded files as untrusted input. The
 job runtime applies one processing budget after parser-level byte budgets and
 before any operation that can multiply frames, tracks, or output bytes.

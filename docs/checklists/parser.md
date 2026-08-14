@@ -1,5 +1,7 @@
 # Parser change checklist
 
+[简体中文](../zh-CN/checklists/parser.md)
+
 - [ ] Probe only a bounded byte window and use content evidence, not filenames.
 - [ ] Reject truncated headers, invalid counts/offsets, non-finite numbers, and
       unsupported interpolation before allocating expanded arrays.

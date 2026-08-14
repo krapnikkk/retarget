@@ -1,5 +1,7 @@
 # Humanoid pipeline certification
 
+[简体中文](../zh-CN/architecture/humanoid-pipeline-certification.md)
+
 Format availability is not evidence that a motion/avatar/export combination is
 correct. Humanoid assurance is evaluated for the complete triple:
 

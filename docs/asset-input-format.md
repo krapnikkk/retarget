@@ -1,5 +1,7 @@
 # Canonical Asset Input Format (v1)
 
+[简体中文](zh-CN/asset-input-format.md)
+
 This v1 document is the canonical **humanoid** contract. Already-rigged
 non-humanoid GLBs use a versioned Rig Definition, catalog rig metadata, and Rig
 Motion JSON v2 as defined in `docs/non-humanoid-retargeting-plan.md`. Do not add
@@ -16,10 +18,10 @@ the adapter registry. It is a stricter subset of the existing
 Blender export scripts (and anyone reviewing a submitted asset) have a
 single checklist to build and validate against.
 
-**Asset production stays closed for now.** This spec governs our own
-private Blender-to-GLB export pipeline; there is no public asset
-repository or third-party submission process yet. See
-`docs/asset-market-plan.md` for how that may change later.
+**Fixture admission stays closed for now.** This spec governs SDK-owned
+Blender-to-GLB fixtures and validation inputs; there is no public fixture
+repository or third-party submission process. Consumer-side asset publishing
+and catalog policy remain outside this package.
 
 ---
 

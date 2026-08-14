@@ -1,5 +1,7 @@
 # Non-humanoid Retargeting Contract
 
+[简体中文](zh-CN/non-humanoid-retargeting-plan.md)
+
 This document defines the bounded non-humanoid product line. It replaces the
 assumption that every glTF character and every glTF animation can be paired
 through humanoid bone names.

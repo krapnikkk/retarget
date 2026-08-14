@@ -1,5 +1,7 @@
 # Public retarget error-code registry
 
+[简体中文](../zh-CN/architecture/error-code-registry.md)
+
 The authoritative type and English fallback messages live in
 `src/retarget/errors.ts`. UI translations may add guidance but must retain
 the stable code for support and telemetry.

@@ -1,5 +1,7 @@
 # ADR-0002: Retargeting engine ownership moves to `3dretarget`
 
+[简体中文](../zh-CN/architecture/ADR-0002-package-boundary.md)
+
 - Status: accepted
 - Date: 2026-08-14
 
