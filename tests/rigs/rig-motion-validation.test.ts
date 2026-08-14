@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   RIG_MOTION_SCHEMA_VERSION,
+  parseRigMotion,
+  serializeRigMotion,
   validateRigMotion,
   type RigMotionV2,
 } from "@/rig-motion";
@@ -113,6 +115,17 @@ describe("Rig Motion v2 validation", () => {
         expect.stringMatching(/resampledTracks.*non-negative integer/i),
       ]),
     });
+  });
+
+  it("uses structured public errors for Rig Motion serialization failures", () => {
+    expect(() => parseRigMotion("{")).toThrow(
+      expect.objectContaining({ code: "ARTIFACT_INVALID" }),
+    );
+    const invalid = createValidRigMotion();
+    invalid.tracks = [];
+    expect(() => serializeRigMotion(invalid)).toThrow(
+      expect.objectContaining({ code: "PROCESSING_RIG_MOTION_INVALID" }),
+    );
   });
 });
 

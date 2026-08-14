@@ -42,6 +42,9 @@ export const RETARGET_ERROR_CODES = [
   "TARGET_RIG_IDENTITY_MISSING",
   "TARGET_RIG_INVALID",
   "TARGET_RIG_MISMATCH",
+  "ARTIFACT_INVALID",
+  "ARTIFACT_AUTHORING_FAILED",
+  "OPERATION_CANCELLED",
 ] as const;
 
 export type RetargetErrorCode = (typeof RETARGET_ERROR_CODES)[number];
@@ -60,7 +63,7 @@ export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   GLTF_ANIMATION_PARSE_FAILED: "The glTF animation file could not be parsed.",
   UNSUPPORTED_FORMAT: "This file type is not supported by the selected workflow.",
   WEBGL_UNAVAILABLE: "This browser cannot create the required WebGL context.",
-  FILE_TOO_LARGE: "This file is too large for browser-local processing.",
+  FILE_TOO_LARGE: "This file exceeds the configured input byte limit.",
   PACKAGE_INVALID: "The asset package could not be prepared.",
   RETARGET_FAILED: "The retargeting pipeline failed.",
   EXPORT_FAILED: "The export failed.",
@@ -92,6 +95,9 @@ export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   TARGET_RIG_IDENTITY_MISSING: "The solved motion does not identify its target rig.",
   TARGET_RIG_INVALID: "The target rig contains invalid rest-pose evidence.",
   TARGET_RIG_MISMATCH: "The export target differs from the solved motion target.",
+  ARTIFACT_INVALID: "The authored or supplied artifact is invalid.",
+  ARTIFACT_AUTHORING_FAILED: "The artifact could not be authored and validated.",
+  OPERATION_CANCELLED: "The operation was cancelled.",
 };
 
 export class RetargetError extends Error {

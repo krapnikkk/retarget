@@ -76,6 +76,9 @@ for (const declarationPath of walkDeclarations(path.join(root, "dist"))) {
 if (!existsSync(path.join(root, "dist/workers/retarget.worker.js"))) {
   throw new Error("Missing bundled browser worker");
 }
+if (!existsSync(path.join(root, "dist/workers/node-tooling.worker.js"))) {
+  throw new Error("Missing bundled Node tooling worker");
+}
 const browserEntry = readFileSync(path.join(root, "dist/browser/index.js"), "utf8");
 const workerReference = 'new URL("../workers/retarget.worker.js", import.meta.url)';
 if (!browserEntry.includes(workerReference)) {
@@ -108,6 +111,31 @@ try {
     "",
   ].join("\n"));
   execFileSync(process.execPath, [path.join(temporaryRoot, "smoke.mjs")], {
+    cwd: temporaryRoot,
+    stdio: "inherit",
+  });
+  writeFileSync(path.join(temporaryRoot, "node-tooling-smoke.mjs"), [
+    'import { runNodeToolJob } from "3dretarget/node";',
+    'const motion = {',
+    '  schemaVersion: 2, rigDefinitionId: "humanoid-v1", family: "humanoid",',
+    '  name: "packed-node-tool", duration: 1, fps: 30, createdAt: "2026-08-14T00:00:00.000Z",',
+    '  source: { kind: "gltf-animation", filename: "packed.glb", profileId: "canonical-humanoid-v1", rigSignature: "packed", animation: { index: 0, name: "Packed", interpolationModes: ["LINEAR"], resampledTracks: 0 } },',
+    '  restPose: [{ role: "hips", nodeName: "hips", translation: [0, 0, 0], rotation: [0, 0, 0, 1], worldTranslation: [0, 0, 0], worldRotation: [0, 0, 0, 1] }],',
+    '  tracks: [{ role: "hips", path: "translation", times: [0, 1], values: [0, 0, 0, 0, 0, 0] }],',
+    '};',
+    'const task = { type: "export-rig-motion-gltf", artifactName: "packed.glb", motion };',
+    'const first = await runNodeToolJob(task);',
+    'const second = await runNodeToolJob(task);',
+    'if (!first.ok || !second.ok || first.result.validation.structural.status !== "passed" || first.result.validation.semantic.status !== "passed") throw new Error(`packed Node tooling failed: ${JSON.stringify(first)}`);',
+    'if (first.result.artifact.sha256 !== second.result.artifact.sha256) throw new Error("packed Node tooling output is not deterministic");',
+    'const controller = new AbortController();',
+    'let sawActiveProgress = false;',
+    'const cancelled = await runNodeToolJob(task, { signal: controller.signal, onProgress(progress) { if (progress.phase === "author") { sawActiveProgress = true; controller.abort(); } } });',
+    'if (!sawActiveProgress || cancelled.ok || cancelled.error.code !== "OPERATION_CANCELLED") throw new Error("packed Node tooling in-flight cancellation failed");',
+    'console.log("[ok] executed packed Node tooling author/validate/determinism/cancellation flow");',
+    '',
+  ].join("\n"));
+  execFileSync(process.execPath, [path.join(temporaryRoot, "node-tooling-smoke.mjs")], {
     cwd: temporaryRoot,
     stdio: "inherit",
   });
@@ -181,12 +209,14 @@ try {
   writeFileSync(path.join(temporaryRoot, "smoke.ts"), [
     'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "3dretarget";',
     'import { importBVH, importGLTFAnimationBytes } from "3dretarget/io";',
-    'import { runRetargetJobInline } from "3dretarget/node";',
-    'import { getRetargetPipeline, runRetargetJob, runRiggedGLTFPipeline } from "3dretarget/browser";',
+    'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "3dretarget/node";',
+    'import { getRetargetPipeline, prepareBrowserAssetInput, runRetargetJob, runRiggedGLTFPipeline, type BrowserInputSelection } from "3dretarget/browser";',
     'import { validateHumanoidMotionSemantics } from "3dretarget/validation";',
     'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "3dretarget/certification";',
     'void [createRetargetError, formats, importBVH, importGLTFAnimationBytes];',
-    'void [runRetargetJobInline, runRetargetJob];',
+    'void [runNodeToolJob, runRetargetJobInline, runRetargetJob];',
+    'const nodeToolTask: NodeToolTask = { type: "validate-artifact", artifactName: "typing.vrm", bytes: new ArrayBuffer(0), format: "vrm" };',
+    'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("3dretarget").RetargetError["code"] = result.error.code; void code; } });',
     'type RiggedPipelineOutput = Awaited<ReturnType<typeof runRiggedGLTFPipeline>>["output"];',
     'const riggedOutputFormat: RiggedPipelineOutput["format"] = "animated-glb";',
     'void [runRiggedGLTFPipeline, riggedOutputFormat];',
@@ -198,6 +228,8 @@ try {
     'void clip;',
     'const inferredJob = runRetargetJob({ type: "import-motion", formatId: "bvh", filename: "typing.bvh", bytes: new ArrayBuffer(0) });',
     'inferredJob.then((result) => { const duration: number = result.duration; void duration; });',
+    'const preparedInput = prepareBrowserAssetInput(new File([], "renamed.input"), { role: "motion", budget: { maxProbeBytes: 4096 }, onProgress: ({ phase }) => { const stablePhase: "discover" | "read" | "probe" | "unpack" | "resolve" | "complete" = phase; void stablePhase; } });',
+    'preparedInput.then((prepared) => { const selection: BrowserInputSelection = prepared.selection; prepared.dispose(); void selection; });',
     '',
   ].join("\n"));
   const tsc = path.join(root, "node_modules/typescript/bin/tsc");

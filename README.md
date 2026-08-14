@@ -5,7 +5,7 @@
 `3dretarget` is a consumer-neutral motion-retargeting library. It provides
 bounded format probing, source normalization, canonical motion, rig inspection,
 target solving, semantic validation, export, processing budgets, and a
-cancellable browser Worker runtime.
+cancellable browser Worker runtime plus isolated Node artifact tooling.
 
 Version `0.1.0` is distributed as a locally packed, controlled preview. The
 package remains private in registry metadata to prevent accidental registry
@@ -59,11 +59,13 @@ assets, user inputs, generated outputs, or separately installed dependencies.
 
 - `3dretarget`: serializable formats, profiles, motion, rig, pipeline, and error
   contracts.
-- `3dretarget/browser`: `File` adapters and fail-closed Worker execution.
+- `3dretarget/browser`: content-first bounded `File`/package preparation,
+  explicit resource disposal, and fail-closed Worker execution.
 - `3dretarget/io`: byte-oriented motion import/export without DOM or scene
   objects.
-- `3dretarget/node`: explicit local inline jobs plus the byte-oriented IO
-  surface.
+- `3dretarget/node`: byte-oriented IO, isolated deterministic VRM/PMX and Rig
+  Motion glTF authoring/validation jobs, plus explicit trusted inline retarget
+  jobs. It exposes no filesystem traversal or generic ZIP API.
 - `3dretarget/validation`: serializable semantic validation results.
 - `3dretarget/certification`: provenance and assurance manifests.
 

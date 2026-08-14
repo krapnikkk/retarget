@@ -24,11 +24,14 @@
 | `PARSE_*` | 解析器 | 计数、长度、数值或截断违反有界解析契约。 |
 | `BVH_*`、`GLTF_*`、`VRMA_DUPLICATE_TRACK` | 格式解析 | 有界解析已定位到稳定、格式特定的违规。 |
 | `PROCESSING_*` | 处理预算 | 动作结构、时长、FPS、选项、期限或输出工作量超过限制。 |
-| `WORKER_UNAVAILABLE` | 浏览器隔离 | 浏览器 Worker 不可用；公开浏览器路径不会改为内联执行。 |
+| `WORKER_UNAVAILABLE` | 平台隔离 | 所需浏览器或 Node Worker 不可用；公开隔离路径不会改为内联执行。 |
 | `RETARGET_JOB_FAILED` | Worker | 未知错误跨越 Worker 边界，且没有更具体的已注册错误码。 |
 | `TARGET_RIG_IDENTITY_MISSING` | 目标绑定/导出 | 角色导出收到未求解或缺少目标骨架身份的旧动作。 |
 | `TARGET_RIG_INVALID` | 目标绑定/导出 | 目标静止姿态证据无效或包含非有限数值。 |
 | `TARGET_RIG_MISMATCH` | 目标绑定/导出 | 提供的角色并非已求解动作记录的目标骨架。 |
+| `ARTIFACT_INVALID` | Node 资源验证 | 输入字节未通过格式重载、骨架检查或语义验证。 |
+| `ARTIFACT_AUTHORING_FAILED` | Node 资源生成 | 生成过程未能产出通过必需重载检查的资源。 |
+| `OPERATION_CANCELLED` | 隔离执行 | 调用方取消了正在执行的 Worker 操作。 |
 
 新增错误码必须包含类型化条目、本地化呈现、边界明确的抛出位置和至少一项回归测试。公开消息绝不能暴露原始解析栈、本机路径、上传字节或密钥。
 

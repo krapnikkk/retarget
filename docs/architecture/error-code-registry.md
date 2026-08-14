@@ -26,11 +26,14 @@ the stable code for support and telemetry.
 | `PARSE_*` | parser | Counts, lengths, numbers, or truncation violate the bounded parser contract. |
 | `BVH_*`, `GLTF_*`, `VRMA_DUPLICATE_TRACK` | parser domain | Bounded parsing succeeded far enough to identify a stable format-specific violation. |
 | `PROCESSING_*` | processing budget | Clip shape, duration, FPS, options, deadline, or output work exceeds a processing limit. |
-| `WORKER_UNAVAILABLE` | browser isolation | The browser Worker is unavailable; the public browser path does not run the job inline. |
+| `WORKER_UNAVAILABLE` | platform isolation | The required browser or Node Worker is unavailable; isolated public paths do not run the job inline. |
 | `RETARGET_JOB_FAILED` | Worker | An unexpected failure crossed the Worker boundary without a more specific registered code. |
 | `TARGET_RIG_IDENTITY_MISSING` | target bind/export | Avatar export received an unsolved or legacy clip without target-rig identity. |
 | `TARGET_RIG_INVALID` | target bind/export | Target rest-pose evidence is invalid or non-finite. |
 | `TARGET_RIG_MISMATCH` | target bind/export | The supplied avatar is not the rig recorded by the solved motion. |
+| `ARTIFACT_INVALID` | Node artifact validation | Supplied bytes failed format reload, rig inspection, or semantic validation. |
+| `ARTIFACT_AUTHORING_FAILED` | Node authoring | Authoring completed insufficiently to produce an artifact that passes its required reload checks. |
+| `OPERATION_CANCELLED` | isolated execution | The caller cancelled an in-flight Worker operation. |
 
 Additions require a typed entry, localized presentation, a boundary-specific
 throw site, and at least one regression test. Never expose raw parser stacks,

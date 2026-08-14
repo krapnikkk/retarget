@@ -21,9 +21,12 @@ registry publication promise.
   preserves the same complete input-to-Animated-GLB boundary without exposing
   glTF-Transform or Three.js objects.
 - `3dretarget/io` accepts and returns bytes and serializable data only.
-- `3dretarget/node` exposes the byte IO surface plus explicit inline jobs for
-  local tools and tests. Inline execution is not re-exported by the browser
-  entry.
+- `3dretarget/node` exposes the byte IO surface, an isolated
+  `runNodeToolJob` contract for deterministic artifact authoring/validation,
+  and explicit inline retarget jobs for trusted local tools and tests. Node
+  tooling accepts bytes and serializable metadata only; it owns no filesystem
+  traversal or catalog policy. Inline execution is not re-exported by the
+  browser entry.
 - `3dretarget/validation` and `3dretarget/certification` expose serializable
   results and manifests only.
 
@@ -39,4 +42,5 @@ case must first earn a coarse contract rather than exporting an internal file.
 
 `scripts/verify-package.mjs` enforces declaration boundaries, size baselines,
 tarball installation and imports, a strict TypeScript consumer compile, the
-relative Worker URL, and a request/result execution through the packed Worker.
+relative browser Worker URL, and request/result execution through both packed
+browser and Node tooling Workers. See [Node artifact tooling](node-artifact-tooling.md).

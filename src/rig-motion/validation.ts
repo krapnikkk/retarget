@@ -14,6 +14,7 @@ import {
   type RigMotionV2,
   type RigRestTransform,
 } from "./types";
+import { RetargetError } from "@/retarget/errors";
 
 export type RigMotionValidationResult =
   | { ok: true; motion: RigMotionV2 }
@@ -117,9 +118,21 @@ function validateSourceAnimation(
 
 export function parseRigMotion(json: string) {
   assertJsonWithinBudget(json);
-  const validation = validateRigMotion(JSON.parse(json) as unknown);
+  let value: unknown;
+  try {
+    value = JSON.parse(json) as unknown;
+  } catch (cause) {
+    throw new RetargetError("ARTIFACT_INVALID", {
+      cause,
+      message: "Rig Motion JSON is malformed.",
+    });
+  }
+  const validation = validateRigMotion(value);
   if (!validation.ok) {
-    throw new Error(validation.issues.join(" "));
+    throw new RetargetError("PROCESSING_RIG_MOTION_INVALID", {
+      details: { issues: validation.issues },
+      message: validation.issues.join(" "),
+    });
   }
   return validation.motion;
 }
@@ -127,7 +140,10 @@ export function parseRigMotion(json: string) {
 export function serializeRigMotion(motion: RigMotionV2) {
   const validation = validateRigMotion(motion);
   if (!validation.ok) {
-    throw new Error(validation.issues.join(" "));
+    throw new RetargetError("PROCESSING_RIG_MOTION_INVALID", {
+      details: { issues: validation.issues },
+      message: validation.issues.join(" "),
+    });
   }
   return JSON.stringify(validation.motion, null, 2);
 }
@@ -311,8 +327,9 @@ function isTuple(value: unknown, size: number) {
 function assertJsonWithinBudget(json: string) {
   const byteLength = new TextEncoder().encode(json).byteLength;
   if (byteLength > DEFAULT_PARSE_BUDGET.maxInputBytes) {
-    throw new Error(
-      `Rig Motion JSON contains ${byteLength} bytes; limit is ${DEFAULT_PARSE_BUDGET.maxInputBytes}.`,
-    );
+    throw new RetargetError("PARSE_BUDGET_EXCEEDED", {
+      details: { byteLength, limit: DEFAULT_PARSE_BUDGET.maxInputBytes },
+      message: `Rig Motion JSON contains ${byteLength} bytes; limit is ${DEFAULT_PARSE_BUDGET.maxInputBytes}.`,
+    });
   }
 }
