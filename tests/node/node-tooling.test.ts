@@ -80,7 +80,7 @@ describe("Node tooling contract", () => {
 
     expect(imported.result.motion.createdAt).toBe("2026-08-14T00:00:00.000Z");
     expect(imported.result.actions.length).toBeGreaterThan(0);
-    expect(imported.result.inspection.signature).toMatch(/rest-node-skin-v2/);
+    expect(imported.result.inspection.signature).toMatch(/rest-node-skin-v3:sha256/);
 
     const exported = await execute({
       type: "export-rig-motion-gltf",

@@ -75,12 +75,21 @@ export async function exportAnimatedRigGLBStream({
       "Animated GLB target signature differs from the motion target; retarget again before export.",
     );
   }
-  const channels = motion.tracks.map((track) => ({
-    nodeName: inspection.nodesByRole.get(track.role)?.getName() ?? track.role,
-    path: track.path,
-    times: track.times,
-    values: track.values,
-  }));
+  const identitiesByRole = new Map(
+    inspection.restPose.map((transform) => [transform.role, transform.nodeIdentity]),
+  );
+  const channels = motion.tracks.map((track) => {
+    const identity = identitiesByRole.get(track.role);
+    if (!identity) {
+      throw new Error(`Animated streamed GLB target role ${track.role} has no stable node identity.`);
+    }
+    return {
+      node: identity.nodeIndex,
+      path: track.path,
+      times: track.times,
+      values: track.values,
+    };
+  });
   return exportRawAnimationGLBStream({
     avatarFile,
     animationName: motion.name || "rig-motion",
@@ -96,7 +105,7 @@ async function exportRawAnimationGLBStream({
   avatarFile: File;
   animationName: string;
   channels: Array<{
-    nodeName: string;
+    node: number;
     path: "rotation" | "translation";
     times: readonly number[];
     values: readonly number[];
@@ -110,18 +119,17 @@ async function exportRawAnimationGLBStream({
   const nodes = Array.isArray(json.nodes)
     ? json.nodes as Array<Record<string, unknown>>
     : [];
-  const nodesByName = new Map(
-    nodes.map((node, index) => [typeof node.name === "string" ? node.name : "", index]),
-  );
+  for (const track of rawChannels) {
+    if (!Number.isInteger(track.node) || track.node < 0 || track.node >= nodes.length) {
+      throw new Error(`Animated streamed GLB target node ${track.node} is out of range.`);
+    }
+  }
   return buildStreamedGLBBlob({
     avatarFile,
     info,
     json,
     animationName,
-    channels: rawChannels.flatMap((track) => {
-      const node = nodesByName.get(track.nodeName);
-      return node === undefined ? [] : [{ ...track, node }];
-    }),
+    channels: rawChannels,
   });
 }
 

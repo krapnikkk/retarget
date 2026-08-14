@@ -96,3 +96,10 @@ export type RigTopologyConflict = {
   expectedParentRole?: RigRoleId;
   actualParentRole?: RigRoleId;
 };
+
+export type RigNodeIdentity = {
+  nodeIndex: number;
+  canonicalPath: string;
+  skinIndex?: number;
+  jointIndex?: number;
+};

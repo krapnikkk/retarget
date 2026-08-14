@@ -74,7 +74,9 @@ Rig Motion JSON v2 是并行协议，不会原地修改人形 v1 schema。每条
 
 ## 求解规则
 
-- rest-node-skin v2 signature 相同时走 identity-copy 快速路径。
+- rest-node-skin v3 SHA-256 signature 相同后，还必须确认稳定节点索引、包含
+  sibling index 的路径、拓扑和完整静止变换均一致，才可走 identity-copy 快速路径。
+  名称只用于诊断显示，不能作为绑定主键。
 - signature 不同但活动 definition 相同时，使用感知静止姿势的 chain swing/twist 传递。
 - 局部旋转增量围绕各 role 的静止子轴分解，映射到目标静止轴，再合成到目标静止旋转。
 - 根平移从源静止相对动作转换，并按目标/源静止姿势跨度缩放。

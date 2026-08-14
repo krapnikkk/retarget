@@ -31,6 +31,7 @@ import {
   validateAnimatedRigGLBStream,
 } from "@/export/streamed-avatar-glb";
 import { retargetRiggedGLTF } from "@/pipelines/rigged-gltf";
+import { loadSemanticAvatarRig } from "@/browser/semantic-rig";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
@@ -86,10 +87,12 @@ describe("non-humanoid quadruped contract", () => {
       .getRoot()
       .listNodes()
       .find((node) => node.getName() === "frontLeft.upper")!
-      .setScale([1, 1, 1.1]);
+      .setScale([1, 1, 1.000001]);
     const scaled = inspectGLTFRig(scaledDocument);
 
-    expect(baseline.signature).toMatch(/^quadruped-v1:rest-node-skin-v2:/);
+    expect(baseline.signature).toMatch(
+      /^quadruped-v1:rest-node-skin-v3:sha256:[0-9a-f]{64}$/,
+    );
     expect(scaled.signature).not.toBe(baseline.signature);
   });
 
@@ -179,6 +182,27 @@ describe("non-humanoid quadruped contract", () => {
       expect.arrayContaining([
         expect.objectContaining({ space: "world" }),
       ]),
+    );
+  });
+
+  it("does not trust a matching hash without matching stable node identity", () => {
+    const sourceDocument = createQuadrupedDocument({ animated: true });
+    const motion = importRigMotionDocument(sourceDocument, "walk.glb");
+    const target = inspectGLTFRig(sourceDocument);
+    const root = motion.restPose.find((transform) => transform.role === "root")!;
+    root.nodeIdentity = {
+      ...root.nodeIdentity!,
+      nodeIndex: root.nodeIdentity!.nodeIndex + 1,
+    };
+
+    const solved = solveRigMotionToTarget({
+      motion,
+      target,
+      targetFilename: "same-hash-different-node.glb",
+    });
+
+    expect(solved.diagnostics.solver.id).toBe(
+      "definition-mapped-swing-twist-v1",
     );
   });
 
@@ -488,11 +512,59 @@ describe("non-humanoid quadruped contract", () => {
       );
     }
   });
+
+  it("keeps streamed channels bound to stable node indices when names repeat", async () => {
+    const sourceBytes = await writeDocument(
+      createQuadrupedDocument({ animated: true }),
+    );
+    const targetBytes = await writeDocument(
+      createQuadrupedDocument({ duplicateRootName: true, embeddedGeometry: true }),
+    );
+    const avatarFile = createFile(targetBytes, "duplicate-root.glb");
+    const result = await retargetRiggedGLTF({
+      motionFile: createFile(sourceBytes, "walk.glb"),
+      avatarFile,
+    });
+    const output = await exportAnimatedRigGLBStream({
+      avatarFile,
+      motion: result.motion,
+      expectedRigSignature: result.motion.target.rigSignature,
+    });
+    const outputDocument = await new WebIO().readBinary(
+      new Uint8Array(await output.arrayBuffer()),
+    );
+    const rootIdentity = result.targetInspection.restPose.find(
+      (transform) => transform.role === "root",
+    )!.nodeIdentity!;
+    const rootChannel = outputDocument.getRoot().listAnimations().at(-1)!
+      .listChannels()
+      .find((channel) =>
+        channel.getTargetPath() === "translation" &&
+        channel.getTargetNode() === outputDocument.getRoot().listNodes()[rootIdentity.nodeIndex]
+      );
+
+    expect(rootChannel).toBeDefined();
+    expect(rootChannel!.getTargetNode()!.listChildren().length).toBeGreaterThan(0);
+  });
+
+  it("maps browser scene roles by glTF node index when names repeat", async () => {
+    const bytes = await writeDocument(
+      createQuadrupedDocument({ duplicateRootName: true, embeddedGeometry: true }),
+    );
+    const rig = await loadSemanticAvatarRig(
+      createFile(bytes, "duplicate-root.glb"),
+      { familyOverride: "quadruped" },
+    );
+
+    expect(rig.nodesByRole.get("root")?.children.length).toBeGreaterThan(0);
+    rig.root.clear();
+  });
 });
 
 function createQuadrupedDocument({
   actionNames,
   animated = false,
+  duplicateRootName = false,
   embeddedGeometry = false,
   omit,
   restTwist = 0,
@@ -500,6 +572,7 @@ function createQuadrupedDocument({
 }: {
   actionNames?: string[];
   animated?: boolean;
+  duplicateRootName?: boolean;
   embeddedGeometry?: boolean;
   omit?: string;
   restTwist?: number;
@@ -530,6 +603,9 @@ function createQuadrupedDocument({
   }
   for (const name of actionNames ?? (animated ? ["walk"] : [])) {
     addAnimation(document, nodes, scale, name);
+  }
+  if (duplicateRootName) {
+    scene.addChild(document.createNode("root"));
   }
   if (embeddedGeometry) {
     const buffer = document.createBuffer("geometry");

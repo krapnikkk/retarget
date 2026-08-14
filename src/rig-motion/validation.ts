@@ -307,6 +307,33 @@ function validateRestTransform(
   if (!transform.nodeName || typeof transform.nodeName !== "string") {
     issues.push(`restPose[${index}].nodeName must be a non-empty string.`);
   }
+  if (transform.nodeIdentity !== undefined) {
+    const identity = transform.nodeIdentity;
+    if (!identity || typeof identity !== "object") {
+      issues.push(`restPose[${index}].nodeIdentity must be an object.`);
+    } else {
+      if (!Number.isInteger(identity.nodeIndex) || identity.nodeIndex < 0) {
+        issues.push(
+          `restPose[${index}].nodeIdentity.nodeIndex must be a non-negative integer.`,
+        );
+      }
+      if (!identity.canonicalPath || typeof identity.canonicalPath !== "string") {
+        issues.push(
+          `restPose[${index}].nodeIdentity.canonicalPath must be a non-empty string.`,
+        );
+      }
+      validateOptionalIndex(
+        identity.skinIndex,
+        `restPose[${index}].nodeIdentity.skinIndex`,
+        issues,
+      );
+      validateOptionalIndex(
+        identity.jointIndex,
+        `restPose[${index}].nodeIdentity.jointIndex`,
+        issues,
+      );
+    }
+  }
   if (!isTuple(transform.translation, 3)) {
     issues.push(`restPose[${index}].translation must contain 3 finite numbers.`);
   }
@@ -325,6 +352,16 @@ function validateRestTransform(
     issues.push(`restPose[${index}].primaryAxis must contain 3 finite numbers.`);
   }
   return issues;
+}
+
+function validateOptionalIndex(
+  value: number | undefined,
+  label: string,
+  issues: string[],
+) {
+  if (value !== undefined && (!Number.isInteger(value) || value < 0)) {
+    issues.push(`${label} must be a non-negative integer when present.`);
+  }
 }
 
 function validateRestQuaternion(

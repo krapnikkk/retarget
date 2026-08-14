@@ -2,6 +2,7 @@ import type {
   RigDefinitionId,
   RigFamilyId,
   RigRoleId,
+  RigNodeIdentity,
   RigTopologyConflict,
 } from "@/rigs/types";
 
@@ -13,6 +14,7 @@ export type Quat = [number, number, number, number];
 export type RigRestTransform = {
   role: RigRoleId;
   nodeName: string;
+  nodeIdentity?: RigNodeIdentity;
   parentRole?: RigRoleId;
   translation: Vec3;
   rotation: Quat;

@@ -96,7 +96,7 @@ export function solveRigMotionToTarget({
   const targetRest = new Map(
     target.restPose.map((transform) => [transform.role, transform]),
   );
-  const exact = motion.source.rigSignature === target.signature;
+  const exact = hasExactRigIdentity(motion, target);
   const rootScale = exact
     ? 1
     : calculateRootScale(target.definition, sourceRest, targetRest);
@@ -325,6 +325,9 @@ function transferSerpentineTracks(
 function cloneRestTransform(transform: RigRestTransform): RigRestTransform {
   return {
     ...transform,
+    ...(transform.nodeIdentity
+      ? { nodeIdentity: { ...transform.nodeIdentity } }
+      : {}),
     translation: [...transform.translation],
     rotation: [...transform.rotation],
     worldTranslation: [...transform.worldTranslation],
@@ -333,6 +336,63 @@ function cloneRestTransform(transform: RigRestTransform): RigRestTransform {
       ? { primaryAxis: [...transform.primaryAxis] }
       : {}),
   };
+}
+
+function hasExactRigIdentity(
+  motion: RigMotionV2,
+  target: Omit<RigInspection, "nodesByRole" | "rolesByNode">,
+) {
+  if (
+    motion.source.rigSignature !== target.signature ||
+    !/:rest-node-skin-v3:sha256:[0-9a-f]{64}$/.test(target.signature) ||
+    motion.restPose.length !== target.restPose.length
+  ) {
+    return false;
+  }
+  const sourceByRole = new Map(
+    motion.restPose.map((transform) => [transform.role, transform]),
+  );
+  return target.restPose.every((targetTransform) => {
+    const sourceTransform = sourceByRole.get(targetTransform.role);
+    if (!sourceTransform) return false;
+    return sourceTransform.parentRole === targetTransform.parentRole &&
+      sameNodeIdentity(sourceTransform, targetTransform) &&
+      sameTuple(sourceTransform.translation, targetTransform.translation) &&
+      sameTuple(sourceTransform.rotation, targetTransform.rotation) &&
+      sameTuple(sourceTransform.worldTranslation, targetTransform.worldTranslation) &&
+      sameTuple(sourceTransform.worldRotation, targetTransform.worldRotation) &&
+      sameOptionalTuple(sourceTransform.primaryAxis, targetTransform.primaryAxis);
+  });
+}
+
+function sameNodeIdentity(
+  left: RigRestTransform,
+  right: RigRestTransform,
+) {
+  const leftIdentity = left.nodeIdentity;
+  const rightIdentity = right.nodeIdentity;
+  return Boolean(
+    leftIdentity &&
+    rightIdentity &&
+    leftIdentity.nodeIndex === rightIdentity.nodeIndex &&
+    leftIdentity.canonicalPath === rightIdentity.canonicalPath &&
+    leftIdentity.skinIndex === rightIdentity.skinIndex &&
+    leftIdentity.jointIndex === rightIdentity.jointIndex,
+  );
+}
+
+function sameOptionalTuple(
+  left: readonly number[] | undefined,
+  right: readonly number[] | undefined,
+) {
+  if (!left || !right) return left === right;
+  return sameTuple(left, right);
+}
+
+function sameTuple(left: readonly number[], right: readonly number[]) {
+  return left.length === right.length && left.every(
+    (value, index) => Math.abs(value - right[index]!) <= 1e-12,
+  );
 }
 
 function transferRotationTrack(

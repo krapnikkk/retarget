@@ -1,4 +1,4 @@
-import type { Document, Node } from "@gltf-transform/core";
+import type { Document, Node, Skin } from "@gltf-transform/core";
 import { Quaternion, Vector3 } from "three";
 import {
   assertParentChains,
@@ -15,11 +15,13 @@ import {
 import type {
   RigDefinition,
   RigFamilyId,
+  RigNodeIdentity,
   RigRoleId,
   RigTopologyConflict,
   SemanticRigProfile,
 } from "./types";
 import type { Quat, RigRestTransform, Vec3 } from "@/rig-motion/types";
+import { sha256Hex } from "@/core/sha256";
 
 export type RigInspectionOptions = {
   familyOverride?: RigFamilyId | "auto";
@@ -60,7 +62,7 @@ export function inspectGLTFRig(
   const missingRequiredRoles = getRequiredRigRoles(definition).filter(
     (role) => !nodesByRole.has(role),
   );
-  const restPose = createRestPose(definition, nodesByRole, rolesByNode);
+  const restPose = createRestPose(document, definition, nodesByRole, rolesByNode);
   const unmappedNodes = candidates
     .filter((node) => !rolesByNode.has(node))
     .map((node) => node.getName() || "(unnamed)");
@@ -275,10 +277,14 @@ function collectCandidateNodes(document: Document) {
 }
 
 function createRestPose(
+  document: Document,
   definition: RigDefinition,
   nodesByRole: ReadonlyMap<RigRoleId, Node>,
   rolesByNode: ReadonlyMap<Node, RigRoleId>,
 ) {
+  const nodes = document.getRoot().listNodes();
+  const nodeIndices = createNodeIndexMap(nodes);
+  const skins = document.getRoot().listSkins();
   return [...nodesByRole].map(([role, node]): RigRestTransform => {
     const child = findPrimaryChild(definition, role, nodesByRole);
     const primaryAxis = child ? getDirectionInNodeSpace(node, child) : undefined;
@@ -286,6 +292,7 @@ function createRestPose(
     return {
       role,
       nodeName: node.getName() || role,
+      nodeIdentity: createNodeIdentity(node, nodeIndices, skins),
       ...(parentRole ? { parentRole } : {}),
       translation: tuple3(node.getTranslation()),
       rotation: tuple4(node.getRotation()),
@@ -360,35 +367,49 @@ function createRigSignature(
   restPose: readonly RigRestTransform[],
   nodesByRole: ReadonlyMap<RigRoleId, Node>,
 ) {
-  const serialized = restPose
+  const nodes = document.getRoot().listNodes();
+  const nodeIndices = createNodeIndexMap(nodes);
+  const skins = document.getRoot().listSkins();
+  const writer = new CanonicalSignatureWriter();
+  writer.string("3dretarget-rig-signature");
+  writer.uint32(3);
+  writer.string(definition.id);
+  const transforms = restPose
     .slice()
-    .sort((left, right) => left.role.localeCompare(right.role))
-    .map((transform) => {
-      const node = nodesByRole.get(transform.role);
-      const skinEvidence = node
-        ? createSkinBindingEvidence(document, node)
-        : [];
-      return [
-        transform.role,
-        transform.parentRole ?? "",
-        normalizeRigNodeName(transform.nodeName),
-        node ? createNodePath(node) : "",
-        ...transform.translation.map(roundSignature),
-        ...transform.rotation.map(roundSignature),
-        ...(node?.getScale() ?? [1, 1, 1]).map(roundSignature),
-        ...skinEvidence,
-      ].join(":");
-    })
-    .join("|");
-  return `${definition.id}:rest-node-skin-v2:${fnv1a(serialized)}`;
+    .sort((left, right) => left.role.localeCompare(right.role));
+  writer.uint32(transforms.length);
+  for (const transform of transforms) {
+    const node = nodesByRole.get(transform.role);
+    if (!node) throw new Error(`Missing signature node for role ${transform.role}.`);
+    const identity = createNodeIdentity(node, nodeIndices, skins);
+    writer.string(transform.role);
+    writer.string(transform.parentRole ?? "");
+    writer.string(normalizeRigNodeName(transform.nodeName));
+    writer.uint32(identity.nodeIndex);
+    writer.string(identity.canonicalPath);
+    writer.optionalUint32(identity.skinIndex);
+    writer.optionalUint32(identity.jointIndex);
+    writer.float64Array(transform.translation);
+    writer.float64Array(transform.rotation);
+    writer.float64Array(node.getScale());
+    writeSkinBindingEvidence(writer, document, node, nodeIndices);
+  }
+  return `${definition.id}:rest-node-skin-v3:sha256:${sha256Hex(writer.bytes())}`;
 }
 
-function createNodePath(node: Node) {
+function createNodePath(node: Node, nodeIndices: ReadonlyMap<Node, number>) {
+  const roots = [...nodeIndices.keys()].filter((candidate) => !candidate.getParentNode());
   return collectParentChain(node, (current) => current.getParentNode(), {
     label: "glTF rig node path",
   })
     .reverse()
-    .map((current) => normalizeRigNodeName(current.getName()) || "(unnamed)")
+    .map((current) => {
+      const parent = current.getParentNode();
+      const siblings = parent ? parent.listChildren() : roots;
+      const siblingIndex = siblings.indexOf(current);
+      const name = normalizeRigNodeName(current.getName()) || "(unnamed)";
+      return `${siblingIndex}:${name}`;
+    })
     .join("/");
 }
 
@@ -399,33 +420,46 @@ function assertDocumentParentGraph(document: Document) {
   });
 }
 
-function createSkinBindingEvidence(document: Document, joint: Node) {
-  return document
-    .getRoot()
-    .listSkins()
-    .flatMap((skin) => {
+function writeSkinBindingEvidence(
+  writer: CanonicalSignatureWriter,
+  document: Document,
+  joint: Node,
+  nodeIndices: ReadonlyMap<Node, number>,
+) {
+  const bindings = document.getRoot().listSkins()
+    .map((skin, skinIndex) => ({ skin, skinIndex }))
+    .flatMap(({ skin, skinIndex }) => {
       const jointIndex = skin.listJoints().indexOf(joint);
       if (jointIndex < 0) return [];
       const inverseBind = skin.getInverseBindMatrices();
       const inverseBindValues = inverseBind
-        ? inverseBind.getElement(jointIndex, []).map(roundSignature)
+        ? inverseBind.getElement(jointIndex, [])
         : [];
       const users = document
         .getRoot()
         .listNodes()
         .filter((node) => node.getSkin() === skin)
-        .map((node) =>
-          `${createNodePath(node)}#${normalizeRigNodeName(node.getMesh()?.getName() ?? "")}`,
-        )
-        .sort();
-      return [[
-        `skin=${normalizeRigNodeName(skin.getName())}`,
-        `joint=${jointIndex}`,
-        `inverseBind=${inverseBindValues.join(",")}`,
-        `users=${users.join(",")}`,
-      ].join(";")];
+        .map((node) => ({
+          nodeIndex: nodeIndices.get(node)!,
+          meshName: normalizeRigNodeName(node.getMesh()?.getName() ?? ""),
+        }))
+        .sort((left, right) => left.nodeIndex - right.nodeIndex);
+      return [{ skinIndex, jointIndex, inverseBindValues, users }];
     })
-    .sort();
+    .sort((left, right) =>
+      left.skinIndex - right.skinIndex || left.jointIndex - right.jointIndex
+    );
+  writer.uint32(bindings.length);
+  for (const binding of bindings) {
+    writer.uint32(binding.skinIndex);
+    writer.uint32(binding.jointIndex);
+    writer.float64Array(binding.inverseBindValues);
+    writer.uint32(binding.users.length);
+    for (const user of binding.users) {
+      writer.uint32(user.nodeIndex);
+      writer.string(user.meshName);
+    }
+  }
 }
 
 export function calculateRequiredChainCoverage(
@@ -450,15 +484,81 @@ function tuple4(value: readonly number[]): Quat {
   return [value[0] ?? 0, value[1] ?? 0, value[2] ?? 0, value[3] ?? 1];
 }
 
-function roundSignature(value: number) {
-  return Number(value.toFixed(5));
+function createNodeIndexMap(nodes: readonly Node[]) {
+  return new Map(nodes.map((node, index) => [node, index]));
 }
 
-function fnv1a(value: string) {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
+function createNodeIdentity(
+  node: Node,
+  nodeIndices: ReadonlyMap<Node, number>,
+  skins: readonly Skin[],
+): RigNodeIdentity {
+  const nodeIndex = nodeIndices.get(node);
+  if (nodeIndex === undefined) {
+    throw new Error("Rig node is not part of the glTF node table.");
   }
-  return (hash >>> 0).toString(16).padStart(8, "0");
+  for (const [skinIndex, skin] of skins.entries()) {
+    const jointIndex = skin.listJoints().indexOf(node);
+    if (jointIndex >= 0) {
+      return {
+        nodeIndex,
+        canonicalPath: createNodePath(node, nodeIndices),
+        skinIndex,
+        jointIndex,
+      };
+    }
+  }
+  return { nodeIndex, canonicalPath: createNodePath(node, nodeIndices) };
+}
+
+class CanonicalSignatureWriter {
+  readonly #parts: Uint8Array[] = [];
+  #byteLength = 0;
+
+  uint32(value: number) {
+    if (!Number.isInteger(value) || value < 0 || value > 0xffff_ffff) {
+      throw new Error("Rig signature uint32 value is invalid.");
+    }
+    const bytes = new Uint8Array(4);
+    new DataView(bytes.buffer).setUint32(0, value, true);
+    this.#push(bytes);
+  }
+
+  optionalUint32(value: number | undefined) {
+    this.uint32(value === undefined ? 0 : 1);
+    if (value !== undefined) this.uint32(value);
+  }
+
+  string(value: string) {
+    const bytes = new TextEncoder().encode(value);
+    this.uint32(bytes.byteLength);
+    this.#push(bytes);
+  }
+
+  float64Array(values: readonly number[]) {
+    this.uint32(values.length);
+    for (const value of values) {
+      if (!Number.isFinite(value)) {
+        throw new Error("Rig signature numeric evidence must be finite.");
+      }
+      const bytes = new Uint8Array(8);
+      new DataView(bytes.buffer).setFloat64(0, value === 0 ? 0 : value, true);
+      this.#push(bytes);
+    }
+  }
+
+  bytes() {
+    const result = new Uint8Array(this.#byteLength);
+    let offset = 0;
+    for (const part of this.#parts) {
+      result.set(part, offset);
+      offset += part.byteLength;
+    }
+    return result;
+  }
+
+  #push(bytes: Uint8Array) {
+    this.#parts.push(bytes);
+    this.#byteLength += bytes.byteLength;
+  }
 }

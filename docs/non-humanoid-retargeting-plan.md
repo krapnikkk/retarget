@@ -101,7 +101,9 @@ transfer local deltas correctly.
 
 ## Solver rules
 
-- Matching rest-node-skin v2 signatures take the identity-copy fast path.
+- Matching rest-node-skin v3 SHA-256 signatures take the identity-copy fast
+  path only when stable node indices, sibling-indexed paths, topology, and full
+  rest transforms also match. Names remain diagnostic labels, not binding keys.
 - Different signatures with the same active definition use rest-pose-aware
   chain swing/twist transfer.
 - Local rotation deltas are decomposed around each role's rest child axis,

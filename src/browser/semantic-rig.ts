@@ -12,7 +12,6 @@ import { loadStructuralGLBScene } from "@/browser/avatar-rig";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
 import {
   inspectGLTFRig,
-  normalizeRigNodeName,
   type RigDefinition,
   type RigInspectionOptions,
   type SemanticRigProfile,
@@ -54,7 +53,12 @@ export async function loadSemanticAvatarRig(
       );
     }
     try {
-      return mapSemanticScene(file, inspection, scene.root);
+      return mapSemanticScene(
+        file,
+        inspection,
+        scene.root,
+        new Map(scene.nodes.map((object, index) => [index, object])),
+      );
     } catch (error) {
       scene.root.clear();
       throw error;
@@ -91,7 +95,12 @@ export async function loadSemanticAvatarRig(
     resources.dispose();
   }
   try {
-    return mapSemanticScene(file, inspection, gltf.scene);
+    return mapSemanticScene(
+      file,
+      inspection,
+      gltf.scene,
+      collectGLTFObjectsByNodeIndex(gltf),
+    );
   } catch (error) {
     const { disposeObject } = await import("@/resources/dispose-three");
     disposeObject(gltf.scene);
@@ -103,21 +112,15 @@ function mapSemanticScene(
   file: File,
   inspection: ReturnType<typeof inspectGLTFRig>,
   root: Group | Object3D,
+  objectsByNodeIndex: ReadonlyMap<number, Object3D>,
 ) {
-  const objectsByName = new Map<string, Object3D[]>();
-  root.traverse((object) => {
-    const key = normalizeRigNodeName(object.name);
-    objectsByName.set(key, [...(objectsByName.get(key) ?? []), object]);
-  });
-  const claimed = new Set<Object3D>();
   const nodesByRole = new Map<string, Object3D>();
   for (const transform of inspection.restPose) {
-    const object = (
-      objectsByName.get(normalizeRigNodeName(transform.nodeName)) ?? []
-    ).find((candidate) => !claimed.has(candidate));
+    const object = transform.nodeIdentity
+      ? objectsByNodeIndex.get(transform.nodeIdentity.nodeIndex)
+      : undefined;
     if (object) {
       nodesByRole.set(transform.role, object);
-      claimed.add(object);
     }
   }
   if (nodesByRole.size !== inspection.nodesByRole.size) {
@@ -133,6 +136,16 @@ function mapSemanticScene(
     signature: inspection.signature,
     nodesByRole,
   };
+}
+
+function collectGLTFObjectsByNodeIndex(gltf: GLTF) {
+  const result = new Map<number, Object3D>();
+  for (const [object, reference] of gltf.parser.associations) {
+    if (object instanceof Object3D && reference.nodes !== undefined) {
+      result.set(reference.nodes, object);
+    }
+  }
+  return result;
 }
 
 function parseGLTF(loader: GltfLoader, input: ArrayBuffer | string) {
