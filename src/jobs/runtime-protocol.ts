@@ -161,6 +161,7 @@ function assertTaskFields(task: RetargetJobTask) {
       assertFilename(task.filename);
       assertFormat(task.formatId, MOTION_FORMAT_IDS);
       assertResources(task.resources, "import-motion.resources");
+      assertAnimationSelection(task);
       return;
     case "solve-humanoid":
       if (!isRecord(task.motion)) protocolError("solve-humanoid.motion is invalid.");
@@ -293,6 +294,24 @@ function assertResources(value: unknown, label: string) {
   for (const [uri, bytes] of entries) {
     assertBoundedString(uri, `${label} URI`, 4096);
     assertArrayBuffer(bytes, `${label}[${JSON.stringify(uri)}]`);
+  }
+}
+
+function assertAnimationSelection(task: Extract<RetargetJobTask, { type: "import-motion" }>) {
+  if (task.animationIndex === undefined && task.animationName === undefined) return;
+  if (!task.formatId.endsWith("fbx")) {
+    protocolError("Animation selection is only supported for FBX motion imports.");
+  }
+  if (
+    task.animationIndex !== undefined &&
+    (!Number.isInteger(task.animationIndex) ||
+      task.animationIndex < 0 ||
+      task.animationIndex > 1_000_000)
+  ) {
+    protocolError("import-motion.animationIndex is invalid.");
+  }
+  if (task.animationName !== undefined) {
+    assertBoundedString(task.animationName, "import-motion.animationName", 1024);
   }
 }
 

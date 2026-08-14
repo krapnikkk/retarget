@@ -110,6 +110,8 @@ function createImportedMotionToAvatarPipeline(
       avatarFile,
       solveOptions,
       mapping,
+      animationIndex,
+      animationName,
       signal,
     }) {
       signal?.throwIfAborted();
@@ -161,6 +163,8 @@ function createImportedMotionToAvatarPipeline(
           filename: motionFile.name,
           bytes: motionBytes,
           resources,
+          animationIndex,
+          animationName,
         },
         { signal },
       );

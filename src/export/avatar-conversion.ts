@@ -784,7 +784,15 @@ export function parsePMX(
     });
   }
 
-  validateMMDStructure({ bones, indices, materials, textureCount, label: "PMX" });
+  validateMMDStructure({
+    bones,
+    indices,
+    joints,
+    materials,
+    textureCount,
+    label: "PMX",
+    weights,
+  });
 
   return { bones, indices, joints, materials, name, normals, positions, textures, uvs, weights };
 }
@@ -822,6 +830,9 @@ function parsePMD(
     const bone0 = reader.readUint16();
     const bone1 = reader.readUint16();
     const weight0 = reader.readUint8() / 100;
+    if (weight0 > 1) {
+      throw new Error("PMD vertex weight percentage exceeds 100.");
+    }
     reader.readUint8();
     joints.set([bone0, bone1, 0, 0], index * 4);
     weights.set([weight0, 1 - weight0, 0, 0], index * 4);
@@ -928,9 +939,11 @@ function parsePMD(
   validateMMDStructure({
     bones,
     indices,
+    joints,
     materials,
     textureCount: textures.length,
     label: "PMD",
+    weights,
   });
 
   return { bones, indices, joints, materials, name, normals, positions, textures, uvs, weights };
@@ -974,15 +987,19 @@ function validateTriangleIndices(
 function validateMMDStructure({
   bones,
   indices,
+  joints,
   materials,
   textureCount,
   label,
+  weights,
 }: {
   bones: readonly ParsedMMDBone[];
   indices: ArrayLike<number>;
+  joints: ArrayLike<number>;
   materials: readonly ParsedMMDMaterial[];
   textureCount: number;
   label: string;
+  weights: ArrayLike<number>;
 }) {
   const materialIndexCount = materials.reduce(
     (total, material) => total + material.indexCount,
@@ -1011,6 +1028,27 @@ function validateMMDStructure({
       throw new Error(
         `${label} bone ${index} references invalid parent index ${bone.parentIndex}.`,
       );
+    }
+  }
+  if (joints.length !== weights.length || joints.length % 4 !== 0) {
+    throw new Error(`${label} skinning arrays have inconsistent lengths.`);
+  }
+  for (let vertex = 0; vertex < joints.length / 4; vertex += 1) {
+    let weightSum = 0;
+    for (let slot = 0; slot < 4; slot += 1) {
+      const offset = vertex * 4 + slot;
+      const joint = joints[offset]!;
+      const weight = weights[offset]!;
+      if (!Number.isFinite(weight) || weight < 0 || weight > 1) {
+        throw new Error(`${label} vertex ${vertex} has an invalid skin weight.`);
+      }
+      if (weight > 0 && (!Number.isInteger(joint) || joint < 0 || joint >= bones.length)) {
+        throw new Error(`${label} vertex ${vertex} references invalid bone ${joint}.`);
+      }
+      weightSum += weight;
+    }
+    if (!Number.isFinite(weightSum) || Math.abs(weightSum - 1) > 1e-4) {
+      throw new Error(`${label} vertex ${vertex} skin weights do not sum to one.`);
     }
   }
   assertValidParentGraph({

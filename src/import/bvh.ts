@@ -12,6 +12,7 @@ import {
   assertCountWithinBudget,
   assertInputWithinBudget,
 } from "./parse-budget";
+import { DEFAULT_MAX_PARENT_DEPTH } from "@/core/parent-graph";
 
 type BVHChannel = {
   nodeName: string;
@@ -69,8 +70,7 @@ function parseBVH(text: string, filename: string) {
 
   const hierarchy = text.slice(0, motionIndex);
   const motion = text.slice(motionIndex);
-  const channels = parseHierarchyChannels(hierarchy);
-  const restNodes = parseHierarchyRestNodes(hierarchy);
+  const { channels, restNodes } = parseHierarchy(hierarchy, filename);
   const restHipsHeight = estimateRestHipsHeight(restNodes);
   const rootName = channels[0]?.nodeName ?? "BVH root";
   const framesMatch = motion.match(/Frames:\s*(\d+)/i);
@@ -87,6 +87,13 @@ function parseBVH(text: string, filename: string) {
     "BVH frame count",
     { filename, section: "MOTION" },
   );
+  if (frameCount === 0) {
+    throw new ParseDomainError(
+      "BVH_PARSE_FAILED",
+      "BVH motion must contain at least one frame",
+      { filename, section: "MOTION" },
+    );
+  }
   if (!Number.isFinite(frameTime) || frameTime <= 0) {
     throw new ParseDomainError("BVH_INVALID_FRAME_TIME", "BVH frame time is invalid", {
       filename,
@@ -171,76 +178,170 @@ function parseBVH(text: string, filename: string) {
   return { channels, frameTime, frames, restHipsHeight, rootName };
 }
 
-function parseHierarchyRestNodes(hierarchy: string): BVHRestNode[] {
+function parseHierarchy(hierarchy: string, filename: string) {
   const tokens = hierarchy.match(/[{}]|[^\s{}]+/g) ?? [];
+  assertCountWithinBudget(
+    tokens.length,
+    DEFAULT_PARSE_BUDGET.maxTotalSamples,
+    "BVH hierarchy tokens",
+    { filename, section: "HIERARCHY" },
+  );
+  let index = 0;
+  let channelOffset = 0;
+  const channels: BVHChannel[] = [];
   const nodes: BVHRestNode[] = [];
-  const stack: Array<{
-    nodeName: string;
-    bone: HumanoidBoneName | null;
-    parentWorldOffset: [number, number, number];
-    worldOffset: [number, number, number];
-  }> = [];
-  let pending:
-    | { nodeName: string; bone: HumanoidBoneName | null }
-    | null = null;
 
-  for (let index = 0; index < tokens.length; index += 1) {
-    const token = tokens[index];
-    if (token === "ROOT" || token === "JOINT") {
-      const nodeName = tokens[index + 1] ?? "unnamed";
-      pending = {
-        nodeName,
-        bone: resolveProfileBoneName(BVH_HUMANOID_PROFILE, nodeName),
-      };
-      index += 1;
-      continue;
+  const fail = (message: string): never => {
+    throw new ParseDomainError("BVH_PARSE_FAILED", message, {
+      filename,
+      offset: index,
+      section: "HIERARCHY",
+    });
+  };
+  const take = () => tokens[index++];
+  const expectToken = (expected: string) => {
+    const actual = take();
+    if (actual !== expected) {
+      fail(`BVH hierarchy expected ${expected}; found ${actual ?? "end of input"}`);
     }
-    if (token === "End" && tokens[index + 1] === "Site") {
-      pending = { nodeName: "End Site", bone: null };
-      index += 1;
-      continue;
+  };
+  const readOffset = (): [number, number, number] => {
+    const values = [Number(take()), Number(take()), Number(take())];
+    if (!values.every(Number.isFinite)) {
+      fail("BVH OFFSET must contain three finite numbers");
     }
-    if (token === "{" && pending) {
-      const parentWorldOffset = stack.at(-1)?.worldOffset ?? [0, 0, 0];
-      stack.push({
-        ...pending,
-        parentWorldOffset: [...parentWorldOffset],
-        worldOffset: [...parentWorldOffset],
-      });
-      pending = null;
-      continue;
+    return values as [number, number, number];
+  };
+
+  const parseNode = (
+    parentWorldOffset: readonly [number, number, number],
+    depth: number,
+    expectedKind: "ROOT" | "JOINT" | "child",
+  ) => {
+    if (depth > DEFAULT_MAX_PARENT_DEPTH) {
+      fail(`BVH hierarchy exceeds ${DEFAULT_MAX_PARENT_DEPTH} levels`);
     }
-    if (token === "OFFSET") {
-      const node = stack.at(-1);
-      if (!node) continue;
-      const localOffset = [
-        Number(tokens[index + 1]),
-        Number(tokens[index + 2]),
-        Number(tokens[index + 3]),
-      ] as const;
-      if (localOffset.every(Number.isFinite)) {
-        node.worldOffset = [
-          node.parentWorldOffset[0] + localOffset[0],
-          node.parentWorldOffset[1] + localOffset[1],
-          node.parentWorldOffset[2] + localOffset[2],
-        ];
+    const kind = take();
+    const endSite = kind === "End";
+    if (endSite) {
+      if (expectedKind !== "child") fail("BVH root cannot be an End Site");
+      expectToken("Site");
+    } else if (
+      kind !== expectedKind &&
+      !(expectedKind === "child" && kind === "JOINT")
+    ) {
+      fail(`BVH hierarchy contains an unexpected ${kind ?? "end of input"}`);
+    }
+    const nodeName = endSite ? "End Site" : take();
+    if (!nodeName || nodeName === "{" || nodeName === "}") {
+      fail("BVH hierarchy node is missing a name");
+    }
+    const bone = endSite
+      ? null
+      : resolveProfileBoneName(BVH_HUMANOID_PROFILE, nodeName);
+    expectToken("{");
+
+    let offset: [number, number, number] | undefined;
+    let channelMetadataSeen = false;
+    while (tokens[index] !== "}") {
+      const token = tokens[index];
+      if (token === undefined) fail("BVH hierarchy has unbalanced braces");
+      if (token === "OFFSET") {
+        if (offset) fail(`BVH node "${nodeName}" declares OFFSET more than once`);
+        index += 1;
+        offset = readOffset();
+        continue;
       }
-      index += 3;
-      continue;
-    }
-    if (token === "}") {
-      const node = stack.pop();
-      if (node) {
-        nodes.push({
-          nodeName: node.nodeName,
-          bone: node.bone,
-          worldOffset: node.worldOffset,
+      if (token === "CHANNELS") {
+        if (endSite) fail("BVH End Site cannot declare channels");
+        if (channelMetadataSeen) {
+          fail(`BVH node "${nodeName}" declares CHANNELS more than once`);
+        }
+        index += 1;
+        const count = Number(take());
+        if (!Number.isInteger(count) || count <= 0 || count > 6) {
+          fail(`BVH node "${nodeName}" has an invalid channel count`);
+        }
+        const channelNames = tokens.slice(index, index + count);
+        if (channelNames.length !== count || channelNames.includes("}")) {
+          fail(`BVH node "${nodeName}" has truncated channel metadata`);
+        }
+        validateChannelSchema(channelNames, nodeName, fail);
+        channels.push({
+          nodeName,
+          bone,
+          channels: channelNames,
+          offset: channelOffset,
         });
+        channelOffset += count;
+        channelMetadataSeen = true;
+        index += count;
+        continue;
       }
+      if (token === "JOINT" || token === "End") {
+        const currentOffset = offset ?? fail(
+          `BVH node "${nodeName}" must declare OFFSET before children`,
+        );
+        const worldOffset = addOffset(parentWorldOffset, currentOffset);
+        parseNode(worldOffset, depth + 1, "child");
+        continue;
+      }
+      if (token === "ROOT") fail("BVH hierarchy must contain exactly one ROOT");
+      fail(`BVH node "${nodeName}" contains unexpected token ${token}`);
     }
-  }
+    expectToken("}");
+    const finalOffset = offset ?? fail(`BVH node "${nodeName}" is missing OFFSET`);
+    if (!endSite && !channelMetadataSeen) {
+      fail(`BVH node "${nodeName}" is missing CHANNELS`);
+    }
+    nodes.push({
+      nodeName,
+      bone,
+      worldOffset: addOffset(parentWorldOffset, finalOffset),
+    });
+  };
 
-  return nodes;
+  if (tokens[index]?.toUpperCase() === "HIERARCHY") index += 1;
+  parseNode([0, 0, 0], 0, "ROOT");
+  if (index !== tokens.length) {
+    fail(`BVH hierarchy contains trailing token ${tokens[index]}`);
+  }
+  return { channels, restNodes: nodes };
+}
+
+function addOffset(
+  parent: readonly [number, number, number],
+  local: readonly [number, number, number],
+): [number, number, number] {
+  return [parent[0] + local[0], parent[1] + local[1], parent[2] + local[2]];
+}
+
+function validateChannelSchema(
+  channelNames: readonly string[],
+  nodeName: string,
+  fail: (message: string) => never,
+) {
+  const parsed = channelNames.map((name) =>
+    name.match(/^([XYZ])(position|rotation)$/i),
+  );
+  if (parsed.some((match) => !match)) {
+    fail(`BVH node "${nodeName}" contains an unsupported channel`);
+  }
+  const normalized = parsed.map((match) =>
+    `${match![1]!.toUpperCase()}${match![2]!.toLowerCase()}`,
+  );
+  if (new Set(normalized).size !== normalized.length) {
+    fail(`BVH node "${nodeName}" contains duplicate channels`);
+  }
+  const rotationAxes = parsed
+    .filter((match) => match![2]!.toLowerCase() === "rotation")
+    .map((match) => match![1]!.toUpperCase());
+  if (
+    rotationAxes.length > 0 &&
+    (rotationAxes.length !== 3 || new Set(rotationAxes).size !== 3)
+  ) {
+    fail(`BVH node "${nodeName}" must declare unique XYZ rotation channels`);
+  }
 }
 
 function estimateRestHipsHeight(nodes: readonly BVHRestNode[]) {
@@ -259,49 +360,6 @@ function estimateRestHipsHeight(nodes: readonly BVHRestNode[]) {
   return Number.isFinite(height) && height > 1e-6
     ? Number(height.toFixed(6))
     : undefined;
-}
-
-function parseHierarchyChannels(hierarchy: string): BVHChannel[] {
-  const tokens = hierarchy.match(/[{}]|[^\s{}]+/g) ?? [];
-  const channels: BVHChannel[] = [];
-  let index = 0;
-  let channelOffset = 0;
-
-  while (index < tokens.length) {
-    const token = tokens[index];
-    if (token !== "ROOT" && token !== "JOINT") {
-      index += 1;
-      continue;
-    }
-
-    const nodeName = tokens[index + 1] ?? "unnamed";
-    index += 2;
-    while (index < tokens.length && tokens[index] !== "CHANNELS") {
-      index += 1;
-    }
-    if (tokens[index] !== "CHANNELS") {
-      continue;
-    }
-
-    const count = Number(tokens[index + 1]);
-    if (!Number.isInteger(count) || count < 0 || count > 6) {
-      throw new Error(`BVH node "${nodeName}" has an invalid channel count.`);
-    }
-    const channelNames = tokens.slice(index + 2, index + 2 + count);
-    if (channelNames.length !== count) {
-      throw new Error(`BVH node "${nodeName}" has truncated channel metadata.`);
-    }
-    channels.push({
-      nodeName,
-      bone: resolveProfileBoneName(BVH_HUMANOID_PROFILE, nodeName),
-      channels: channelNames,
-      offset: channelOffset,
-    });
-    channelOffset += count;
-    index += 2 + count;
-  }
-
-  return channels;
 }
 
 function createBVHTracks({

@@ -140,6 +140,8 @@ async function executeTask(
                 : task.formatId === "actorcore-fbx"
                   ? ACTORCORE_PROFILE
                   : GENERIC_FBX_HUMANOID_PROFILE,
+            animationIndex: task.animationIndex,
+            animationName: task.animationName,
           })
         : task.formatId === "bvh"
         ? importBVH(bytes, task.filename)

@@ -183,6 +183,46 @@ describe("Phase 4 export adapters", () => {
     );
   });
 
+  it("unwraps BVH Euler channels across the +/-180 degree boundary", () => {
+    const clip = createClip();
+    const radians = (degrees: number) => degrees * Math.PI / 180;
+    const quaternionZ = (degrees: number) => [
+      0,
+      0,
+      Math.sin(radians(degrees) / 2),
+      Math.cos(radians(degrees) / 2),
+    ];
+    clip.duration = 1;
+    clip.fps = 1;
+    clip.tracks = [
+      clip.tracks.find(
+        (track) => track.bone === "hips" && track.path === "translation",
+      )!,
+      {
+        bone: "rightUpperArm",
+        path: "rotation",
+        times: [0, 1],
+        values: [...quaternionZ(170), ...quaternionZ(190)],
+      },
+    ];
+    clip.tracks[0] = {
+      ...clip.tracks[0]!,
+      times: [0, 1],
+      values: [0, 0, 0, 0, 0, 0],
+    };
+
+    const motionLines = createBVHText(clip)
+      .split("\n")
+      .slice(-3, -1)
+      .map((line) => line.split(" ").map(Number));
+
+    expect(motionLines).toHaveLength(2);
+    for (let index = 0; index < motionLines[0]!.length; index += 1) {
+      expect(Math.abs(motionLines[1]![index]! - motionLines[0]![index]!))
+        .toBeLessThanOrEqual(180);
+    }
+  });
+
   it("exports GLB animation nodes with selectable ecosystem bone names", () => {
     const document = createGLTFAnimationDocument(createClip(), {
       boneNamingProfile: "mixamo",

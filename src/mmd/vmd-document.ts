@@ -1,4 +1,5 @@
 import { VmdObject } from "@moeru/three-mmd";
+import { GrowableBuffer } from "@/parsers/binary-writer";
 
 export const VMD_FPS = 30;
 
@@ -255,7 +256,7 @@ function ensureVMDRange(
 
 export function serializeVMDDocument(document: VMDDocument) {
   validateDocument(document);
-  const writer = new VMDWriter();
+  const writer = new VMDWriter(estimateSerializedVMDBytes(document));
   writer.writeFixedString(
     document.signature || "Vocaloid Motion Data 0002",
     SIGNATURE_BYTES,
@@ -311,14 +312,56 @@ export function serializeVMDDocument(document: VMDDocument) {
   return writer.toUint8Array();
 }
 
+export function serializeVMDBoneMotion({
+  boneFrameCount,
+  boneFrames,
+  modelName,
+}: {
+  boneFrameCount: number;
+  boneFrames: Iterable<VMDBoneFrame>;
+  modelName: string;
+}) {
+  validateFrameCount(boneFrameCount, "bone");
+  const writer = new VMDWriter(
+    SIGNATURE_BYTES +
+      MODEL_NAME_BYTES +
+      4 +
+      boneFrameCount * BONE_FRAME_BYTES +
+      5 * 4,
+  );
+  writer.writeFixedString("Vocaloid Motion Data 0002", SIGNATURE_BYTES);
+  writer.writeFixedString(modelName, MODEL_NAME_BYTES);
+  writer.writeUint32(boneFrameCount);
+  let written = 0;
+  for (const frame of boneFrames) {
+    if (written >= boneFrameCount) {
+      throw new Error("VMD bone frame iterator produced too many frames.");
+    }
+    validateBoneFrame(frame);
+    writeBoneFrame(writer, frame);
+    written += 1;
+  }
+  if (written !== boneFrameCount) {
+    throw new Error(
+      `VMD bone frame iterator produced ${written} frames; expected ${boneFrameCount}.`,
+    );
+  }
+  for (let section = 0; section < 5; section += 1) {
+    writer.writeUint32(0);
+  }
+  return writer.toUint8Array();
+}
+
 export function createLinearVMDBoneInterpolation() {
-  return new Uint8Array([
+  return LINEAR_VMD_BONE_INTERPOLATION.slice();
+}
+
+export const LINEAR_VMD_BONE_INTERPOLATION = new Uint8Array([
     20, 20, 0, 0, 20, 20, 20, 20, 107, 107, 107, 107, 107, 107, 107, 107,
     20, 20, 20, 20, 20, 20, 20, 107, 107, 107, 107, 107, 107, 107, 107, 0,
     20, 20, 20, 20, 20, 20, 107, 107, 107, 107, 107, 107, 107, 107, 0, 0,
     20, 20, 20, 20, 20, 107, 107, 107, 107, 107, 107, 107, 107, 0, 0, 0,
-  ]);
-}
+]);
 
 export function decodeVMDString(bytes: Uint8Array) {
   const end = bytes.indexOf(0);
@@ -342,12 +385,7 @@ function validateDocument(document: VMDDocument) {
     throw new Error("VMD signature is invalid.");
   }
   for (const frame of document.boneFrames) {
-    validateFrameNumber(frame.frameNumber);
-    validateFiniteTuple(frame.position, "bone position");
-    validateFiniteTuple(frame.rotation, "bone rotation");
-    if (frame.interpolation.length !== 64) {
-      throw new Error("VMD bone interpolation must contain 64 bytes.");
-    }
+    validateBoneFrame(frame);
   }
   for (const frame of document.morphFrames) {
     validateFrameNumber(frame.frameNumber);
@@ -376,6 +414,46 @@ function validateDocument(document: VMDDocument) {
   }
 }
 
+function validateBoneFrame(frame: VMDBoneFrame) {
+  validateFrameNumber(frame.frameNumber);
+  validateFiniteTuple(frame.position, "bone position");
+  validateFiniteTuple(frame.rotation, "bone rotation");
+  if (frame.interpolation.length !== 64) {
+    throw new Error("VMD bone interpolation must contain 64 bytes.");
+  }
+}
+
+function validateFrameCount(count: number, label: string) {
+  if (!Number.isInteger(count) || count < 0 || count > MAX_VMD_SECTION_FRAMES) {
+    throw new Error(`VMD ${label} frame count exceeds the safe limit.`);
+  }
+}
+
+function writeBoneFrame(writer: VMDWriter, frame: VMDBoneFrame) {
+  writer.writeFixedString(frame.boneName, 15, frame.boneNameBytes);
+  writer.writeUint32(frame.frameNumber);
+  writer.writeFloatTuple(frame.position);
+  writer.writeFloatTuple(frame.rotation);
+  writer.writeBytes(frame.interpolation);
+}
+
+function estimateSerializedVMDBytes(document: VMDDocument) {
+  return (
+    SIGNATURE_BYTES +
+    MODEL_NAME_BYTES +
+    6 * 4 +
+    document.boneFrames.length * BONE_FRAME_BYTES +
+    document.morphFrames.length * MORPH_FRAME_BYTES +
+    document.cameraFrames.length * CAMERA_FRAME_BYTES +
+    document.lightFrames.length * LIGHT_FRAME_BYTES +
+    document.selfShadowFrames.length * SELF_SHADOW_FRAME_BYTES +
+    document.propertyFrames.reduce(
+      (bytes, frame) => bytes + 9 + frame.ikStates.length * 21,
+      0,
+    )
+  );
+}
+
 function validateFrameNumber(frameNumber: number) {
   if (!Number.isInteger(frameNumber) || frameNumber < 0 || frameNumber > 0xffffffff) {
     throw new Error(`Invalid VMD frame number: ${frameNumber}.`);
@@ -396,10 +474,14 @@ function toArrayBuffer(bytes: Uint8Array) {
 }
 
 class VMDWriter {
-  private readonly bytes: number[] = [];
+  private readonly buffer: GrowableBuffer;
+
+  constructor(initialCapacity = 4096) {
+    this.buffer = new GrowableBuffer(initialCapacity);
+  }
 
   writeBytes(value: Uint8Array) {
-    this.bytes.push(...value);
+    this.buffer.writeBytes(value);
   }
 
   writeFixedString(value: string, length: number, original?: Uint8Array) {
@@ -420,25 +502,19 @@ class VMDWriter {
   }
 
   writeUint8(value: number) {
-    this.bytes.push(value & 0xff);
+    this.buffer.writeUint8(value);
   }
 
   writeUint32(value: number) {
-    this.writeNumber(4, (view) => view.setUint32(0, value, true));
+    this.buffer.writeUint32(value);
   }
 
   writeFloat32(value: number) {
-    this.writeNumber(4, (view) => view.setFloat32(0, value, true));
+    this.buffer.writeFloat32(value);
   }
 
   toUint8Array() {
-    return new Uint8Array(this.bytes);
-  }
-
-  private writeNumber(length: number, write: (view: DataView) => void) {
-    const buffer = new ArrayBuffer(length);
-    write(new DataView(buffer));
-    this.writeBytes(new Uint8Array(buffer));
+    return this.buffer.toUint8Array();
   }
 }
 

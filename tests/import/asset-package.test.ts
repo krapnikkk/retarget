@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   createZipArchive,
   createZipArchiveBlob,
+  readZipArchive,
   readZipBlobArchiveAsync,
   type ReadZipArchiveOptions,
 } from "@/export/zip";
@@ -20,6 +21,29 @@ import {
 import { detectVRMVersion } from "@/import/vrm-version";
 
 describe("ZIP asset package preflight", () => {
+  it("enforces ZIP32 writer names and duplicate paths", async () => {
+    expect(() => createZipArchive([
+      { name: "same.bin", bytes: new Uint8Array([1]) },
+      { name: "SAME.bin", bytes: new Uint8Array([2]) },
+    ])).toThrow("duplicate path");
+    expect(() => createZipArchive([
+      { name: "界".repeat(21_846), bytes: new Uint8Array() },
+    ])).toThrow("name exceeds");
+    await expect(createZipArchiveBlob([
+      { name: "../unsafe.bin", blob: new Blob() },
+    ])).rejects.toThrow("unsafe path");
+  });
+
+  it("strictly validates stored ZIP archives in the synchronous reader", () => {
+    const archive = createZipArchive([
+      { name: "entry.bin", bytes: new Uint8Array([1, 2, 3]) },
+    ]);
+    expect(readZipArchive(archive)).toMatchObject([{ name: "entry.bin" }]);
+
+    archive[39] ^= 0xff;
+    expect(() => readZipArchive(archive)).toThrow("CRC");
+  });
+
   it("reads stored and deflated entries with CRC validation", async () => {
     const stored = createZipArchive([
       { name: "avatar/model.gltf", bytes: new TextEncoder().encode("{}") },
@@ -83,10 +107,9 @@ describe("ZIP asset package preflight", () => {
   });
 
   it("rejects traversal and multiple primary files", async () => {
-    const traversal = createZipArchive([
+    expect(() => createZipArchive([
       { name: "../avatar.vrm", bytes: new Uint8Array([1]) },
-    ]);
-    await expect(readZipBytes(traversal)).rejects.toThrow("unsafe path");
+    ])).toThrow("unsafe path");
 
     const multiple = new File(
       [

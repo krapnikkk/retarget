@@ -80,6 +80,7 @@ export function readPMXWeight(
     if (type === 3) {
       reader.skip(9 * 4);
     }
+    validatePMXWeights([weight0, 1 - weight0]);
     return {
       joints: [joint0, joint1, 0, 0],
       weights: [weight0, 1 - weight0, 0, 0],
@@ -99,9 +100,28 @@ export function readPMXWeight(
       reader.readFloat32(),
       reader.readFloat32(),
     ];
+    validatePMXWeights(weights);
     return { joints, weights };
   }
   throw new Error(`Unsupported PMX vertex weight type: ${type}`);
+}
+
+function validatePMXWeights(weights: readonly number[]) {
+  if (weights.some((weight) => !Number.isFinite(weight) || weight < 0 || weight > 1)) {
+    throw new ParseDomainError(
+      "PARSE_INVALID_NUMBER",
+      "PMX vertex weights must be finite values within 0..1",
+      { section: "vertex-weight" },
+    );
+  }
+  const sum = weights.reduce((total, weight) => total + weight, 0);
+  if (sum <= 0 || Math.abs(sum - 1) > 1e-4) {
+    throw new ParseDomainError(
+      "PARSE_INVALID_NUMBER",
+      "PMX vertex weights must sum to one",
+      { section: "vertex-weight" },
+    );
+  }
 }
 
 export function skipPMXWeight(reader: PMXBinaryReader, boneIndexSize: number) {

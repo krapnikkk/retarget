@@ -247,6 +247,10 @@ export function createBVHText(
     phase: "bvh-export",
   });
   const frameLines: string[] = [];
+  const previousEulerByBone = new Map<
+    HumanoidBoneName,
+    [number, number, number]
+  >();
 
   for (let frame = 0; frame < frameCount; frame += 1) {
     const time = normalizeMotionTime(frame * frameTime, clip.duration, false);
@@ -257,7 +261,12 @@ export function createBVHText(
       if (node.bone === "hips") {
         values.push(...canonicalPositionToBVH(item?.position));
       }
-      values.push(...quaternionToBVHEuler(item?.rotation));
+      const euler = unwrapEulerDegrees(
+        quaternionToBVHEuler(item?.rotation),
+        previousEulerByBone.get(node.bone),
+      );
+      previousEulerByBone.set(node.bone, euler);
+      values.push(...euler);
     }
     frameLines.push(values.map((value) => round(value).toString()).join(" "));
   }
@@ -394,7 +403,9 @@ function formatOffset(offset: readonly [number, number, number], scale: number) 
   return offset.map((value) => round(value * scale).toString()).join(" ");
 }
 
-function quaternionToBVHEuler(rotation?: [number, number, number, number]) {
+function quaternionToBVHEuler(
+  rotation?: [number, number, number, number],
+): [number, number, number] {
   if (!rotation) {
     return [0, 0, 0];
   }
@@ -414,6 +425,16 @@ function quaternionToBVHEuler(rotation?: [number, number, number, number]) {
     radiansToDegrees(euler.x),
     radiansToDegrees(euler.y),
   ];
+}
+
+function unwrapEulerDegrees(
+  current: [number, number, number],
+  previous?: readonly [number, number, number],
+): [number, number, number] {
+  if (!previous) return current;
+  return current.map((value, index) =>
+    value + Math.round((previous[index]! - value) / 360) * 360,
+  ) as [number, number, number];
 }
 
 function canonicalPositionToBVH(

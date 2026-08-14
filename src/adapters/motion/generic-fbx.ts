@@ -15,10 +15,11 @@ export const genericFbxMotionAdapter = {
       profile: "generic-fbx-humanoid",
       role: "motion",
     }, options),
-  importMotion: (file) =>
+  importMotion: (file, options) =>
     importFBXHumanoidMotion({
       file,
       kind: "generic-fbx",
       profile: GENERIC_FBX_HUMANOID_PROFILE,
+      ...options,
     }),
 } satisfies MotionImportAdapter;

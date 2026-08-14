@@ -76,6 +76,15 @@ export function readGLTFAnimationTrack({
       },
     );
   }
+  if (path === "rotation") {
+    validateQuaternionKeyValues({
+      cubic,
+      filename,
+      output,
+      section,
+      sourceCount: sourceTimes.length,
+    });
+  }
 
   if (!cubic && !step) {
     return {
@@ -96,6 +105,36 @@ export function readGLTFAnimationTrack({
     values: ensureQuaternionContinuity(values, path),
     resampled: true,
   };
+}
+
+function validateQuaternionKeyValues({
+  cubic,
+  filename,
+  output,
+  section,
+  sourceCount,
+}: {
+  cubic: boolean;
+  filename: string;
+  output: Accessor;
+  section: string;
+  sourceCount: number;
+}) {
+  const element: number[] = [];
+  for (let index = 0; index < sourceCount; index += 1) {
+    output.getElement(cubic ? index * 3 + 1 : index, element);
+    const quaternion = element.slice(0, 4);
+    if (
+      quaternion.some((value) => !Number.isFinite(value)) ||
+      Math.hypot(...quaternion) <= 1e-12
+    ) {
+      throw new ParseDomainError(
+        "GLTF_INVALID_OUTPUT",
+        `glTF animation quaternion ${index} must be finite and non-zero`,
+        { filename, section },
+      );
+    }
+  }
 }
 
 function readScalarAccessor(accessor: Accessor, filename: string, section: string) {

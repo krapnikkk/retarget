@@ -6,11 +6,10 @@ import {
 } from "@/retarget";
 import { validateMotionClip } from "@/retarget";
 import {
-  createLinearVMDBoneInterpolation,
-  serializeVMDDocument,
+  LINEAR_VMD_BONE_INTERPOLATION,
+  serializeVMDBoneMotion,
   VMD_FPS,
   type VMDBoneFrame,
-  type VMDDocument,
 } from "@/mmd/vmd-document";
 import { MMD_EXPORT_BONE_NAMES } from "./bone-naming";
 import { assertGeneratedExportBudget } from "@/jobs/processing-budget";
@@ -42,7 +41,18 @@ export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array>
     phase: "vmd-export",
   });
 
-  const boneFrames: VMDBoneFrame[] = [];
+  return serializeVMDBoneMotion({
+    boneFrameCount: keyframeCount,
+    boneFrames: createVMDBoneFrames(clip, bones, frameCount),
+    modelName: clip.name || "retargeted",
+  });
+}
+
+function* createVMDBoneFrames(
+  clip: RetargetedMotionClip,
+  bones: ReturnType<typeof collectVMDBones>,
+  frameCount: number,
+): Generator<VMDBoneFrame> {
   for (let frameNumber = 0; frameNumber < frameCount; frameNumber += 1) {
     const time = normalizeMotionTime(frameNumber / VMD_FPS, clip.duration, false);
     const pose = sampleMotionClipPose(clip, time, false);
@@ -50,30 +60,15 @@ export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array>
       const item = pose[bone];
       const position = bone === "hips" ? item?.position : undefined;
       const rotation = item?.rotation ?? [0, 0, 0, 1];
-      boneFrames.push({
+      yield {
         boneName: MMD_EXPORT_BONE_NAMES[bone],
         frameNumber,
         position: [position?.[0] ?? 0, position?.[1] ?? 0, -(position?.[2] ?? 0)],
         rotation: [-rotation[0], -rotation[1], rotation[2], rotation[3]],
-        interpolation: createLinearVMDBoneInterpolation(),
-      });
+        interpolation: LINEAR_VMD_BONE_INTERPOLATION,
+      };
     }
   }
-
-  const maxFrame = frameCount - 1;
-  const document: VMDDocument = {
-    signature: "Vocaloid Motion Data 0002",
-    modelName: clip.name || "retargeted",
-    boneFrames,
-    morphFrames: [],
-    cameraFrames: [],
-    lightFrames: [],
-    selfShadowFrames: [],
-    propertyFrames: [],
-    maxFrame,
-    duration: maxFrame / VMD_FPS,
-  };
-  return serializeVMDDocument(document);
 }
 
 function collectVMDBones(clip: RetargetedMotionClip) {

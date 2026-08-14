@@ -16,10 +16,11 @@ export const mixamoFbxMotionAdapter = {
       profile: "mixamo",
       role: "motion",
     }, options),
-  importMotion: (file) =>
+  importMotion: (file, options) =>
     importFBXHumanoidMotion({
       file,
       kind: "mixamo-fbx",
       profile: MIXAMO_RIG_PROFILE,
+      ...options,
     }),
 } satisfies MotionImportAdapter;

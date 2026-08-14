@@ -23,6 +23,8 @@ export type RetargetPipelineInput = {
   avatarFile: File;
   solveOptions: RetargetSolveOptions;
   mapping: CustomRigMappingConfig;
+  animationIndex?: number;
+  animationName?: string;
   signal?: AbortSignal;
 };
 export type RetargetPipelineResult = {

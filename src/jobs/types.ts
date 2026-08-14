@@ -120,6 +120,8 @@ export type RetargetJobTask =
       filename: string;
       bytes: ArrayBuffer;
       resources?: SerializedGLTFResources;
+      animationIndex?: number;
+      animationName?: string;
     }
   | {
       type: "solve-humanoid";

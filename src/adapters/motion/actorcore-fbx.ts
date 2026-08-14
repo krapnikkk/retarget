@@ -16,10 +16,11 @@ export const actorcoreFbxMotionAdapter = {
       profile: "actorcore",
       role: "motion",
     }, options),
-  importMotion: (file) =>
+  importMotion: (file, options) =>
     importFBXHumanoidMotion({
       file,
       kind: "actorcore-fbx",
       profile: ACTORCORE_PROFILE,
+      ...options,
     }),
 } satisfies MotionImportAdapter;

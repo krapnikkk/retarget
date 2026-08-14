@@ -44,6 +44,31 @@ describe("retarget Worker runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
   });
 
+  it("validates FBX action selection at the Worker boundary", () => {
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "bad-action-selection",
+      task: {
+        type: "import-motion",
+        formatId: "bvh",
+        filename: "motion.bvh",
+        bytes: new ArrayBuffer(8),
+        animationIndex: 1,
+      },
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "valid-action-selection",
+      task: {
+        type: "import-motion",
+        formatId: "generic-fbx",
+        filename: "motion.fbx",
+        bytes: new ArrayBuffer(8),
+        animationName: "Walk",
+      },
+    })).not.toThrow();
+  });
+
   it("rejects requests from another protocol version", () => {
     expect(() => assertRetargetJobRequest({
       schemaVersion: 99,

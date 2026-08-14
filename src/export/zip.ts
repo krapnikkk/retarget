@@ -33,17 +33,21 @@ const CRC32_TABLE = createCRC32Table();
 const MAX_CENTRAL_DIRECTORY_BYTES = 16 * 1024 * 1024;
 
 export function createZipArchive(entries: readonly ZipFileEntry[]): Uint8Array {
+  assertZipEntryCount(entries.length);
   const localParts: Uint8Array[] = [];
   const centralParts: Uint8Array[] = [];
+  const seenNames = new Set<string>();
   let offset = 0;
 
   for (const entry of entries) {
-    const nameBytes = encoder.encode(normalizeZipPath(entry.name));
+    assertZip32Value(entry.bytes.byteLength, `ZIP entry "${entry.name}" size`);
+    const nameBytes = encodeZipOutputName(entry.name, seenNames);
     const crc = crc32(entry.bytes);
     const localHeader = new Uint8Array(30 + nameBytes.length);
     const local = new DataView(localHeader.buffer);
     local.setUint32(0, 0x04034b50, true);
     local.setUint16(4, 20, true);
+    local.setUint16(6, 0x0800, true);
     local.setUint16(8, 0, true);
     local.setUint32(14, crc, true);
     local.setUint32(18, entry.bytes.byteLength, true);
@@ -57,6 +61,7 @@ export function createZipArchive(entries: readonly ZipFileEntry[]): Uint8Array {
     central.setUint32(0, 0x02014b50, true);
     central.setUint16(4, 20, true);
     central.setUint16(6, 20, true);
+    central.setUint16(8, 0x0800, true);
     central.setUint16(10, 0, true);
     central.setUint32(16, crc, true);
     central.setUint32(20, entry.bytes.byteLength, true);
@@ -67,10 +72,12 @@ export function createZipArchive(entries: readonly ZipFileEntry[]): Uint8Array {
     centralParts.push(centralHeader);
 
     offset += localHeader.byteLength + entry.bytes.byteLength;
+    assertZip32Value(offset, "ZIP local-data offset");
   }
 
   const centralOffset = offset;
   const centralSize = centralParts.reduce((sum, part) => sum + part.byteLength, 0);
+  assertCentralDirectoryLimits(centralOffset, centralSize);
   const end = new Uint8Array(22);
   const endView = new DataView(end.buffer);
   endView.setUint32(0, 0x06054b50, true);
@@ -85,17 +92,14 @@ export function createZipArchive(entries: readonly ZipFileEntry[]): Uint8Array {
 export async function createZipArchiveBlob(
   entries: readonly ZipBlobOutputEntry[],
 ) {
-  if (entries.length > 0xffff) {
-    throw new Error("ZIP output contains too many entries.");
-  }
+  assertZipEntryCount(entries.length);
   const localParts: BlobPart[] = [];
   const centralParts: ArrayBuffer[] = [];
+  const seenNames = new Set<string>();
   let offset = 0;
   for (const entry of entries) {
-    if (entry.blob.size > 0xffffffff) {
-      throw new Error(`ZIP entry "${entry.name}" exceeds the ZIP32 size limit.`);
-    }
-    const nameBytes = encoder.encode(normalizeZipPath(entry.name));
+    assertZip32Value(entry.blob.size, `ZIP entry "${entry.name}" size`);
+    const nameBytes = encodeZipOutputName(entry.name, seenNames);
     const crc = await crc32Blob(entry.blob);
     const localHeader = new Uint8Array(30 + nameBytes.length);
     const local = new DataView(localHeader.buffer);
@@ -125,12 +129,11 @@ export async function createZipArchiveBlob(
     centralHeader.set(nameBytes, 46);
     centralParts.push(centralHeader.buffer);
     offset += localHeader.byteLength + entry.blob.size;
-    if (offset > 0xffffffff) {
-      throw new Error("ZIP output exceeds the ZIP32 offset limit.");
-    }
+    assertZip32Value(offset, "ZIP local-data offset");
   }
   const centralOffset = offset;
   const centralSize = centralParts.reduce((sum, part) => sum + part.byteLength, 0);
+  assertCentralDirectoryLimits(centralOffset, centralSize);
   const end = new Uint8Array(22);
   const endView = new DataView(end.buffer);
   endView.setUint32(0, 0x06054b50, true);
@@ -146,30 +149,111 @@ export async function createZipArchiveBlob(
 
 export function readZipArchive(bytes: Uint8Array): ZipFileEntry[] {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const entries: ZipFileEntry[] = [];
-  let offset = 0;
-
-  while (
-    offset + 30 <= bytes.byteLength &&
-    view.getUint32(offset, true) === 0x04034b50
+  const endOffset = findEndOfCentralDirectory(view);
+  const diskNumber = view.getUint16(endOffset + 4, true);
+  const centralDisk = view.getUint16(endOffset + 6, true);
+  const diskEntryCount = view.getUint16(endOffset + 8, true);
+  const entryCount = view.getUint16(endOffset + 10, true);
+  const centralSize = view.getUint32(endOffset + 12, true);
+  const centralOffset = view.getUint32(endOffset + 16, true);
+  if (diskNumber !== 0 || centralDisk !== 0 || diskEntryCount !== entryCount) {
+    throw new Error("ZIP disk or entry counts are inconsistent.");
+  }
+  if (entryCount === 0xffff || centralSize === 0xffffffff || centralOffset === 0xffffffff) {
+    throw new Error("ZIP64 archives are not supported.");
+  }
+  if (entryCount > DEFAULT_READ_OPTIONS.maxEntries) {
+    throw new Error(`ZIP archive contains more than ${DEFAULT_READ_OPTIONS.maxEntries} entries.`);
+  }
+  if (
+    centralSize > MAX_CENTRAL_DIRECTORY_BYTES ||
+    centralOffset + centralSize !== endOffset
   ) {
-    const method = view.getUint16(offset + 8, true);
-    const compressedSize = view.getUint32(offset + 18, true);
-    const nameLength = view.getUint16(offset + 26, true);
-    const extraLength = view.getUint16(offset + 28, true);
-    const name = validateArchivePath(new TextDecoder().decode(
-      bytes.subarray(offset + 30, offset + 30 + nameLength),
+    throw new Error("ZIP central directory is outside the archive bounds.");
+  }
+  const entries: ZipFileEntry[] = [];
+  const seenPaths = new Set<string>();
+  let totalUncompressedBytes = 0;
+  let offset = centralOffset;
+  for (let index = 0; index < entryCount; index += 1) {
+    if (offset + 46 > endOffset || view.getUint32(offset, true) !== 0x02014b50) {
+      throw new Error("ZIP central directory entry is invalid.");
+    }
+    const flags = view.getUint16(offset + 8, true);
+    const method = view.getUint16(offset + 10, true);
+    const expectedCrc = view.getUint32(offset + 16, true);
+    const compressedSize = view.getUint32(offset + 20, true);
+    const uncompressedSize = view.getUint32(offset + 24, true);
+    const nameLength = view.getUint16(offset + 28, true);
+    const extraLength = view.getUint16(offset + 30, true);
+    const commentLength = view.getUint16(offset + 32, true);
+    const localOffset = view.getUint32(offset + 42, true);
+    const nameStart = offset + 46;
+    const nameEnd = nameStart + nameLength;
+    if (nameEnd + extraLength + commentLength > endOffset) {
+      throw new Error("ZIP entry metadata is outside the central directory.");
+    }
+    const name = validateArchivePath(decodeZipName(
+      bytes.subarray(nameStart, nameEnd),
+      Boolean(flags & 0x0800),
     ));
+    offset = nameEnd + extraLength + commentLength;
+    if (name.endsWith("/")) continue;
+    validateZipEntryLimits({
+      name,
+      flags,
+      method,
+      compressedSize,
+      uncompressedSize,
+      limits: DEFAULT_READ_OPTIONS,
+    });
     if (method !== 0) {
       throw new Error(`ZIP entry "${name}" uses an unsupported compression method.`);
     }
-
-    const dataStart = offset + 30 + nameLength + extraLength;
-    entries.push({
-      name,
-      bytes: bytes.slice(dataStart, dataStart + compressedSize),
+    totalUncompressedBytes += uncompressedSize;
+    if (totalUncompressedBytes > DEFAULT_READ_OPTIONS.maxTotalUncompressedBytes) {
+      throw new Error("ZIP archive exceeds the total expanded size limit.");
+    }
+    const key = name.toLocaleLowerCase("en-US");
+    if (seenPaths.has(key)) {
+      throw new Error(`ZIP archive contains a duplicate path: "${name}".`);
+    }
+    seenPaths.add(key);
+    if (localOffset + 30 > centralOffset || view.getUint32(localOffset, true) !== 0x04034b50) {
+      throw new Error(`ZIP entry "${name}" has an invalid local header.`);
+    }
+    const localNameLength = view.getUint16(localOffset + 26, true);
+    const localExtraLength = view.getUint16(localOffset + 28, true);
+    const localNameStart = localOffset + 30;
+    const localNameEnd = localNameStart + localNameLength;
+    const dataStart = localNameEnd + localExtraLength;
+    const dataEnd = dataStart + compressedSize;
+    if (dataEnd > centralOffset) {
+      throw new Error(`ZIP entry "${name}" is outside the archive bounds.`);
+    }
+    const localName = validateArchivePath(decodeZipName(
+      bytes.subarray(localNameStart, localNameEnd),
+      Boolean(view.getUint16(localOffset + 6, true) & 0x0800),
+    ));
+    validateLocalHeaderMetadata({
+      central: { compressedSize, expectedCrc, flags, method, name, uncompressedSize },
+      local: {
+        compressedSize: view.getUint32(localOffset + 18, true),
+        expectedCrc: view.getUint32(localOffset + 14, true),
+        flags: view.getUint16(localOffset + 6, true),
+        method: view.getUint16(localOffset + 8, true),
+        name: localName,
+        uncompressedSize: view.getUint32(localOffset + 22, true),
+      },
     });
-    offset = dataStart + compressedSize;
+    const entryBytes = bytes.slice(dataStart, dataEnd);
+    if (crc32(entryBytes) !== expectedCrc) {
+      throw new Error(`ZIP entry "${name}" failed its CRC check.`);
+    }
+    entries.push({ name, bytes: entryBytes });
+  }
+  if (offset !== endOffset) {
+    throw new Error("ZIP central directory size does not match its entries.");
   }
 
   return entries;
@@ -356,8 +440,7 @@ async function inflateRawBlob(blob: Blob, maxOutputBytes: number, name: string) 
     throw new Error("This browser cannot extract deflated ZIP archives.");
   }
   const stream = blob.stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  const { chunks } = await readBoundedStream(stream, maxOutputBytes, name);
-  const inflated = concatBytes(chunks);
+  const inflated = await readBoundedStream(stream, maxOutputBytes, name);
   return new Blob([inflated.buffer as ArrayBuffer]);
 }
 
@@ -378,8 +461,39 @@ async function crc32Blob(blob: Blob) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function normalizeZipPath(name: string) {
-  return name.replace(/\\/g, "/").replace(/^\/+/, "") || "file";
+function encodeZipOutputName(name: string, seenNames: Set<string>) {
+  const normalized = validateArchivePath(name.replace(/\\/g, "/"));
+  const nameBytes = encoder.encode(normalized);
+  if (nameBytes.byteLength === 0 || nameBytes.byteLength > 0xffff) {
+    throw new Error(`ZIP entry "${name}" name exceeds the ZIP32 limit.`);
+  }
+  const key = normalized.toLocaleLowerCase("en-US");
+  if (seenNames.has(key)) {
+    throw new Error(`ZIP output contains a duplicate path: "${normalized}".`);
+  }
+  seenNames.add(key);
+  return nameBytes;
+}
+
+function assertZipEntryCount(count: number) {
+  if (!Number.isInteger(count) || count < 0 || count >= 0xffff) {
+    throw new Error("ZIP output contains too many entries for ZIP32.");
+  }
+}
+
+function assertZip32Value(value: number, label: string) {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff) {
+    throw new Error(`${label} exceeds the ZIP32 limit.`);
+  }
+}
+
+function assertCentralDirectoryLimits(offset: number, size: number) {
+  assertZip32Value(offset, "ZIP central-directory offset");
+  assertZip32Value(size, "ZIP central-directory size");
+  if (size > MAX_CENTRAL_DIRECTORY_BYTES) {
+    throw new Error("ZIP central directory exceeds the metadata size limit.");
+  }
+  assertZip32Value(offset + size + 22, "ZIP output size");
 }
 
 function validateArchivePath(name: string) {
@@ -434,23 +548,24 @@ async function readBoundedStream(
   name: string,
 ) {
   const reader = stream.getReader();
-  const chunks: Uint8Array[] = [];
-  let byteLength = 0;
+  const bytes = new Uint8Array(maxOutputBytes);
+  let offset = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      byteLength += value.byteLength;
-      if (byteLength > maxOutputBytes) {
+      const nextOffset = offset + value.byteLength;
+      if (nextOffset > maxOutputBytes) {
         await reader.cancel(`ZIP entry ${name} exceeded its expanded size budget.`);
         throw new Error(`ZIP entry "${name}" exceeds its actual expanded size limit.`);
       }
-      chunks.push(value.slice());
+      bytes.set(value, offset);
+      offset = nextOffset;
     }
   } finally {
     reader.releaseLock();
   }
-  return { byteLength, chunks };
+  return offset === bytes.byteLength ? bytes : bytes.slice(0, offset);
 }
 
 function validateLocalHeaderMetadata({

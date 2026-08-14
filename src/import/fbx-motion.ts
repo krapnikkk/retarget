@@ -33,6 +33,8 @@ export async function importFBXHumanoidMotion({
   file,
   kind,
   profile,
+  animationIndex,
+  animationName,
 }: {
   file: File;
   kind: Extract<
@@ -40,6 +42,8 @@ export async function importFBXHumanoidMotion({
     "mixamo-fbx" | "actorcore-fbx" | "generic-fbx"
   >;
   profile: RigProfile;
+  animationIndex?: number;
+  animationName?: string;
 }) {
   assertMotionFileWithinLimit(file);
   return importFBXHumanoidMotionBytes({
@@ -47,6 +51,8 @@ export async function importFBXHumanoidMotion({
     filename: file.name,
     kind,
     profile,
+    animationIndex,
+    animationName,
   });
 }
 
@@ -55,6 +61,8 @@ export function importFBXHumanoidMotionBytes({
   filename,
   kind,
   profile,
+  animationIndex,
+  animationName,
 }: {
   bytes: ArrayBuffer;
   filename: string;
@@ -63,14 +71,19 @@ export function importFBXHumanoidMotionBytes({
     "mixamo-fbx" | "actorcore-fbx" | "generic-fbx"
   >;
   profile: RigProfile;
+  animationIndex?: number;
+  animationName?: string;
 }) {
   assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
     filename,
     section: kind,
   });
   const group = parseFBX(bytes);
-  const animationClip = group.animations[0];
-  if (!animationClip || animationClip.duration <= 0) {
+  const animationClip = selectFBXAnimation(group.animations, {
+    animationIndex,
+    animationName,
+  });
+  if (animationClip.duration <= 0) {
     throw createRetargetError("FBX_NO_ANIMATION");
   }
 
@@ -82,6 +95,49 @@ export function importFBXHumanoidMotionBytes({
     rootName: group.name || "FBX animation",
     sourceRoot: group,
   });
+}
+
+export function selectFBXAnimation(
+  animations: readonly AnimationClip[],
+  {
+    animationIndex,
+    animationName,
+  }: { animationIndex?: number; animationName?: string } = {},
+) {
+  if (animations.length === 0) {
+    throw createRetargetError("FBX_NO_ANIMATION");
+  }
+  let selectedIndex = animationIndex;
+  if (animationName !== undefined) {
+    const matches = animations.flatMap((animation, index) =>
+      animation.name === animationName ? [index] : [],
+    );
+    if (matches.length !== 1) {
+      throw createRetargetError(
+        matches.length === 0
+          ? "FBX_ANIMATION_NOT_FOUND"
+          : "FBX_ANIMATION_SELECTION_REQUIRED",
+      );
+    }
+    if (selectedIndex !== undefined && selectedIndex !== matches[0]) {
+      throw createRetargetError("FBX_ANIMATION_NOT_FOUND");
+    }
+    selectedIndex = matches[0];
+  }
+  if (selectedIndex === undefined) {
+    if (animations.length !== 1) {
+      throw createRetargetError("FBX_ANIMATION_SELECTION_REQUIRED");
+    }
+    selectedIndex = 0;
+  }
+  if (
+    !Number.isInteger(selectedIndex) ||
+    selectedIndex < 0 ||
+    selectedIndex >= animations.length
+  ) {
+    throw createRetargetError("FBX_ANIMATION_NOT_FOUND");
+  }
+  return animations[selectedIndex]!;
 }
 
 function applyFBXUnitEvidence(profile: RigProfile, root: Object3D): RigProfile {

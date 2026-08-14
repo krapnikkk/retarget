@@ -146,6 +146,49 @@ describe("Phase 3 motion importers", () => {
     );
   });
 
+  it("rejects unbalanced BVH hierarchies", () => {
+    const unbalanced = createMinimalBVH().replace("  }\n}\nMOTION", "  }\nMOTION");
+
+    expect(() => importBVH(
+      new TextEncoder().encode(unbalanced),
+      "unbalanced.bvh",
+    )).toThrow(/unbalanced braces/);
+  });
+
+  it("rejects duplicate or incomplete BVH rotation axes", () => {
+    const duplicate = createMinimalBVH().replace(
+      "CHANNELS 3 Zrotation Xrotation Yrotation",
+      "CHANNELS 3 Zrotation Xrotation Xrotation",
+    );
+    const incomplete = createMinimalBVH().replace(
+      "CHANNELS 3 Zrotation Xrotation Yrotation",
+      "CHANNELS 2 Zrotation Xrotation",
+    ).replace(
+      "0 0 0 0 0 0 0 0 0\n1 2 3 10 0 0 0 20 0",
+      "0 0 0 0 0 0 0 0\n1 2 3 10 0 0 0 20",
+    );
+
+    expect(() => importBVH(
+      new TextEncoder().encode(duplicate),
+      "duplicate-axis.bvh",
+    )).toThrow(/duplicate channels/);
+    expect(() => importBVH(
+      new TextEncoder().encode(incomplete),
+      "incomplete-axis.bvh",
+    )).toThrow(/unique XYZ rotation channels/);
+  });
+
+  it("rejects zero-frame BVH motion", () => {
+    const zeroFrames = createMinimalBVH()
+      .replace("Frames: 2", "Frames: 0")
+      .replace("0 0 0 0 0 0 0 0 0\n1 2 3 10 0 0 0 20 0", "");
+
+    expect(() => importBVH(
+      new TextEncoder().encode(zeroFrames),
+      "zero-frames.bvh",
+    )).toThrow(/at least one frame/);
+  });
+
   it("rejects truncated VMD bone frame sections", () => {
     const truncated = createMinimalVMD();
     new DataView(truncated.buffer).setUint32(50, 2, true);
@@ -197,6 +240,18 @@ describe("Phase 3 motion importers", () => {
     }
   });
 
+  it("rejects zero-length glTF animation quaternions", async () => {
+    const document = createMinimalAnimatedDocument();
+    document.getRoot().listAccessors().find(
+      (accessor) => accessor.getName() === "head.rotation",
+    )!.setArray(new Float32Array(8));
+
+    await expect(importGLTFAnimation(
+      await new WebIO().writeBinary(document),
+      "zero-quaternion.glb",
+    )).rejects.toMatchObject({ code: "GLTF_INVALID_OUTPUT" });
+  });
+
   it("preserves STEP transitions without expanding the whole clip to 60 FPS", async () => {
     const clip = await importGLTFAnimation(
       await createMinimalAnimatedGLB("STEP"),
@@ -227,6 +282,7 @@ ROOT Hips
       OFFSET 0 2 0
     }
   }
+}
 MOTION
 Frames: 2
 Frame Time: 0.0333333

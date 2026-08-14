@@ -53,7 +53,15 @@ export type MotionImportAdapter = {
     file: File,
     options?: ImportAdapterProbeOptions,
   ): Promise<ImportAdapterProbe>;
-  importMotion?(file: File): Promise<CanonicalHumanoidMotionClip>;
+  importMotion?(
+    file: File,
+    options?: MotionImportOptions,
+  ): Promise<CanonicalHumanoidMotionClip>;
+};
+
+export type MotionImportOptions = {
+  animationIndex?: number;
+  animationName?: string;
 };
 
 export type AvatarImportAdapter = {
