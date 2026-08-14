@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type CanonicalHumanoidMotionClip,
+  type HumanoidBoneName,
 } from "@/retarget";
 import {
   createCustomChainConfigs,
@@ -173,6 +174,65 @@ describe("humanoid custom rig solver v4", () => {
     expect(solved.processing.targetRigRevision).toContain("ready-player-me");
   });
 
+  it("fails closed when no source tracks map to the target", () => {
+    expect(() =>
+      solveHumanoidMotion({
+        motion: createTestClip(),
+        targetRig: createTargetRig(["head"]),
+      }),
+    ).toThrow(expect.objectContaining({ code: "TARGET_MAPPING_EMPTY" }));
+  });
+
+  it("fails closed when all available mappings are disabled", () => {
+    expect(() =>
+      solveHumanoidCustomRigMotion(createTestClip(), {
+        enabled: true,
+        chainPreset: "full-body",
+        footCleanup: false,
+        boneMap: {
+          hips: "none",
+          rightUpperArm: "none",
+          leftHand: "none",
+        },
+      }),
+    ).toThrow(expect.objectContaining({ code: "TARGET_MAPPING_EMPTY" }));
+  });
+
+  it("rejects a mapping that only preserves an optional finger", () => {
+    const motion = createTestClip();
+    motion.tracks = [{
+      bone: "leftIndexDistal",
+      path: "rotation",
+      times: [0, 1],
+      values: [0, 0, 0, 1, 0, 0, 0, 1],
+    }];
+    expect(() =>
+      solveHumanoidMotion({
+        motion,
+        targetRig: createTargetRig(["leftIndexDistal"]),
+      }),
+    ).toThrow(expect.objectContaining({ code: "TARGET_MAPPING_INSUFFICIENT" }));
+  });
+
+  it("requires mapped bones to cover the selected chain preset", () => {
+    const motion = createTestClip();
+    motion.tracks = motion.tracks.filter(
+      (track) => track.bone === "rightUpperArm",
+    );
+    expect(() =>
+      solveHumanoidMotion({
+        motion,
+        mapping: {
+          enabled: true,
+          chainPreset: "lower-body",
+          footCleanup: false,
+          boneMap: {},
+        },
+        targetRig: createTargetRig(["rightUpperArm"]),
+      }),
+    ).toThrow(expect.objectContaining({ code: "TARGET_REQUIRED_CHAIN_MISSING" }));
+  });
+
   it("creates custom chain presets for upper and lower body solving", () => {
     expect(createCustomChainConfigs("upper-body").map((config) => config.id)).toEqual([
       "spine",
@@ -212,4 +272,16 @@ function createTestClip() {
       },
     ],
   });
+}
+
+function createTargetRig(bones: readonly HumanoidBoneName[]) {
+  return {
+    profile: READY_PLAYER_ME_PROFILE,
+    bones: new Set(bones),
+    skeleton: {
+      name: "test target",
+      children: bones.map((bone) => ({ name: bone, bone, children: [] })),
+    },
+    restHipsHeight: 0.88,
+  };
 }

@@ -3,6 +3,7 @@ import {
   DEFAULT_RETARGET_SOLVE_OPTIONS,
   HUMANOID_BONES,
   REQUIRED_VRM_BONES,
+  RetargetError,
   type HumanoidBoneName,
   type CanonicalHumanoidMotionClip,
   type MotionTrack,
@@ -128,6 +129,13 @@ export function solveHumanoidMotion({
   const remappedTracks = config.enabled
     ? remapTracksToTargetBones(clip.tracks, boneMap)
     : clip.tracks;
+  if (config.enabled) {
+    assertSufficientTargetMapping({
+      remappedTracks,
+      targetBones,
+      chainPreset: config.chainPreset,
+    });
+  }
   const optionTracks = applyRetargetSolveOptions(remappedTracks, options);
   const cleanedTracks = config.enabled && config.footCleanup
     ? applyBasicFootCleanup(optionTracks)
@@ -574,7 +582,54 @@ function remapTracksToTargetBones(
     }
   }
 
-  return remapped.length > 0 ? remapped : tracks;
+  return remapped;
+}
+
+function assertSufficientTargetMapping({
+  remappedTracks,
+  targetBones,
+  chainPreset,
+}: {
+  remappedTracks: readonly MotionTrack[];
+  targetBones: ReadonlySet<HumanoidBoneName>;
+  chainPreset: CustomChainPreset;
+}) {
+  if (remappedTracks.length === 0) {
+    throw new RetargetError("TARGET_MAPPING_EMPTY", {
+      details: { chainPreset },
+    });
+  }
+
+  const mappedTargets = new Set(remappedTracks.map((track) => track.bone));
+  const unexpectedTargets = [...mappedTargets].filter(
+    (bone) => !targetBones.has(bone),
+  );
+  if (unexpectedTargets.length > 0) {
+    throw new RetargetError("TARGET_MAPPING_INSUFFICIENT", {
+      details: { chainPreset, unexpectedTargets },
+    });
+  }
+
+  const coversAnyRequiredBone = REQUIRED_VRM_BONES.some((bone) =>
+    mappedTargets.has(bone)
+  );
+  if (!mappedTargets.has("hips") && !coversAnyRequiredBone) {
+    throw new RetargetError("TARGET_MAPPING_INSUFFICIENT", {
+      details: { chainPreset, mappedTargets: [...mappedTargets] },
+    });
+  }
+
+  const selectedChains = createCustomChainConfigs(chainPreset);
+  const coversRequiredChain = selectedChains.some((chain) =>
+    chain.bones.some(
+      (bone) => REQUIRED_VRM_BONES.includes(bone) && mappedTargets.has(bone),
+    )
+  );
+  if (!mappedTargets.has("hips") && !coversRequiredChain) {
+    throw new RetargetError("TARGET_REQUIRED_CHAIN_MISSING", {
+      details: { chainPreset, mappedTargets: [...mappedTargets] },
+    });
+  }
 }
 
 function applyBasicFootCleanup(tracks: MotionTrack[]) {

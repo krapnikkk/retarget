@@ -31,6 +31,9 @@ the stable code for support and telemetry.
 | `TARGET_RIG_IDENTITY_MISSING` | target bind/export | Avatar export received an unsolved or legacy clip without target-rig identity. |
 | `TARGET_RIG_INVALID` | target bind/export | Target rest-pose evidence is invalid or non-finite. |
 | `TARGET_RIG_MISMATCH` | target bind/export | The supplied avatar is not the rig recorded by the solved motion. |
+| `TARGET_MAPPING_EMPTY` | solve | No source tracks map to the selected target; fix the rig/profile mapping. |
+| `TARGET_MAPPING_INSUFFICIENT` | solve | Solved tracks escaped the declared target-bone set; reject the result. |
+| `TARGET_REQUIRED_CHAIN_MISSING` | solve | The selected preset maps neither hips nor a required bone in one of its target chains. |
 | `ARTIFACT_INVALID` | Node artifact validation | Supplied bytes failed format reload, rig inspection, or semantic validation. |
 | `ARTIFACT_AUTHORING_FAILED` | Node authoring | Authoring completed insufficiently to produce an artifact that passes its required reload checks. |
 | `OPERATION_CANCELLED` | isolated execution | The caller cancelled an in-flight Worker operation. |
