@@ -1,0 +1,137 @@
+{
+  "artifact": {
+    "byteLength": 684560,
+    "filename": "quaternius-walk-studio-mannequin.animated.glb",
+    "sha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7"
+  },
+  "caseId": "quaternius-walk-gltf-to-studio-mannequin-glb",
+  "inputs": {
+    "avatarSha256": "cb67d0ade736bb4a6c915a93a3efcfc0aefe0a3774faf11a573465690c79d0c6",
+    "sourceSha256": "d822f2801e2bae22f5780d86c69cb6cef722df99352fbb5ad24e7c4622d233d8"
+  },
+  "pipeline": {
+    "avatarFormat": "gltf-humanoid",
+    "executionMode": "in-memory",
+    "exportFormat": "animated-glb",
+    "motionFormat": "gltf-animation",
+    "rigDetectionMode": "name-heuristic",
+    "solverRevision": 4,
+    "targetBindingRevision": 1
+  },
+  "requiredRuntimes": [
+    "blender",
+    "godot"
+  ],
+  "runtimes": {
+    "blender": {
+      "artifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7",
+      "buildHash": "fbe6228777e7",
+      "checks": {
+        "actionCount": 1,
+        "animationFrameEnd": 31.99999237060547,
+        "animationFrameStart": 0,
+        "armatureCount": 1,
+        "boneCount": 65,
+        "changedPoseValues": 976,
+        "meshCount": 2,
+        "sampleFrames": [
+          0,
+          15.999996185302734,
+          31.99999237060547
+        ]
+      },
+      "runtime": "blender",
+      "status": "passed",
+      "version": "5.2.0 LTS"
+    },
+    "godot": {
+      "artifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7",
+      "buildHash": "a13da4feb8d8aefc283c3763d33a2f170a18d541",
+      "checks": {
+        "animationLengthSeconds": 1.33333301544189,
+        "animationName": "quaternius-walk_animation",
+        "animationPlayerCount": 1,
+        "boneCount": 65,
+        "changedPoseValues": 516,
+        "meshCount": 1,
+        "sampleTimes": [
+          0,
+          0.666666507720947,
+          1.33333301544189
+        ],
+        "skeletonCount": 1,
+        "trackCount": 52
+      },
+      "diagnostics": {
+        "animationLengthSeconds": 1.33333301544189,
+        "animationName": "quaternius-walk_animation",
+        "changedPoseValues": 516,
+        "trackCount": 52,
+        "trackPaths": [
+          "StudioMannequin_Armature/Skeleton3D:head",
+          "StudioMannequin_Armature/Skeleton3D:neck",
+          "StudioMannequin_Armature/Skeleton3D:leftIndexDistal",
+          "StudioMannequin_Armature/Skeleton3D:leftIndexIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:leftIndexProximal",
+          "StudioMannequin_Armature/Skeleton3D:leftMiddleDistal",
+          "StudioMannequin_Armature/Skeleton3D:leftMiddleIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:leftMiddleProximal",
+          "StudioMannequin_Armature/Skeleton3D:leftLittleDistal",
+          "StudioMannequin_Armature/Skeleton3D:leftLittleIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:leftLittleProximal",
+          "StudioMannequin_Armature/Skeleton3D:leftRingDistal",
+          "StudioMannequin_Armature/Skeleton3D:leftRingIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:leftRingProximal",
+          "StudioMannequin_Armature/Skeleton3D:leftThumbDistal",
+          "StudioMannequin_Armature/Skeleton3D:leftThumbProximal",
+          "StudioMannequin_Armature/Skeleton3D:leftThumbMetacarpal",
+          "StudioMannequin_Armature/Skeleton3D:leftHand",
+          "StudioMannequin_Armature/Skeleton3D:leftLowerArm",
+          "StudioMannequin_Armature/Skeleton3D:leftUpperArm",
+          "StudioMannequin_Armature/Skeleton3D:leftShoulder",
+          "StudioMannequin_Armature/Skeleton3D:rightIndexDistal",
+          "StudioMannequin_Armature/Skeleton3D:rightIndexIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:rightIndexProximal",
+          "StudioMannequin_Armature/Skeleton3D:rightMiddleDistal",
+          "StudioMannequin_Armature/Skeleton3D:rightMiddleIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:rightMiddleProximal",
+          "StudioMannequin_Armature/Skeleton3D:rightLittleDistal",
+          "StudioMannequin_Armature/Skeleton3D:rightLittleIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:rightLittleProximal",
+          "StudioMannequin_Armature/Skeleton3D:rightRingDistal",
+          "StudioMannequin_Armature/Skeleton3D:rightRingIntermediate",
+          "StudioMannequin_Armature/Skeleton3D:rightRingProximal",
+          "StudioMannequin_Armature/Skeleton3D:rightThumbDistal",
+          "StudioMannequin_Armature/Skeleton3D:rightThumbProximal",
+          "StudioMannequin_Armature/Skeleton3D:rightThumbMetacarpal",
+          "StudioMannequin_Armature/Skeleton3D:rightHand",
+          "StudioMannequin_Armature/Skeleton3D:rightLowerArm",
+          "StudioMannequin_Armature/Skeleton3D:rightUpperArm",
+          "StudioMannequin_Armature/Skeleton3D:rightShoulder",
+          "StudioMannequin_Armature/Skeleton3D:upperChest",
+          "StudioMannequin_Armature/Skeleton3D:chest",
+          "StudioMannequin_Armature/Skeleton3D:leftToes",
+          "StudioMannequin_Armature/Skeleton3D:leftFoot",
+          "StudioMannequin_Armature/Skeleton3D:leftLowerLeg",
+          "StudioMannequin_Armature/Skeleton3D:leftUpperLeg",
+          "StudioMannequin_Armature/Skeleton3D:rightToes",
+          "StudioMannequin_Armature/Skeleton3D:rightFoot",
+          "StudioMannequin_Armature/Skeleton3D:rightLowerLeg",
+          "StudioMannequin_Armature/Skeleton3D:rightUpperLeg",
+          "StudioMannequin_Armature/Skeleton3D:hips",
+          "StudioMannequin_Armature/Skeleton3D:hips"
+        ]
+      },
+      "runtime": "godot",
+      "status": "passed",
+      "version": "4.7.1-stable (official)"
+    },
+    "unity": {
+      "reason": "Unity is outside the current local ecosystem certification profile.",
+      "required": false,
+      "status": "deferred"
+    }
+  },
+  "schemaVersion": 1,
+  "status": "passed"
+}

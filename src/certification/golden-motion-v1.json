@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": 2,
+  "validatorVersion": 3,
   "cases": [
     {
       "id": "quaternius-walk-gltf-to-studio-mannequin-glb",
@@ -11,7 +11,7 @@
       "rigDetectionMode": "name-heuristic",
       "solverRevision": 4,
       "targetBindingRevision": 1,
-      "status": "semantic-passed",
+      "status": "certified",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.animation.glb",
         "sha256": "d822f2801e2bae22f5780d86c69cb6cef722df99352fbb5ad24e7c4622d233d8",
@@ -64,7 +64,12 @@
       "evidence": {
         "structural": "passed",
         "semantic": "passed",
-        "ecosystem": "pending"
+        "ecosystem": "passed"
+      },
+      "ecosystemReceipt": {
+        "path": "src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json",
+        "sha256": "6a10efd3fb3d2690e3aa0496ec3db09e8f4d6d0522ab21d73714c9c590b2fd50",
+        "requiredRuntimes": ["blender", "godot"]
       }
     },
     {

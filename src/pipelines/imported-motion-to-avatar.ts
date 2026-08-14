@@ -50,15 +50,18 @@ function createImportedMotionToAvatarPipeline(
   const isMixamoToVrm = motionFormat === "mixamo-fbx" && avatarFormat === "vrm";
   const isGoldenHumanoidPath =
     motionFormat === "gltf-animation" && avatarFormat === "gltf-humanoid";
+  const outputFormat = isGoldenHumanoidPath
+    ? "animated-glb"
+    : isMixamoToVrm
+      ? "vrma"
+      : "gltf-animation";
 
-  return {
-    id: `${motionFormat}-to-${avatarFormat}` as RetargetPipelineId,
-    label: `${motionFormat} to ${avatarFormat}`,
+  const pipeline: RetargetPipeline = {
+    id: `${motionFormat}-to-${avatarFormat}-to-${outputFormat}` as RetargetPipelineId,
+    label: `${motionFormat} to ${avatarFormat} to ${outputFormat}`,
     motionFormat,
     avatarFormat,
-    outputFormats: isGoldenHumanoidPath
-      ? ["gltf-animation"]
-      : ["vrma", "motion-json", "vmd", "gltf-animation", "bvh"],
+    outputFormat,
     availability: isGoldenHumanoidPath ? "available" : "hidden",
     assurance: isGoldenHumanoidPath ? "beta" : "experimental",
     async retarget({
@@ -122,5 +125,32 @@ function createImportedMotionToAvatarPipeline(
       });
       return { sourceClip, solvedClip };
     },
+    async run(input) {
+      const result = await pipeline.retarget(input);
+      input.signal?.throwIfAborted();
+      const bytes = outputFormat === "animated-glb"
+        ? await import("@/export/avatar-glb").then(({ exportAnimatedGLB }) =>
+            exportAnimatedGLB({
+              avatarFile: input.avatarFile,
+              avatarFormatId: avatarFormat,
+              clip: result.solvedClip,
+              signal: input.signal,
+            }),
+          )
+        : await runRetargetJob(
+            {
+              type: "export-motion",
+              formatId: outputFormat,
+              clip: result.solvedClip,
+            },
+            { signal: input.signal },
+          );
+      input.signal?.throwIfAborted();
+      return {
+        ...result,
+        output: { format: outputFormat, bytes },
+      };
+    },
   };
+  return pipeline;
 }

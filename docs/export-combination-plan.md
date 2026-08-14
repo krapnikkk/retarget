@@ -37,6 +37,12 @@ x execution mode x rig detection mode
 x solver revision x target-binding revision
 ```
 
+Accordingly, public pipeline lookup requires the motion, avatar, and export
+format IDs. The registry currently admits one generalized beta capability,
+`gltf-animation -> gltf-humanoid -> animated-glb`; its pinned Golden Motion
+case is independently certified without promoting every glTF asset to
+certified assurance.
+
 ## Dispatch boundaries
 
 - Motion-only exporters consume canonical or retargeted motion and do not

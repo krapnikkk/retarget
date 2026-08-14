@@ -50,7 +50,14 @@ export type PipelineCertificationCase = PipelineCertificationKey & {
     semantic: CertificationEvidenceStatus;
     ecosystem: CertificationEvidenceStatus;
   };
+  ecosystemReceipt?: {
+    path: string;
+    sha256: string;
+    requiredRuntimes: EcosystemRuntimeName[];
+  };
 };
+
+export type EcosystemRuntimeName = "blender" | "godot" | "unity";
 
 export type GoldenAssetReference = {
   path: string;
@@ -130,6 +137,7 @@ export function isFullyCertified(record: PipelineCertificationCase) {
     record.status === "certified" &&
     record.evidence.structural === "passed" &&
     record.evidence.semantic === "passed" &&
-    record.evidence.ecosystem === "passed"
+    record.evidence.ecosystem === "passed" &&
+    record.ecosystemReceipt !== undefined
   );
 }

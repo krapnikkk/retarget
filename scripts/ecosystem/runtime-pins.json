@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "caseId": "quaternius-walk-gltf-to-studio-mannequin-glb",
+  "receiptPath": "src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json",
+  "artifactFilename": "quaternius-walk-studio-mannequin.animated.glb",
+  "blender": {
+    "version": "5.2.0 LTS",
+    "buildHash": "fbe6228777e7",
+    "executableEnvironmentVariable": "BLENDER_BIN"
+  },
+  "godot": {
+    "version": "4.7.1-stable (official)",
+    "buildHash": "a13da4feb8d8aefc283c3763d33a2f170a18d541",
+    "executableEnvironmentVariable": "GODOT_BIN"
+  },
+  "unity": {
+    "required": false,
+    "status": "deferred",
+    "reason": "Unity is outside the current local ecosystem certification profile."
+  }
+}

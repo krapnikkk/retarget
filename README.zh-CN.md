@@ -22,6 +22,7 @@
 ```powershell
 pnpm install
 pnpm verify
+pnpm verify:ecosystem # 需要固定版本的 Blender 与 Godot
 ```
 
 大型研究语料下载到被 Git 忽略的 `references/` 目录。已提交的固定资源均包含来源和哈希记录。
@@ -35,6 +36,6 @@ pnpm verify
 - `3dretarget/validation`：可序列化的语义验证结果。
 - `3dretarget/certification`：来源和保证等级清单。
 
-公开流水线注册表目前只暴露 beta 等级的 `gltf-animation -> gltf-humanoid`。其他已实现组合仍是实验路径，`getRetargetPipeline` 对它们返回 `null`。
+公开流水线注册表目前只暴露一个完整 beta 组合：`gltf-animation -> gltf-humanoid -> animated-glb`。查询必须同时提供三个格式 ID；其他已实现组合仍是实验路径，`getRetargetPipeline` 对它们返回 `null`。该 beta 能力内锁定的 Golden Motion 精确用例另有更高等级、仅适用于该用例的 Blender 与 Godot `certified` 证据。调用 `pipeline.run(...)` 会执行这条公开端到端路径，并同时返回 `animated-glb` 字节和已求解动作。
 
 当前本地就绪标准见[功能库稳定性门禁](docs/zh-CN/stabilization-gates.md)。

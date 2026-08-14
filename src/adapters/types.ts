@@ -56,6 +56,7 @@ export type AvatarExportInput = {
   clip: TargetBoundSolvedHumanoidMotionClip;
   avatarFile?: File | null;
   avatarFormatId?: AvatarFormatId | null;
+  signal?: AbortSignal;
 };
 
 export type AvatarExportAdapter = {

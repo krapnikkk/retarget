@@ -30,6 +30,7 @@ the consuming application.
 ```powershell
 pnpm install
 pnpm verify
+pnpm verify:ecosystem # requires the pinned Blender and Godot builds
 ```
 
 Large research corpora are downloaded into the ignored `references/` directory.
@@ -47,10 +48,13 @@ Committed fixtures include provenance and hashes.
 - `3dretarget/validation`: serializable semantic validation results.
 - `3dretarget/certification`: provenance and assurance manifests.
 
-The public pipeline registry currently exposes only
-`gltf-animation -> gltf-humanoid` at beta assurance. Other implemented
-combinations remain experimental and `getRetargetPipeline` returns `null` for
-them.
+The public pipeline registry currently exposes one complete beta combination:
+`gltf-animation -> gltf-humanoid -> animated-glb`. Lookup requires all three
+format IDs; other implemented combinations remain experimental and
+`getRetargetPipeline` returns `null` for them. The pinned Golden Motion case
+inside this beta capability has stronger, case-scoped certified evidence from
+Blender and Godot. Calling `pipeline.run(...)` executes this public end-to-end
+path and returns the `animated-glb` bytes together with the solved motion.
 
 See [library stability gates](docs/stabilization-gates.md) for the current local
 readiness criteria.

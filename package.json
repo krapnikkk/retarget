@@ -49,6 +49,8 @@
     "test:correctness-coverage": "vitest run --config vitest.correctness.config.ts --coverage",
     "verify:package": "pnpm build && node scripts/verify-package.mjs",
     "verify:package:only": "node scripts/verify-package.mjs",
+    "verify:ecosystem": "node scripts/verify-humanoid-ecosystem.mjs --check",
+    "update:ecosystem-receipt": "node scripts/verify-humanoid-ecosystem.mjs --update",
     "verify:fixtures": "pnpm check:mesh2motion-fixtures && pnpm check:gltf-extension-fixtures && pnpm check:non-humanoid-certification",
     "verify": "pnpm check:docs-localization && pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
     "validate-asset": "node scripts/validate-asset.mjs",

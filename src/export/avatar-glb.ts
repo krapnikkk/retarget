@@ -24,12 +24,14 @@ export type AvatarExportInput = {
   clip: TargetBoundSolvedHumanoidMotionClip;
   avatarFile?: File | null;
   avatarFormatId?: AvatarFormatId | null;
+  signal?: AbortSignal;
 };
 
 export async function exportAnimatedGLB({
   avatarFile,
   avatarFormatId,
   clip,
+  signal,
 }: AvatarExportInput): Promise<Uint8Array> {
   if (!avatarFile) {
     throw new Error("Animated GLB export requires an avatar file.");
@@ -40,6 +42,7 @@ export async function exportAnimatedGLB({
     avatarFile,
     avatarFormatId,
     io,
+    signal,
   });
 
   const buffer =
@@ -55,7 +58,7 @@ export async function exportAnimatedGLB({
 }
 
 export async function exportBakedVRM(
-  { avatarFile, clip }: AvatarExportInput,
+  { avatarFile, clip, signal }: AvatarExportInput,
 ): Promise<Uint8Array> {
   if (!avatarFile) {
     throw new Error("VRM 1.0 embedded-animation export requires a VRM avatar file.");
@@ -68,6 +71,7 @@ export async function exportBakedVRM(
         avatarFile,
         getAvatarEagerInputLimit(avatarFile),
         "avatar",
+        signal,
       ),
     ),
   );

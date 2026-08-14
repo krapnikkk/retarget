@@ -1,0 +1,13 @@
+; Engine configuration file.
+; Kept minimal for headless glTF import verification.
+
+config_version=5
+
+[application]
+
+config/name="3dretarget ecosystem verification"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

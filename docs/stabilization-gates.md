@@ -16,13 +16,15 @@ and do not determine library readiness.
 3. **Passed locally:** browser execution does not silently fall back to
    CPU-heavy inline work for untrusted uploads. Inline execution for Node or
    tests is an explicit API.
-4. **Partial:** committed fixtures, Golden Motion, structural reload, and
-   semantic comparison pass independently. Named external ecosystem receipts
-   remain pending and no case is promoted to `certified` without them.
+4. **Passed locally:** committed fixtures, Golden Motion, structural reload,
+   semantic comparison, and the pinned Blender 5.2.0 LTS / Godot 4.7.1 receipt
+   pass independently for the first certified pipeline. Unity is deferred and
+   is not required or claimed by the current local certification profile.
 5. **Passed locally:** package size and browser/Worker entries have measured,
    enforced baselines. The public high-level import, target inspection, and
    solve path executes through the Worker.
 
-A capability may remain experimental while its evidence is incomplete. Stable
-or certified status depends only on the applicable library-owned gates; it must
-not depend on a particular consumer build or deployment.
+All current library stability gates pass locally. Individual capabilities may
+remain experimental while their own evidence is incomplete. Stable or certified
+status depends only on the applicable library-owned gates; it must not depend on
+a particular consumer build or deployment.

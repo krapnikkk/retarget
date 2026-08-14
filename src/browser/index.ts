@@ -5,7 +5,10 @@ export type {
   RetargetPipeline,
   RetargetPipelineId,
   RetargetPipelineInput,
+  RetargetPipelineOutput,
+  RetargetPipelineOutputFormatId,
   RetargetPipelineResult,
+  RetargetPipelineRunResult,
 } from "../pipelines";
 export type {
   RunRetargetJobOptions,

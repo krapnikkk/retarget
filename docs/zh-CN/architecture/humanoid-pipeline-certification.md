@@ -13,8 +13,10 @@ x 求解器修订 x 目标绑定修订
 机器可读清单位于 `src/certification/golden-motion-v1.json`。用例可经历：
 
 - `candidate`：来源已锁定，但语义证据不完整。
-- `semantic-passed`：结构重载和确定性世界空间检查通过；UI 可将该精确组合描述为 beta。
-- `certified`：结构、语义和具名第三方生态证据全部通过。代码不会仅根据状态标签推导该状态。
+- `semantic-passed`：结构重载和确定性世界空间检查通过；消费端可将该精确组合描述为 beta。
+- `certified`：结构、语义以及固定第三方生态回执要求的全部运行时均通过。代码不会仅根据状态标签推导该状态。
+
+用例保证等级与泛化能力保证等级刻意采用不同范围。下述固定 Golden 用例为 `certified`；更宽泛的公开 `gltf-animation -> gltf-humanoid -> animated-glb` 组合为 beta，因为一个认证固定资源不能证明所有合规 glTF 资源都已认证。
 
 ## Golden 证据
 
@@ -35,4 +37,13 @@ x 求解器修订 x 目标绑定修订
 
 下载门禁会阻止结构失败。来源已锁定的管线若语义失败也必须硬失败。没有锁定语义证据的组合若验证失败或不可用，下载实验文件前必须另行明确确认。内存证据不能提升流式路径：流式 GLB 验证通过范围读取追加动画访问器运行同一独立世界空间判定器，无需完整载入原始大型 BIN。
 
-初始 `glTF-animation -> glTF-humanoid -> Animated-GLB` 用例刻意保持 `semantic-passed` 而非 `certified`，因为新组合输出尚未完成锁定的 Blender/Unity/Godot 兼容运行。现有市场 VRMA 保留为来源锁定候选，但不等同于已规范化 glTF 源：它早于规范空间契约，轴符号也不同。VRMA 导入现会通过文件 T-pose 转换动画局部变换并减去静止 Hips 位置；VRMA 导出写入 glTF 动画要求的绝对 Hips 平移。测试覆盖该代码往返，但不会提升旧市场产物。BVH、VMD、ActorCore、Mixamo 到通用 FBX、FBX 角色及 PMX 路径仍为实验性，直至加入来源锁定真实资产和同等级证据。合成固定资源只能测试数学或失败处理，不能提升保证等级。
+## 外部生态回执
+
+初始 `glTF-animation -> glTF-humanoid -> Animated-GLB` 用例现已达到 `certified`。`pnpm verify:ecosystem` 会重新生成同一份已通过内部验证的 GLB、核验其 SHA-256，并在以下固定运行时中实际导入和采样：
+
+- Blender 5.2.0 LTS，构建 `fbe6228777e7`；
+- Godot 4.7.1 stable，构建 `a13da4feb8d8aefc283c3763d33a2f170a18d541`。
+
+机器可读回执固定在 `src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json`。两个运行时都必须从同一产物导入网格、骨架/Armature 和动画，并在固定采样点观察到姿势变化。Unity 已明确延期，不属于当前本地认证配置要求的运行时，因此不声明 Unity 兼容性。
+
+现有市场 VRMA 保留为来源锁定候选，但不等同于已规范化 glTF 源：它早于规范空间契约，轴符号也不同。VRMA 导入现会通过文件 T-pose 转换动画局部变换并减去静止 Hips 位置；VRMA 导出写入 glTF 动画要求的绝对 Hips 平移。测试覆盖该代码往返，但不会提升旧市场产物。BVH、VMD、ActorCore、Mixamo 到通用 FBX、FBX 角色及 PMX 路径仍为实验性，直至加入来源锁定真实资产和同等级证据。合成固定资源只能测试数学或失败处理，不能提升保证等级。

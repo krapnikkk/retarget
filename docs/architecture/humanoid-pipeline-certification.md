@@ -16,9 +16,15 @@ The machine-readable manifest is
 
 - `candidate`: provenance is locked but semantic evidence is incomplete.
 - `semantic-passed`: structural reload and deterministic world-space checks
-  pass; the UI may describe this exact triple as beta.
-- `certified`: structural, semantic, and named third-party ecosystem evidence
-  all pass. Code refuses to derive this state from the status label alone.
+  pass; consumers may describe this exact triple as beta.
+- `certified`: structural, semantic, and all runtimes required by the pinned
+  third-party ecosystem receipt pass. Code refuses to derive this state from
+  the status label alone.
+
+Case assurance and generalized capability assurance are intentionally
+different scopes. The pinned Golden case below is `certified`; the broader
+public `gltf-animation -> gltf-humanoid -> animated-glb` combination is beta
+because one certified fixture does not certify every conforming glTF asset.
 
 ## Golden evidence
 
@@ -57,9 +63,24 @@ In-memory evidence never promotes the streamed path: streamed GLB validation
 range-reads the appended animation accessors and runs the same independent
 world-space oracle without loading the original large BIN payload in full.
 
-The initial glTF-animation -> glTF-humanoid -> Animated-GLB case is deliberately
-`semantic-passed`, not `certified`, because the newly composed output has not
-yet completed a pinned Blender/Unity/Godot compatibility run. The existing
+## External ecosystem receipt
+
+The initial `glTF-animation -> glTF-humanoid -> Animated-GLB` case is
+`certified`. `pnpm verify:ecosystem` regenerates the same internally validated
+GLB, verifies its SHA-256, and imports and samples it in these exact runtimes:
+
+- Blender 5.2.0 LTS, build `fbe6228777e7`;
+- Godot 4.7.1 stable, build
+  `a13da4feb8d8aefc283c3763d33a2f170a18d541`.
+
+The machine-readable receipt is pinned at
+`src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json`.
+Both runtimes must import a mesh, skeleton/armature, and animation and must show
+pose changes across fixed samples of the same artifact. Unity is explicitly
+deferred and is not a required runtime in the current local certification
+profile; no Unity compatibility is claimed.
+
+The existing
 market VRMA is retained as a provenance-locked candidate, but it is not treated
 as equivalent to the normalized glTF source: it predates the canonical-space
 contract and its axis signs differ. VRMA import now converts animated local

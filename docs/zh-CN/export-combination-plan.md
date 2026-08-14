@@ -34,6 +34,8 @@ x 执行模式 x 骨架检测模式
 x 求解器修订 x 目标绑定修订
 ```
 
+因此，公开流水线查询必须提供动作、角色和导出格式 ID。注册表当前只准入一个泛化 beta 能力：`gltf-animation -> gltf-humanoid -> animated-glb`；其中锁定的 Golden Motion 用例独立达到 `certified`，但这不会把所有 glTF 资源一并提升为认证等级。
+
 ## 调度边界
 
 - 纯动作导出器消费规范或已重定向动作，不虚构角色。

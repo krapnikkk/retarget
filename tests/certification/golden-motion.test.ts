@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  HUMANOID_ECOSYSTEM_RECEIPTS,
   HUMANOID_PIPELINE_CERTIFICATION,
   getPipelineExportAssurance,
   isFullyCertified,
@@ -11,6 +12,7 @@ import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { exportAnimatedGLB, validateAvatarExportReload, validateAvatarExportSemantics } from "@/export";
 import { importGLTFAnimation } from "@/import/gltf-animation";
 import { importVRMA } from "@/import/vrma";
+import { getRetargetPipeline } from "@/pipelines";
 import { sampleSemanticMotionPose } from "@/validation";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
@@ -37,7 +39,7 @@ describe("Golden Motion certification", () => {
   });
 
   it("keeps status, evidence, ids, and pipeline triples internally consistent", () => {
-    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(2);
+    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(3);
     const ids = HUMANOID_PIPELINE_CERTIFICATION.cases.map((item) => item.id);
     const triples = HUMANOID_PIPELINE_CERTIFICATION.cases.map(
       (item) =>
@@ -53,7 +55,7 @@ describe("Golden Motion certification", () => {
       );
       expect(item.solverRevision).toBe(4);
       expect(item.targetBindingRevision).toBe(1);
-      if (item.status === "semantic-passed") {
+      if (item.status === "semantic-passed" || item.status === "certified") {
         expect(item.evidence).toMatchObject({
           structural: "passed",
           semantic: "passed",
@@ -66,6 +68,7 @@ describe("Golden Motion certification", () => {
           semantic: "passed",
           ecosystem: "passed",
         });
+        expect(item.ecosystemReceipt).toBeDefined();
       }
       if (item.evidence.ecosystem !== "passed") {
         expect(isFullyCertified(item)).toBe(false);
@@ -73,9 +76,44 @@ describe("Golden Motion certification", () => {
     }
   });
 
+  it("locks certified ecosystem receipts to the generated evidence", async () => {
+    const certified = HUMANOID_PIPELINE_CERTIFICATION.cases.filter(
+      (item) => item.status === "certified",
+    );
+    expect(certified).toHaveLength(1);
+
+    for (const item of certified) {
+      const reference = item.ecosystemReceipt!;
+      const receiptBytes = new Uint8Array(
+        await readFile(projectPath(reference.path)),
+      );
+      expect(sha256(receiptBytes)).toBe(reference.sha256);
+      const receipt = HUMANOID_ECOSYSTEM_RECEIPTS.find(
+        (candidate) => candidate.caseId === item.id,
+      );
+      expect(receipt).toMatchObject({
+        status: "passed",
+        requiredRuntimes: reference.requiredRuntimes,
+        runtimes: {
+          blender: { status: "passed" },
+          godot: { status: "passed" },
+          unity: { required: false, status: "deferred" },
+        },
+      });
+      for (const runtime of reference.requiredRuntimes) {
+        expect(runtime).not.toBe("unity");
+        if (runtime === "blender" || runtime === "godot") {
+          expect(receipt!.runtimes[runtime].artifactSha256).toBe(
+            receipt!.artifact.sha256,
+          );
+        }
+      }
+    }
+  });
+
   it.each(
     HUMANOID_PIPELINE_CERTIFICATION.cases.filter(
-      (item) => item.status === "semantic-passed",
+      (item) => item.status === "semantic-passed" || item.status === "certified",
     ),
   )("locks $id provenance and validates its avatar roundtrip", async (golden) => {
     const sourceBytes = new Uint8Array(await readFile(projectPath(golden.source.path)));
@@ -145,10 +183,10 @@ describe("Golden Motion certification", () => {
     );
   });
 
-  it("does not claim certification while ecosystem evidence is pending", () => {
-    expect(HUMANOID_PIPELINE_CERTIFICATION.cases.some(isFullyCertified)).toBe(false);
+  it("certifies only the exact pipeline with pinned ecosystem evidence", () => {
+    expect(HUMANOID_PIPELINE_CERTIFICATION.cases.filter(isFullyCertified)).toHaveLength(1);
     const golden = HUMANOID_PIPELINE_CERTIFICATION.cases.find(
-      (item) => item.status === "semantic-passed",
+      (item) => item.status === "certified",
     )!;
     expect(
       getPipelineExportAssurance({
@@ -160,7 +198,17 @@ describe("Golden Motion certification", () => {
         solverRevision: golden.solverRevision,
         targetBindingRevision: golden.targetBindingRevision,
       }),
-    ).toBe("beta");
+    ).toBe("certified");
+    expect(
+      getRetargetPipeline(
+        golden.motionFormat,
+        golden.avatarFormat,
+        golden.exportFormat,
+      ),
+    ).toMatchObject({
+      assurance: "beta",
+      outputFormat: golden.exportFormat,
+    });
     expect(
       getPipelineExportAssurance({
         motionFormat: "vmd",

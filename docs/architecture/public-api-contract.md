@@ -12,7 +12,11 @@ registry publication promise.
   structured error contracts. It does not expose `File`, DOM/Worker handles,
   Three.js objects, or glTF-Transform documents.
 - `3dretarget/browser` owns `File`/`AbortSignal` orchestration, the narrow
-  high-level retarget pipeline, and fail-closed Worker execution.
+  high-level retarget pipeline, and fail-closed Worker execution. Pipeline
+  lookup requires the motion, avatar, and output format IDs so assurance is
+  attached to a complete input-to-output combination rather than a format pair.
+  The selected pipeline's `run` method returns the declared output bytes and
+  solved motion; `retarget` remains the solve-only operation.
 - `3dretarget/io` accepts and returns bytes and serializable data only.
 - `3dretarget/node` exposes the byte IO surface plus explicit inline jobs for
   local tools and tests. Inline execution is not re-exported by the browser

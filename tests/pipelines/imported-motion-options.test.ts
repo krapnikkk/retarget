@@ -62,7 +62,8 @@ describe("generic humanoid pipeline options", () => {
     vi.mocked(bindMotionClipToAvatar).mockResolvedValue(solvedClip);
     vi.mocked(runRetargetJob).mockResolvedValue(sourceClip);
     const pipeline = importedMotionToAvatarPipelines.find(
-      (candidate) => candidate.id === "bvh-to-gltf-humanoid",
+      (candidate) =>
+        candidate.id === "bvh-to-gltf-humanoid-to-gltf-animation",
     )!;
     const solveOptions = {
       armOffsetDegrees: 12,
@@ -104,7 +105,7 @@ describe("generic humanoid pipeline options", () => {
 
   it("keeps the Mixamo-to-VRM probe experimental and preserves public errors", async () => {
     const pipeline = importedMotionToAvatarPipelines.find(
-      (candidate) => candidate.id === "mixamo-fbx-to-vrm",
+      (candidate) => candidate.id === "mixamo-fbx-to-vrm-to-vrma",
     )!;
     const input = {
       motionFile: new File([], "walk.fbx"),

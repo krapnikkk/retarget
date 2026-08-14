@@ -50,21 +50,35 @@ describe("adapter registries", () => {
   }
 
   it("keeps the legacy Mixamo FBX to VRM pipeline hidden while stabilizing", () => {
-    expect(getRetargetPipeline("mixamo-fbx", "vrm")).toBeNull();
+    expect(getRetargetPipeline("mixamo-fbx", "vrm", "vrma")).toBeNull();
   });
 
-  it("registers Phase 3 imported motion to avatar pipelines", () => {
+  it("registers one complete beta input-to-output combination", () => {
     expect(RETARGET_PIPELINES.map((pipeline) => pipeline.id)).toEqual([
-      "gltf-animation-to-gltf-humanoid",
+      "gltf-animation-to-gltf-humanoid-to-animated-glb",
     ]);
-    expect(getRetargetPipeline("gltf-animation", "gltf-humanoid")).toMatchObject({
+    expect(
+      getRetargetPipeline(
+        "gltf-animation",
+        "gltf-humanoid",
+        "animated-glb",
+      ),
+    ).toMatchObject({
       availability: "available",
       assurance: "beta",
-      outputFormats: ["gltf-animation"],
+      outputFormat: "animated-glb",
+      run: expect.any(Function),
     });
-    expect(getRetargetPipeline("bvh", "gltf-humanoid")).toBeNull();
-    expect(getRetargetPipeline("actorcore-fbx", "reallusion")).toBeNull();
-    expect(getRetargetPipeline("vmd", "mmd-model")).toBeNull();
+    expect(
+      getRetargetPipeline(
+        "gltf-animation",
+        "gltf-humanoid",
+        "gltf-animation",
+      ),
+    ).toBeNull();
+    expect(getRetargetPipeline("bvh", "gltf-humanoid", "animated-glb")).toBeNull();
+    expect(getRetargetPipeline("actorcore-fbx", "reallusion", "animated-glb")).toBeNull();
+    expect(getRetargetPipeline("vmd", "mmd-model", "animated-pmx")).toBeNull();
   });
 
   it("resolves motion import adapters by bounded file evidence", async () => {
