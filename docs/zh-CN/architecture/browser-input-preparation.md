@@ -1,0 +1,81 @@
+# 浏览器输入准备
+
+[English source](../../architecture/browser-input-preparation.md)
+
+`3dretarget/browser` 通过 `prepareBrowserAssetInput()` 提供宿主文件获取与库内不可信输入准备之间的粗粒度边界。该 API 不负责文件选择器 UI，也不会持久化浏览器权限。
+
+## 所有权边界
+
+宿主负责用户手势，并取得 `File`、可读文件句柄或可读目录句柄。宿主交付该值后，库负责有界遍历、ZIP 展开、主文件选择、路径规范化、sidecar 解析、适配器选择、Worker 隔离与资源释放。
+
+返回结果属于浏览器入口：它包含 `File` 和显式 `dispose()` 方法。根入口、IO、校验与认证入口仍不公开 `File` 或 DOM 契约。
+
+## 内容优先选择
+
+文件扩展名只提供低置信度提示。输入准备 Worker 检查有界内容窗口，并返回包含下列字段的 `selection`：
+
+- `status`：`matched`、`inconclusive` 或 `unsupported`；
+- 可确定时返回稳定的角色、格式 ID、profile ID 与容器；
+- 结构化证据码、警告、置信度与 `bytesInspected`。
+
+`inconclusive` 表示有界证据不足以识别受支持输入；`unsupported` 表示内容已经识别出已知容器，但该容器不支持请求的角色。改名后的有效输入仍可通过签名匹配，而误导性的受支持扩展名本身不能形成匹配。
+
+ZIP 与目录中的主文件选择遵循相同规则。存在零个或多个内容验证通过的主文件时会拒绝输入，不会根据文件名猜测。
+
+## 预算
+
+稳定预算字段如下：
+
+| 字段 | 含义 |
+| --- | --- |
+| `maxProbeBytes` | 用于选择输入的有界证据窗口总量 |
+| `maxEntries` | 最多遍历或归档条目数 |
+| `maxCompressedBytes` | 最大压缩包或输入字节数 |
+| `maxExpandedBytes` | 最大展开总字节数 |
+| `maxSingleEntryBytes` | 单个保留条目的最大字节数 |
+| `maxRetainedBytes` | 保留的 Blob 包资源最大总字节数 |
+| `maxElapsedMs` | 输入准备 Worker 的截止时间 |
+
+调用方可以降低限制。超过库上限的值会被收紧；零、负数、非整数或非有限值以 `PROCESSING_OPTION_INVALID` 失败。读取大块内容或解压前会先检查文件和归档声明大小。
+
+## Worker 与进度
+
+浏览器输入准备复用打包后的 `dist/workers/retarget.worker.js`。无法创建隔离 Worker 时以 `WORKER_UNAVAILABLE` 失败，绝不静默退回主线程处理不可信输入。`AbortSignal` 会终止活动 Worker。
+
+进度使用专用阶段联合：
+
+```text
+discover | read | probe | unpack | resolve | complete
+```
+
+消费方根据阶段标识进行本地化，不解析进度消息。执行顺序取决于输入形态：归档必须先展开，才能探测其中的主文件。
+
+## 资源生命周期
+
+准备后的包保留 Blob 支撑的条目，使现有加载器能够解析相对 sidecar。`collectTransferable()` 创建后续 Worker 作业使用的有界可序列化资源载荷。`dispose()` 释放包上下文、可重复调用，并阻止后续再次收集 transferable。
+
+## 公共示例
+
+```ts
+import { prepareBrowserAssetInput } from "3dretarget/browser";
+
+const prepared = await prepareBrowserAssetInput(file, {
+  role: "motion",
+  signal,
+  onProgress({ phase }) {
+    updateLocalizedProgress(phase);
+  },
+});
+
+try {
+  if (prepared.selection.status !== "matched") {
+    showInputRecovery(prepared.selection);
+    return;
+  }
+  await usePreparedFile(prepared.file);
+} finally {
+  prepared.dispose();
+}
+```
+
+基于范围读取的 Animated GLB 导出与角色—动作配对归档属于独立能力。消费端对等验证和删除下游重复代码不是本契约的验收门禁。

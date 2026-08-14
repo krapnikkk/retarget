@@ -7,14 +7,39 @@ import type {
   RetargetJobResponse,
 } from "@/jobs/types";
 import { isRetargetError } from "@/retarget";
+import { executeBrowserInputPreparation } from "@/browser/input-preparation-worker";
+import {
+  isBrowserInputPreparationRequest,
+  type BrowserInputPreparationRequest,
+  type BrowserInputPreparationResponse,
+} from "@/browser/input-preparation-protocol";
 
 const workerScope = self as DedicatedWorkerGlobalScope;
 
 workerScope.addEventListener(
   "message",
-  async (event: MessageEvent<RetargetJobRequest>) => {
+  async (
+    event: MessageEvent<
+      RetargetJobRequest | BrowserInputPreparationRequest
+    >,
+  ) => {
     const request = event.data;
     try {
+      if (isBrowserInputPreparationRequest(request)) {
+        const result = await executeBrowserInputPreparation(
+          request,
+          (phase, progress) => {
+            post({
+              jobId: request.jobId,
+              type: "progress",
+              phase,
+              progress,
+            });
+          },
+        );
+        post({ jobId: request.jobId, type: "success", result });
+        return;
+      }
       const result = await executeRetargetJob(request, (phase, progress) => {
         post({
           jobId: request.jobId,
@@ -37,7 +62,10 @@ workerScope.addEventListener(
   },
 );
 
-function post(message: RetargetJobResponse, transfer: Transferable[] = []) {
+function post(
+  message: RetargetJobResponse | BrowserInputPreparationResponse,
+  transfer: Transferable[] = [],
+) {
   workerScope.postMessage(message, transfer);
 }
 

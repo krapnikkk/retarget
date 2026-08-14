@@ -6,12 +6,12 @@ export const vrmAvatarAdapter = {
   label: "VRM Avatar",
   profileId: "vrm-humanoid",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "gltf",
       extensions: [".vrm"],
       profile: "vrm-humanoid",
       requiredExtensions: ["VRMC_vrm", "VRM"],
       role: "avatar",
-    }),
+    }, options),
 } satisfies AvatarImportAdapter;

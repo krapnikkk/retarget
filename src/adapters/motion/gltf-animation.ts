@@ -8,13 +8,13 @@ export const gltfAnimationMotionAdapter = {
   label: "glTF / GLB Animation",
   profileId: "generic-gltf-humanoid",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "gltf",
       extensions: [".glb", ".gltf"],
       profile: "generic-gltf-humanoid",
       role: "motion",
-    }),
+    }, options),
   async importMotion(file) {
     assertMotionFileWithinLimit(file);
     return importGLTFAnimation(

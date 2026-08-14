@@ -1,25 +1,45 @@
-import type { ImportAdapterProbe } from "@/adapters/types";
+import type {
+  ImportAdapterProbe,
+  ImportAdapterProbeOptions,
+  ImportProbeEvidenceDetail,
+} from "@/adapters/types";
 import { getRigProfile, type RigProfileId } from "@/profiles";
 
-const MAX_PROBE_BYTES = 4 * 1024 * 1024;
+export const MAX_IMPORT_PROBE_BYTES = 4 * 1024 * 1024;
 export const MIN_IMPORT_PROBE_CONFIDENCE = 0.35;
 const GLB_MAGIC = 0x46546c67;
 const GLB_JSON_CHUNK = 0x4e4f534a;
-const inspectionCache = new WeakMap<File, Promise<FileInspection>>();
+const inspectionCache = new WeakMap<
+  File,
+  Map<number, Promise<FileInspection>>
+>();
 
-type ProbeRole = "avatar" | "motion";
-type ProbeContainer = "bvh" | "fbx" | "gltf" | "mmd-model" | "vmd";
+export type ImportProbeRole = "avatar" | "motion";
+export type ImportProbeContainer =
+  | "bvh"
+  | "fbx"
+  | "gltf"
+  | "mmd-model"
+  | "vmd";
+
+export type ImportContentInspection = {
+  bytesInspected: number;
+  container: ImportProbeContainer | null;
+  evidence: ImportProbeEvidenceDetail[];
+  warnings: string[];
+};
 
 type ProbeConfig = {
-  container: ProbeContainer;
+  container: ImportProbeContainer;
   extensions: readonly string[];
   profile: RigProfileId;
-  role: ProbeRole;
+  role: ImportProbeRole;
   requiredExtensions?: readonly string[];
   ecosystemMarkers?: readonly string[];
 };
 
 type FileInspection = {
+  binaryGLTF: boolean;
   bytesRead: number;
   fileSize: number;
   gltf: {
@@ -36,21 +56,38 @@ type FileInspection = {
 export async function probeImportAdapter(
   file: File,
   config: ProbeConfig,
+  options: ImportAdapterProbeOptions = {},
 ): Promise<ImportAdapterProbe> {
   const warnings: string[] = [];
   const evidence: string[] = [];
+  const evidenceDetails: ImportProbeEvidenceDetail[] = [];
+  const addEvidence = (
+    code: ImportProbeEvidenceDetail["code"],
+    message: string,
+  ) => {
+    evidence.push(message);
+    evidenceDetails.push({ code, message });
+  };
   let maximumConfidence = 1;
   const lowercaseName = file.name.toLowerCase();
   const extensionMatches = config.extensions.some((extension) =>
     lowercaseName.endsWith(extension),
   );
 
-  const inspection = await inspectFile(file);
+  const inspection = await inspectFile(file, options.maxBytes);
+  const hasRequiredExtensionEvidence = Boolean(
+    config.requiredExtensions?.some((extension) =>
+      inspection.gltf?.extensions.has(extension),
+    ),
+  );
   warnings.push(...inspection.warnings);
   let confidence = 0;
   if (extensionMatches) {
     confidence += 0.05;
-    evidence.push(`extension hint matches ${config.extensions.join(", ")}`);
+    addEvidence(
+      "extension-hint",
+      `extension hint matches ${config.extensions.join(", ")}`,
+    );
   } else {
     warnings.push(`extension hint does not match ${config.extensions.join(", ")}`);
   }
@@ -58,25 +95,37 @@ export async function probeImportAdapter(
   const signature = detectContainerSignature(config.container, inspection);
   if (signature) {
     confidence += signature.confidence;
-    evidence.push(signature.evidence);
+    addEvidence("container-signature", signature.evidence);
   } else {
     maximumConfidence = Math.min(maximumConfidence, MIN_IMPORT_PROBE_CONFIDENCE - 0.01);
     warnings.push(`${config.container} content signature was not found`);
   }
 
   if (inspection.gltf) {
-    evidence.push("glTF declares +Y up, +Z forward, and meter units");
+    addEvidence(
+      "coordinate-convention",
+      "glTF declares +Y up, +Z forward, and meter units",
+    );
     if (config.role === "motion") {
       if (inspection.gltf.animations > 0) {
         confidence += 0.15;
-        evidence.push(`${inspection.gltf.animations} animation(s) declared`);
+        addEvidence(
+          "declared-animation",
+          `${inspection.gltf.animations} animation(s) declared`,
+        );
       } else {
+        if (!hasRequiredExtensionEvidence) {
+          maximumConfidence = Math.min(maximumConfidence, 0.34);
+        }
         warnings.push("glTF does not declare an animation");
       }
     } else if (inspection.gltf.hasSkin) {
       confidence += 0.15;
-      evidence.push("glTF declares a skin");
+      addEvidence("declared-skin", "glTF declares a skin");
     } else {
+      if (!hasRequiredExtensionEvidence) {
+        maximumConfidence = Math.min(maximumConfidence, 0.34);
+      }
       warnings.push("glTF does not declare a skin");
     }
   }
@@ -87,7 +136,10 @@ export async function probeImportAdapter(
     );
     if (matched.length > 0) {
       confidence += 0.35;
-      evidence.push(`extension evidence: ${matched.join(", ")}`);
+      addEvidence(
+        "gltf-extension",
+        `extension evidence: ${matched.join(", ")}`,
+      );
     } else {
       maximumConfidence = Math.min(maximumConfidence, 0.34);
       warnings.push(
@@ -102,7 +154,10 @@ export async function probeImportAdapter(
     );
     if (markers.length > 0) {
       confidence += 0.25;
-      evidence.push(`ecosystem markers: ${markers.join(", ")}`);
+      addEvidence(
+        "ecosystem-marker",
+        `ecosystem markers: ${markers.join(", ")}`,
+      );
     } else {
       maximumConfidence = Math.min(maximumConfidence, 0.34);
       warnings.push("ecosystem-specific node evidence was not found");
@@ -118,12 +173,18 @@ export async function probeImportAdapter(
     if (required.length > 0 && matched.length > 0) {
       const coverage = matched.length / required.length;
       confidence += Math.min(coverage * 0.3, 0.3);
-      evidence.push(
+      addEvidence(
+        "profile-bone-coverage",
         `required bone alias coverage ${matched.length}/${required.length}`,
       );
       const hasLeft = matched.some((bone) => bone.humanoid.startsWith("left"));
       const hasRight = matched.some((bone) => bone.humanoid.startsWith("right"));
-      if (hasLeft && hasRight) evidence.push("left/right bone evidence is symmetric");
+      if (hasLeft && hasRight) {
+        addEvidence(
+          "profile-symmetry",
+          "left/right bone evidence is symmetric",
+        );
+      }
       if (coverage < 0.7) warnings.push("required bone alias coverage is below 70%");
     } else if (config.container === "fbx" || config.container === "gltf") {
       warnings.push("no required humanoid bone aliases were found");
@@ -131,43 +192,102 @@ export async function probeImportAdapter(
   }
 
   if (config.container === "fbx") {
-    if (/UpAxis/i.test(inspection.text)) evidence.push("FBX UpAxis metadata found");
+    if (/UpAxis/i.test(inspection.text)) {
+      addEvidence("fbx-axis-metadata", "FBX UpAxis metadata found");
+    }
     else warnings.push("FBX UpAxis metadata was not found in the probe window");
-    if (/FrontAxis/i.test(inspection.text)) evidence.push("FBX FrontAxis metadata found");
+    if (/FrontAxis/i.test(inspection.text)) {
+      addEvidence("fbx-axis-metadata", "FBX FrontAxis metadata found");
+    }
     else warnings.push("FBX FrontAxis metadata was not found in the probe window");
     if (/UnitScaleFactor/i.test(inspection.text)) {
-      evidence.push("FBX UnitScaleFactor metadata found");
+      addEvidence("fbx-unit-metadata", "FBX UnitScaleFactor metadata found");
     } else {
       warnings.push("FBX unit metadata was not found in the probe window");
     }
   }
 
   return {
+    bytesInspected: inspection.bytesRead,
     confidence: Math.min(Number(confidence.toFixed(3)), maximumConfidence),
+    contentSignature: Boolean(signature),
     profile: config.profile,
     evidence,
+    evidenceDetails,
     warnings,
   };
 }
 
-function inspectFile(file: File) {
-  const cached = inspectionCache.get(file);
+export async function inspectImportContent(
+  file: File,
+  options: ImportAdapterProbeOptions = {},
+): Promise<ImportContentInspection> {
+  const inspection = await inspectFile(file, options.maxBytes);
+  const containers: ImportProbeContainer[] = [
+    "gltf",
+    "fbx",
+    "bvh",
+    "vmd",
+    "mmd-model",
+  ];
+  const detected = containers
+    .map((container) => ({
+      container,
+      signature: detectContainerSignature(container, inspection),
+    }))
+    .find((candidate) => candidate.signature);
+  return {
+    bytesInspected: inspection.bytesRead,
+    container: detected?.container ?? null,
+    evidence: detected?.signature
+      ? [{ code: "container-signature", message: detected.signature.evidence }]
+      : [],
+    warnings: [...inspection.warnings],
+  };
+}
+
+function inspectFile(file: File, requestedMaxBytes?: number) {
+  const maxBytes = resolveProbeByteLimit(requestedMaxBytes);
+  let cachedByLimit = inspectionCache.get(file);
+  if (!cachedByLimit) {
+    cachedByLimit = new Map();
+    inspectionCache.set(file, cachedByLimit);
+  }
+  const cached = cachedByLimit.get(maxBytes);
   if (cached) return cached;
-  const inspection = createInspection(file);
-  inspectionCache.set(file, inspection);
+  const inspection = createInspection(file, maxBytes);
+  cachedByLimit.set(maxBytes, inspection);
   return inspection;
 }
 
-async function createInspection(file: File): Promise<FileInspection> {
-  const binaryGLTF = /\.(?:glb|vrm|vrma)$/i.test(file.name);
-  const bytesRead = Math.min(file.size, binaryGLTF ? 20 : MAX_PROBE_BYTES);
-  const bytes = new Uint8Array(await file.slice(0, bytesRead).arrayBuffer());
+async function createInspection(
+  file: File,
+  maxProbeBytes: number,
+): Promise<FileInspection> {
+  const headerByteLength = Math.min(file.size, maxProbeBytes, 20);
+  const header = new Uint8Array(
+    await file.slice(0, headerByteLength).arrayBuffer(),
+  );
+  const headerView = new DataView(
+    header.buffer,
+    header.byteOffset,
+    header.byteLength,
+  );
+  const binaryGLTF =
+    header.byteLength >= 4 && headerView.getUint32(0, true) === GLB_MAGIC;
+  const requestedBytes = binaryGLTF && header.byteLength >= 20
+    ? Math.min(20 + headerView.getUint32(12, true), maxProbeBytes)
+    : maxProbeBytes;
+  const bytesRead = Math.min(file.size, requestedBytes);
+  const bytes = bytesRead === header.byteLength
+    ? header
+    : new Uint8Array(await file.slice(0, bytesRead).arrayBuffer());
   const text = new TextDecoder().decode(bytes);
   const warnings =
-    file.size > MAX_PROBE_BYTES
-      ? [`probe inspected the first ${MAX_PROBE_BYTES} of ${file.size} bytes`]
+    file.size > maxProbeBytes
+      ? [`probe inspected the first ${maxProbeBytes} of ${file.size} bytes`]
       : [];
-  const gltf = await inspectGLTF(file, bytes, text, warnings);
+  const gltf = inspectGLTF(bytes, text, warnings, maxProbeBytes);
   const tokenSource = [text, ...(gltf?.nodeNames ?? [])].join(" ");
   const normalizedTokens = new Set(
     tokenSource
@@ -175,28 +295,37 @@ async function createInspection(file: File): Promise<FileInspection> {
       .map(normalizeMarker)
       .filter((token) => token.length > 1),
   );
-  return { bytesRead, fileSize: file.size, gltf, normalizedTokens, text, warnings };
+  return {
+    binaryGLTF,
+    bytesRead,
+    fileSize: file.size,
+    gltf,
+    normalizedTokens,
+    text,
+    warnings,
+  };
 }
 
-async function inspectGLTF(
-  file: File,
+function inspectGLTF(
   bytes: Uint8Array,
   text: string,
   warnings: string[],
+  maxProbeBytes: number,
 ) {
   let json: unknown = null;
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   if (bytes.byteLength >= 20 && view.getUint32(0, true) === GLB_MAGIC) {
     const jsonLength = view.getUint32(12, true);
     const chunkType = view.getUint32(16, true);
-    if (chunkType !== GLB_JSON_CHUNK || jsonLength > MAX_PROBE_BYTES) {
+    if (chunkType !== GLB_JSON_CHUNK || jsonLength > maxProbeBytes) {
       warnings.push("glTF JSON chunk is missing or exceeds the probe budget");
       return null;
     }
-    const jsonBytes =
-      20 + jsonLength <= bytes.byteLength
-        ? bytes.subarray(20, 20 + jsonLength)
-        : new Uint8Array(await file.slice(20, 20 + jsonLength).arrayBuffer());
+    if (20 + jsonLength > bytes.byteLength) {
+      warnings.push("glTF JSON chunk exceeds the inspected probe window");
+      return null;
+    }
+    const jsonBytes = bytes.subarray(20, 20 + jsonLength);
     json = parseJSON(new TextDecoder().decode(jsonBytes), warnings);
   } else if (/^\s*\{/.test(text)) {
     json = parseJSON(text, warnings);
@@ -237,11 +366,16 @@ function parseJSON(text: string, warnings: string[]) {
 }
 
 function detectContainerSignature(
-  container: ProbeContainer,
+  container: ImportProbeContainer,
   inspection: FileInspection,
 ) {
-  if (container === "gltf" && inspection.gltf) {
-    return { confidence: 0.2, evidence: "glTF container and JSON chunk parsed" };
+  if (container === "gltf" && (inspection.gltf || inspection.binaryGLTF)) {
+    return {
+      confidence: inspection.gltf ? 0.2 : 0.15,
+      evidence: inspection.gltf
+        ? "glTF container and JSON chunk parsed"
+        : "glTF binary container signature found",
+    };
   }
   if (
     container === "fbx" &&
@@ -278,4 +412,10 @@ function inspectionHasMarker(inspection: FileInspection, marker: string) {
 
 function normalizeMarker(value: string) {
   return value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+}
+
+function resolveProbeByteLimit(value: number | undefined) {
+  if (value === undefined) return MAX_IMPORT_PROBE_BYTES;
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.min(Math.floor(value), MAX_IMPORT_PROBE_BYTES);
 }

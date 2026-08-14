@@ -8,13 +8,13 @@ export const vmdMotionAdapter = {
   label: "VMD Body Motion",
   profileId: "mmd-body",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "vmd",
       extensions: [".vmd"],
       profile: "mmd-body",
       role: "motion",
-    }),
+    }, options),
   async importMotion(file) {
     assertMotionFileWithinLimit(file);
     return importVMD(new Uint8Array(await file.arrayBuffer()), file.name);

@@ -6,11 +6,11 @@ export const mmdModelAvatarAdapter = {
   label: "MMD PMX / PMD Avatar",
   profileId: "mmd-body",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "mmd-model",
       extensions: [".pmx", ".pmd"],
       profile: "mmd-body",
       role: "avatar",
-    }),
+    }, options),
 } satisfies AvatarImportAdapter;

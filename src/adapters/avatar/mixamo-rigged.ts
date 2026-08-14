@@ -6,12 +6,12 @@ export const mixamoRiggedAvatarAdapter = {
   label: "Mixamo-rigged Avatar",
   profileId: "mixamo",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: file.name.toLowerCase().endsWith(".fbx") ? "fbx" : "gltf",
       ecosystemMarkers: ["mixamorigHips", "mixamorig:LeftArm"],
       extensions: [".fbx", ".glb"],
       profile: "mixamo",
       role: "avatar",
-    }),
+    }, options),
 } satisfies AvatarImportAdapter;

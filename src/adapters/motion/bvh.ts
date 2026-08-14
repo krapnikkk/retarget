@@ -8,13 +8,13 @@ export const bvhMotionAdapter = {
   label: "BVH Motion",
   profileId: "bvh-humanoid",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "bvh",
       extensions: [".bvh"],
       profile: "bvh-humanoid",
       role: "motion",
-    }),
+    }, options),
   async importMotion(file) {
     assertMotionFileWithinLimit(file);
     return importBVH(new Uint8Array(await file.arrayBuffer()), file.name);

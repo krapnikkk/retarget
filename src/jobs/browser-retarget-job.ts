@@ -32,15 +32,8 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
   };
   if (signal?.aborted) throw createAbortError();
 
-  if (typeof Worker === "undefined") {
-    throw new RetargetError("WORKER_UNAVAILABLE");
-  }
-
   return new Promise<RetargetJobResult<TTask>>((resolve, reject) => {
-    const worker = new Worker(
-      new URL("../workers/retarget.worker.js", import.meta.url),
-      { name: `retarget-${request.jobId}`, type: "module" },
-    );
+    const worker = createRetargetWorker(request.jobId);
     const timeout = window.setTimeout(() => {
       worker.terminate();
       reject(
@@ -89,6 +82,16 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     });
     worker.postMessage(request, collectTaskTransfers(task));
   });
+}
+
+export function createRetargetWorker(jobId: string) {
+  if (typeof Worker === "undefined") {
+    throw new RetargetError("WORKER_UNAVAILABLE");
+  }
+  return new Worker(
+    new URL("../workers/retarget.worker.js", import.meta.url),
+    { name: `retarget-${jobId}`, type: "module" },
+  );
 }
 
 // Explicit non-isolated execution exists for local tooling and unit tests. It

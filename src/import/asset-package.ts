@@ -20,6 +20,7 @@ import {
 } from "@/jobs/asset-memory-policy";
 import { readBlobArrayBufferWithSignal } from "@/browser/read-file";
 import { DEFAULT_PARSE_BUDGET } from "./parse-budget";
+import { RetargetError } from "@/retarget/errors";
 
 export { releaseAssetPackage } from "./asset-package-memory";
 
@@ -34,9 +35,18 @@ export type ReadableDirectoryHandle = Pick<
   values(): AsyncIterable<FileSystemHandle>;
 };
 
-type AssetDirectoryLimits = {
+export type AssetPreparationLimits = {
   maxEntries?: number;
+  maxCompressedBytes?: number;
+  maxExpandedBytes?: number;
+  maxSingleEntryBytes?: number;
+  maxRetainedBytes?: number;
+  /** @deprecated Use maxExpandedBytes. */
   maxTotalBytes?: number;
+  selectPrimary?: (
+    entries: readonly PreparedAssetPackageEntry[],
+    role: AssetPackageRole,
+  ) => Promise<string>;
 };
 
 export type AssetPackageReport = {
@@ -54,71 +64,139 @@ export type TransferableAssetPackage = {
   resources: Record<string, ArrayBuffer>;
 };
 
-type AssetPackageEntry = {
+export type PreparedAssetPackageEntry = {
   name: string;
   blob: Blob;
   byteLength: number;
+};
+
+type ResolvedAssetPreparationLimits = {
+  maxEntries: number;
+  maxCompressedBytes: number;
+  maxExpandedBytes: number;
+  maxSingleEntryBytes: number;
+  maxRetainedBytes: number;
+  selectPrimary?: AssetPreparationLimits["selectPrimary"];
 };
 
 const AVATAR_EXTENSIONS = [".vrm", ".glb", ".gltf", ".fbx", ".pmx", ".pmd"];
 const MOTION_EXTENSIONS = [".vrma", ".glb", ".gltf", ".fbx", ".bvh", ".vmd"];
 const MAX_DIRECTORY_ENTRIES = 512;
 
-export async function prepareAssetInput(file: File, role: AssetPackageRole) {
-  if (!file.name.toLowerCase().endsWith(".zip")) {
+export async function prepareAssetInput(
+  file: File,
+  role: AssetPackageRole,
+  limits: AssetPreparationLimits = {},
+) {
+  if (!(await isZipAssetPackage(file))) {
     return { file, report: null } as const;
   }
 
-  const entries = (await readZipBlobArchiveAsync(
-    file,
-    {
-      maxEntryUncompressedBytes: getMaxPackageBytes(role),
-      maxTotalUncompressedBytes: getMaxPackageBytes(role),
-    },
-  )).filter(isUsefulBlobEntry);
-  return prepareAssetEntries(entries, role, "zip", file.name);
+  const resolvedLimits = resolveAssetPreparationLimits(role, limits);
+  assertInputByteLength(
+    file.size,
+    resolvedLimits.maxCompressedBytes,
+    `compressed-package:${file.name}`,
+  );
+
+  let archiveEntries: PreparedAssetPackageEntry[];
+  try {
+    archiveEntries = await readZipBlobArchiveAsync(
+      file,
+      {
+        maxEntries: resolvedLimits.maxEntries,
+        maxEntryUncompressedBytes: Math.min(
+          resolvedLimits.maxSingleEntryBytes,
+          resolvedLimits.maxRetainedBytes,
+        ),
+        maxTotalUncompressedBytes: Math.min(
+          resolvedLimits.maxExpandedBytes,
+          resolvedLimits.maxRetainedBytes,
+        ),
+      },
+    );
+  } catch (cause) {
+    if (cause instanceof RetargetError) throw cause;
+    const message = cause instanceof Error
+      ? cause.message
+      : "The ZIP package is invalid.";
+    const budgetFailure = /(?:compression ratio|more than \d+ entries|size limit)/i.test(
+      message,
+    );
+    throw new RetargetError(
+      budgetFailure ? "FILE_TOO_LARGE" : "PACKAGE_INVALID",
+      {
+        cause,
+        details: { sourceName: file.name },
+        message,
+      },
+    );
+  }
+  const entries = archiveEntries.filter(isUsefulBlobEntry);
+  return prepareAssetEntries(
+    entries,
+    role,
+    "zip",
+    file.name,
+    resolvedLimits,
+  );
 }
 
 export async function prepareAssetDirectory(
   directory: ReadableDirectoryHandle,
   role: AssetPackageRole,
-  limits: AssetDirectoryLimits = {},
+  limits: AssetPreparationLimits = {},
 ) {
-  const entries: AssetPackageEntry[] = [];
+  const entries: PreparedAssetPackageEntry[] = [];
+  const resolvedLimits = resolveAssetPreparationLimits(role, limits);
   const state = {
     discoveredEntries: 0,
     expandedBytes: 0,
-    maxEntries: resolveDirectoryLimit(
-      limits.maxEntries,
-      MAX_DIRECTORY_ENTRIES,
-    ),
-    maxTotalBytes: resolveDirectoryLimit(
-      limits.maxTotalBytes,
-      getMaxPackageBytes(role),
+    maxEntries: resolvedLimits.maxEntries,
+    maxSingleEntryBytes: resolvedLimits.maxSingleEntryBytes,
+    maxTotalBytes: Math.min(
+      resolvedLimits.maxExpandedBytes,
+      resolvedLimits.maxRetainedBytes,
     ),
   };
   await collectDirectoryEntries(directory, "", entries, state);
-  return prepareAssetEntries(entries, role, "directory", directory.name);
+  return prepareAssetEntries(
+    entries,
+    role,
+    "directory",
+    directory.name,
+    resolvedLimits,
+  );
 }
 
 async function prepareAssetEntries(
-  entries: AssetPackageEntry[],
+  entries: PreparedAssetPackageEntry[],
   role: AssetPackageRole,
   sourceKind: AssetPackageSourceKind,
   sourceName: string,
+  limits: ResolvedAssetPreparationLimits,
 ) {
   const extensions = role === "avatar" ? AVATAR_EXTENSIONS : MOTION_EXTENSIONS;
-  const primaryEntries = entries.filter((entry) =>
-    extensions.some((extension) => entry.name.toLowerCase().endsWith(extension)),
-  );
+  const selectedPrimaryPath = limits.selectPrimary
+    ? normalizePackageEntryPath(await limits.selectPrimary(entries, role))
+    : null;
+  const primaryEntries = selectedPrimaryPath
+    ? entries.filter(
+        (entry) => normalizePackageEntryPath(entry.name) === selectedPrimaryPath,
+      )
+    : entries.filter((entry) =>
+        extensions.some((extension) => entry.name.toLowerCase().endsWith(extension)),
+      );
 
   if (primaryEntries.length !== 1) {
     const sourceLabel = sourceKind === "zip" ? "ZIP package" : "Selected folder";
-    throw new Error(
-      primaryEntries.length === 0
-        ? `${sourceLabel} does not contain a supported ${role} file.`
-        : `${sourceLabel} must contain exactly one supported ${role} file; found ${primaryEntries.length}.`,
-    );
+    throw new RetargetError("PACKAGE_INVALID", {
+      details: { primaryCount: primaryEntries.length, role, sourceKind, sourceName },
+      message:
+        primaryEntries.length === 0
+          ? `${sourceLabel} does not contain a supported ${role} file.`
+          : `${sourceLabel} must contain exactly one supported ${role} file; found ${primaryEntries.length}.`,
+    });
   }
 
   const primary = primaryEntries[0]!;
@@ -126,34 +204,26 @@ async function prepareAssetEntries(
     (sum, entry) => sum + entry.byteLength,
     0,
   );
+  assertInputByteLength(
+    expandedBytes,
+    limits.maxExpandedBytes,
+    `expanded-package:${sourceName}`,
+  );
+  assertInputByteLength(
+    expandedBytes,
+    limits.maxRetainedBytes,
+    `retained-package:${sourceName}`,
+  );
   if (
+    !limits.selectPrimary &&
     role === "avatar" &&
     !/\.(?:glb|vrm)$/i.test(primary.name) &&
     expandedBytes > 200 * 1024 * 1024
   ) {
-    throw new Error(
-      "Only GLB and VRM avatar packages can use the segmented large-asset path.",
-    );
-  }
-  const resources = new Map<string, Blob>();
-  const packageEntries = new Map<string, StoredAssetPackageEntry>();
-  const uniqueBasenames = new Map<string, Blob | null>();
-  for (const entry of entries) {
-    const normalized = normalizeResourcePath(entry.name);
-    const resourceKey = normalized.toLowerCase();
-    if (resources.has(resourceKey)) {
-      throw new Error(`Resource collection contains a duplicate path: ${entry.name}`);
-    }
-    resources.set(resourceKey, entry.blob);
-    packageEntries.set(resourceKey, {
-      name: normalized,
-      blob: entry.blob,
+    throw new RetargetError("FILE_TOO_LARGE", {
+      details: { expandedBytes, primaryPath: primary.name },
+      message: "Only GLB and VRM avatar packages can use the segmented large-asset path.",
     });
-    const basename = normalized.split("/").at(-1)!.toLowerCase();
-    uniqueBasenames.set(
-      basename,
-      uniqueBasenames.has(basename) ? null : entry.blob,
-    );
   }
 
   const primaryFile = new File([primary.blob], primary.name.split("/").at(-1)!, {
@@ -166,35 +236,40 @@ async function prepareAssetEntries(
     entryCount: entries.length,
     resourceCount: Math.max(0, entries.length - 1),
     expandedBytes,
-    missingResources: await collectMissingPrimaryResources(primary, resources),
+    missingResources: [],
   };
-  storeAssetPackageContext(primaryFile, {
-    report,
-    entries: packageEntries,
-    resources,
-    uniqueBasenames,
-  });
+  const context = createStoredAssetPackageContext(report, entries);
+  report.missingResources = await collectMissingPrimaryResources(
+    primary,
+    context.resources,
+    limits.maxSingleEntryBytes,
+  );
+  storeAssetPackageContext(primaryFile, context);
   return { file: primaryFile, report } as const;
 }
 
 async function collectDirectoryEntries(
   directory: ReadableDirectoryHandle,
   prefix: string,
-  entries: AssetPackageEntry[],
+  entries: PreparedAssetPackageEntry[],
   state: {
     discoveredEntries: number;
     expandedBytes: number;
     maxEntries: number;
+    maxSingleEntryBytes: number;
     maxTotalBytes: number;
   },
 ) {
   for await (const handle of directory.values()) {
-    const path = prefix ? `${prefix}/${handle.name}` : handle.name;
+    const path = normalizePackageEntryPath(
+      prefix ? `${prefix}/${handle.name}` : handle.name,
+    );
     state.discoveredEntries += 1;
     if (state.discoveredEntries > state.maxEntries) {
-      throw new Error(
-        `Selected folder contains more than ${state.maxEntries} entries.`,
-      );
+      throw new RetargetError("PACKAGE_INVALID", {
+        details: { entryCount: state.discoveredEntries, limit: state.maxEntries },
+        message: `Selected folder contains more than ${state.maxEntries} entries.`,
+      });
     }
     if (handle.kind === "directory") {
       await collectDirectoryEntries(
@@ -211,11 +286,20 @@ async function collectDirectoryEntries(
     }
 
     const file = await (handle as FileSystemFileHandle).getFile();
+    assertInputByteLength(
+      file.size,
+      state.maxSingleEntryBytes,
+      `package-entry:${path}`,
+    );
     state.expandedBytes += file.size;
     if (state.expandedBytes > state.maxTotalBytes) {
-      throw new Error(
-        `Selected folder exceeds the ${state.maxTotalBytes}-byte local processing limit.`,
-      );
+      throw new RetargetError("FILE_TOO_LARGE", {
+        details: {
+          byteLength: state.expandedBytes,
+          maxBytes: state.maxTotalBytes,
+        },
+        message: `Selected folder exceeds the ${state.maxTotalBytes}-byte local processing limit.`,
+      });
     }
     entries.push({
       name: normalizeResourcePath(path),
@@ -271,6 +355,17 @@ export function listAssetPackageEntries(file: File) {
     return null;
   }
   return [...context.entries.values()].map((entry) => ({ ...entry }));
+}
+
+export function restoreAssetPackageContext(
+  file: File,
+  report: AssetPackageReport,
+  entries: readonly PreparedAssetPackageEntry[],
+) {
+  storeAssetPackageContext(
+    file,
+    createStoredAssetPackageContext(report, entries),
+  );
 }
 
 export async function collectTransferableAssetPackage(
@@ -435,23 +530,49 @@ export function createAssetResourceScope(file: File): AssetResourceScope {
 }
 
 async function collectMissingPrimaryResources(
-  primary: AssetPackageEntry,
+  primary: PreparedAssetPackageEntry,
   resources: ReadonlyMap<string, Blob>,
+  maxBytes: number,
 ) {
   const lowerName = primary.name.toLowerCase();
+  const signatureBytes = new Uint8Array(
+    await primary.blob.slice(0, Math.min(primary.blob.size, 64)).arrayBuffer(),
+  );
+  const signatureText = new TextDecoder().decode(signatureBytes).trimStart();
+  const gltfJSON = lowerName.endsWith(".gltf") || signatureText.startsWith("{");
+  const pmx = lowerName.endsWith(".pmx") || signatureText.startsWith("PMX ");
+  const pmd = lowerName.endsWith(".pmd") || signatureText.startsWith("Pmd");
   let referencedUris: string[] = [];
-  if (lowerName.endsWith(".gltf")) {
-    const primaryBytes = new Uint8Array(await primary.blob.arrayBuffer());
+  if (gltfJSON) {
+    const primaryBytes = new Uint8Array(
+      await readBlobArrayBufferWithSignal(
+        primary.blob,
+        maxBytes,
+        `package-primary:${primary.name}`,
+      ),
+    );
     const json = JSON.parse(new TextDecoder().decode(primaryBytes)) as Record<
       string,
       unknown
     >;
     referencedUris = collectGLTFExternalUris(json);
-  } else if (lowerName.endsWith(".pmx")) {
-    const primaryBytes = new Uint8Array(await primary.blob.arrayBuffer());
+  } else if (pmx) {
+    const primaryBytes = new Uint8Array(
+      await readBlobArrayBufferWithSignal(
+        primary.blob,
+        maxBytes,
+        `package-primary:${primary.name}`,
+      ),
+    );
     referencedUris = collectPMXTextureUris(primaryBytes);
-  } else if (lowerName.endsWith(".pmd")) {
-    const primaryBytes = new Uint8Array(await primary.blob.arrayBuffer());
+  } else if (pmd) {
+    const primaryBytes = new Uint8Array(
+      await readBlobArrayBufferWithSignal(
+        primary.blob,
+        maxBytes,
+        `package-primary:${primary.name}`,
+      ),
+    );
     referencedUris = collectPMDTextureUris(primaryBytes);
   }
   const primaryDirectory = dirname(primary.name);
@@ -586,7 +707,7 @@ function collectGLTFExternalUris(json: Record<string, unknown>) {
   return [...uris];
 }
 
-function isUsefulBlobEntry(entry: AssetPackageEntry) {
+function isUsefulBlobEntry(entry: PreparedAssetPackageEntry) {
   return isUsefulPath(entry.name);
 }
 
@@ -606,6 +727,91 @@ function resolveDirectoryLimit(value: number | undefined, maximum: number) {
     return maximum;
   }
   return Math.min(Math.floor(value), maximum);
+}
+
+function resolveAssetPreparationLimits(
+  role: AssetPackageRole,
+  limits: AssetPreparationLimits,
+): ResolvedAssetPreparationLimits {
+  const maximumBytes = getMaxPackageBytes(role);
+  return {
+    maxEntries: resolveDirectoryLimit(limits.maxEntries, MAX_DIRECTORY_ENTRIES),
+    maxCompressedBytes: resolveDirectoryLimit(
+      limits.maxCompressedBytes,
+      maximumBytes,
+    ),
+    maxExpandedBytes: resolveDirectoryLimit(
+      limits.maxExpandedBytes ?? limits.maxTotalBytes,
+      maximumBytes,
+    ),
+    maxSingleEntryBytes: resolveDirectoryLimit(
+      limits.maxSingleEntryBytes,
+      maximumBytes,
+    ),
+    maxRetainedBytes: resolveDirectoryLimit(
+      limits.maxRetainedBytes,
+      maximumBytes,
+    ),
+    selectPrimary: limits.selectPrimary,
+  };
+}
+
+function createStoredAssetPackageContext(
+  report: AssetPackageReport,
+  entries: readonly PreparedAssetPackageEntry[],
+) {
+  const resources = new Map<string, Blob>();
+  const packageEntries = new Map<string, StoredAssetPackageEntry>();
+  const uniqueBasenames = new Map<string, Blob | null>();
+  for (const entry of entries) {
+    const normalized = normalizePackageEntryPath(entry.name);
+    const resourceKey = normalized.toLowerCase();
+    if (resources.has(resourceKey)) {
+      throw new RetargetError("PACKAGE_INVALID", {
+        details: { path: entry.name },
+        message: `Resource collection contains a duplicate path: ${entry.name}`,
+      });
+    }
+    resources.set(resourceKey, entry.blob);
+    packageEntries.set(resourceKey, {
+      name: normalized,
+      blob: entry.blob,
+    });
+    const basename = normalized.split("/").at(-1)!.toLowerCase();
+    uniqueBasenames.set(
+      basename,
+      uniqueBasenames.has(basename) ? null : entry.blob,
+    );
+  }
+  return { report, entries: packageEntries, resources, uniqueBasenames };
+}
+
+function normalizePackageEntryPath(value: string) {
+  if (!value || value.includes("\0")) {
+    throw new RetargetError("PACKAGE_INVALID", {
+      details: { path: value },
+      message: "Asset package contains an invalid empty or NUL path.",
+    });
+  }
+  const path = value.replace(/\\/g, "/");
+  if (
+    path.startsWith("/") ||
+    path.startsWith("//") ||
+    /^[a-zA-Z]:\//.test(path)
+  ) {
+    throw new RetargetError("PACKAGE_INVALID", {
+      details: { path: value },
+      message: `Asset package contains an unsafe path: ${value}`,
+    });
+  }
+  const segments = path.split("/");
+  if (segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    throw new RetargetError("PACKAGE_INVALID", {
+      details: { path: value },
+      message: `Asset package contains an unsafe path: ${value}`,
+    });
+  }
+  return segments.join("/");
 }
 
 function normalizeResourcePath(value: string) {
@@ -658,4 +864,15 @@ function inferMimeType(filename: string) {
     return "model/gltf-binary";
   }
   return "application/octet-stream";
+}
+
+export async function isZipAssetPackage(file: File) {
+  if (file.size < 4) return false;
+  const header = new DataView(await file.slice(0, 4).arrayBuffer());
+  const signature = header.getUint32(0, true);
+  return (
+    signature === 0x04034b50 ||
+    signature === 0x06054b50 ||
+    signature === 0x08074b50
+  );
 }

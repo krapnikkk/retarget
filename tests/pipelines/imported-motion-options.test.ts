@@ -120,8 +120,11 @@ describe("generic humanoid pipeline options", () => {
 
     expect(pipeline).toMatchObject({ assurance: "experimental", availability: "hidden" });
     vi.mocked(mixamoFbxMotionAdapter.probe).mockResolvedValue({
+      bytesInspected: 0,
       confidence: 0.34,
+      contentSignature: false,
       evidence: [],
+      evidenceDetails: [],
       profile: "mixamo",
       warnings: [],
     });
@@ -130,14 +133,20 @@ describe("generic humanoid pipeline options", () => {
     });
 
     vi.mocked(mixamoFbxMotionAdapter.probe).mockResolvedValue({
+      bytesInspected: 0,
       confidence: 0.8,
+      contentSignature: true,
       evidence: [],
+      evidenceDetails: [],
       profile: "mixamo",
       warnings: [],
     });
     vi.mocked(vrmAvatarAdapter.probe).mockResolvedValue({
+      bytesInspected: 0,
       confidence: 0.34,
+      contentSignature: false,
       evidence: [],
+      evidenceDetails: [],
       profile: "vrm-humanoid",
       warnings: [],
     });

@@ -14,10 +14,33 @@ import type { BoneNamingOptions } from "@/export/bone-naming";
 
 export type AdapterMaturity = "active" | "planned" | "experimental";
 
+export type ImportAdapterProbeOptions = {
+  maxBytes?: number;
+};
+
+export type ImportProbeEvidenceDetail = {
+  code:
+    | "extension-hint"
+    | "container-signature"
+    | "coordinate-convention"
+    | "declared-animation"
+    | "declared-skin"
+    | "gltf-extension"
+    | "ecosystem-marker"
+    | "profile-bone-coverage"
+    | "profile-symmetry"
+    | "fbx-axis-metadata"
+    | "fbx-unit-metadata";
+  message: string;
+};
+
 export type ImportAdapterProbe = {
+  bytesInspected: number;
   confidence: number;
+  contentSignature: boolean;
   profile: RigProfileId;
   evidence: string[];
+  evidenceDetails: ImportProbeEvidenceDetail[];
   warnings: string[];
 };
 
@@ -26,7 +49,10 @@ export type MotionImportAdapter = {
   label: string;
   profileId: RigProfileId;
   maturity: AdapterMaturity;
-  probe(file: File): Promise<ImportAdapterProbe>;
+  probe(
+    file: File,
+    options?: ImportAdapterProbeOptions,
+  ): Promise<ImportAdapterProbe>;
   importMotion?(file: File): Promise<CanonicalHumanoidMotionClip>;
 };
 
@@ -35,7 +61,10 @@ export type AvatarImportAdapter = {
   label: string;
   profileId: RigProfileId;
   maturity: AdapterMaturity;
-  probe(file: File): Promise<ImportAdapterProbe>;
+  probe(
+    file: File,
+    options?: ImportAdapterProbeOptions,
+  ): Promise<ImportAdapterProbe>;
 };
 
 export type MotionExportOptions = BoneNamingOptions;

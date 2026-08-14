@@ -8,13 +8,13 @@ export const genericFbxMotionAdapter = {
   label: "Generic Humanoid FBX Motion",
   profileId: "generic-fbx-humanoid",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "fbx",
       extensions: [".fbx"],
       profile: "generic-fbx-humanoid",
       role: "motion",
-    }),
+    }, options),
   importMotion: (file) =>
     importFBXHumanoidMotion({
       file,

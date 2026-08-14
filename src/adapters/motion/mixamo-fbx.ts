@@ -8,14 +8,14 @@ export const mixamoFbxMotionAdapter = {
   label: "Mixamo FBX Motion",
   profileId: "mixamo",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "fbx",
       ecosystemMarkers: ["mixamorigHips", "mixamorig:LeftArm"],
       extensions: [".fbx"],
       profile: "mixamo",
       role: "motion",
-    }),
+    }, options),
   importMotion: (file) =>
     importFBXHumanoidMotion({
       file,

@@ -8,14 +8,14 @@ export const actorcoreFbxMotionAdapter = {
   label: "ActorCore / Reallusion FBX Motion",
   profileId: "actorcore",
   maturity: "active",
-  probe: (file) =>
+  probe: (file, options) =>
     probeImportAdapter(file, {
       container: "fbx",
       ecosystemMarkers: ["CC_Base_Hip", "CC_Base_L_Upperarm"],
       extensions: [".fbx"],
       profile: "actorcore",
       role: "motion",
-    }),
+    }, options),
   importMotion: (file) =>
     importFBXHumanoidMotion({
       file,

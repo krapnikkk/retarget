@@ -1,4 +1,5 @@
 import type {
+  ImportAdapterProbeOptions,
   ImportAdapterProbe,
   MotionImportAdapter,
 } from "@/adapters/types";
@@ -30,11 +31,12 @@ export type MotionImportAdapterMatch = {
 export async function probeMotionImportAdapter(
   file: File,
   preferredId?: MotionFormatId,
+  options?: ImportAdapterProbeOptions,
 ): Promise<MotionImportAdapterMatch | null> {
   const candidates = await Promise.all(
     MOTION_IMPORT_ADAPTERS.map(async (adapter) => ({
       adapter,
-      probe: await adapter.probe(file),
+      probe: await adapter.probe(file, options),
     })),
   );
   if (preferredId) {
@@ -57,8 +59,9 @@ export async function probeMotionImportAdapter(
 export async function findMotionImportAdapter(
   file: File,
   preferredId?: MotionFormatId,
+  options?: ImportAdapterProbeOptions,
 ): Promise<MotionImportAdapter | null> {
-  return (await probeMotionImportAdapter(file, preferredId))?.adapter ?? null;
+  return (await probeMotionImportAdapter(file, preferredId, options))?.adapter ?? null;
 }
 
 export * from "./actorcore-fbx";

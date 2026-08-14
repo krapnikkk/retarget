@@ -1,5 +1,6 @@
 import type {
   AvatarImportAdapter,
+  ImportAdapterProbeOptions,
   ImportAdapterProbe,
 } from "@/adapters/types";
 import type { AvatarFormatId } from "@/formats";
@@ -30,11 +31,12 @@ export type AvatarImportAdapterMatch = {
 export async function probeAvatarImportAdapter(
   file: File,
   preferredId?: AvatarFormatId,
+  options?: ImportAdapterProbeOptions,
 ): Promise<AvatarImportAdapterMatch | null> {
   const candidates = await Promise.all(
     AVATAR_IMPORT_ADAPTERS.map(async (adapter) => ({
       adapter,
-      probe: await adapter.probe(file),
+      probe: await adapter.probe(file, options),
     })),
   );
   if (preferredId) {
@@ -57,8 +59,9 @@ export async function probeAvatarImportAdapter(
 export async function findAvatarImportAdapter(
   file: File,
   preferredId?: AvatarFormatId,
+  options?: ImportAdapterProbeOptions,
 ): Promise<AvatarImportAdapter | null> {
-  return (await probeAvatarImportAdapter(file, preferredId))?.adapter ?? null;
+  return (await probeAvatarImportAdapter(file, preferredId, options))?.adapter ?? null;
 }
 
 export * from "./generic-fbx-avatar";
