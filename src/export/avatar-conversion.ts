@@ -27,6 +27,11 @@ import {
   getAvatarEagerInputLimit,
 } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
+import {
+  NODE_PEAK_MEMORY_LIMIT_BYTES,
+  assertMemoryEstimateWithinBudget,
+  estimateMMDConversionMemory,
+} from "@/jobs/memory-budget";
 
 export async function readAvatarAsGLBDocument({
   avatarFile,
@@ -173,12 +178,12 @@ function exportObjectAsGLB(root: Object3D): Promise<Uint8Array> {
 
 export type ParsedMMDModel = {
   name: string;
-  positions: number[];
-  normals: number[];
-  uvs: number[];
-  joints: number[];
-  weights: number[];
-  indices: number[];
+  positions: Float32Array<ArrayBuffer>;
+  normals: Float32Array<ArrayBuffer>;
+  uvs: Float32Array<ArrayBuffer>;
+  joints: Int32Array<ArrayBuffer>;
+  weights: Float32Array<ArrayBuffer>;
+  indices: Uint32Array<ArrayBuffer>;
   materials: ParsedMMDMaterial[];
   bones: ParsedMMDBone[];
   textures: string[];
@@ -242,15 +247,20 @@ export type ParsedMMDBone = {
   };
 };
 
+export type MMDConversionOptions = {
+  maxPeakBytes?: number;
+};
+
 export function convertMMDModelToGLBDocument(
   bytes: Uint8Array,
   filename = "avatar.pmx",
   resolveResource?: (uri: string) => Uint8Array | null,
+  options: MMDConversionOptions = {},
 ) {
   const sourceFormat = filename.toLowerCase().endsWith(".pmd") ? "pmd" : "pmx";
   const parsed = sourceFormat === "pmd"
-    ? parsePMD(bytes)
-    : parsePMX(bytes);
+    ? parsePMD(bytes, options)
+    : parsePMX(bytes, options);
   return createMMDGLBDocument(parsed, sourceFormat, resolveResource);
 }
 
@@ -366,17 +376,17 @@ function createMMDGLBDocument(
 
     const positionAccessor = document
       .createAccessor("POSITION")
-      .setArray(new Float32Array(model.positions))
+      .setArray(model.positions)
       .setType(Accessor.Type.VEC3!)
       .setBuffer(buffer);
     const normalAccessor = document
       .createAccessor("NORMAL")
-      .setArray(new Float32Array(model.normals))
+      .setArray(model.normals)
       .setType(Accessor.Type.VEC3!)
       .setBuffer(buffer);
     const uvAccessor = document
       .createAccessor("TEXCOORD_0")
-      .setArray(new Float32Array(model.uvs))
+      .setArray(model.uvs)
       .setType(Accessor.Type.VEC2!)
       .setBuffer(buffer);
     const jointsAccessor = skinning
@@ -412,7 +422,7 @@ function createMMDGLBDocument(
         .setIndices(
           document
             .createAccessor("indices")
-            .setArray(new Uint32Array(indices))
+            .setArray(indices)
             .setType(Accessor.Type.SCALAR!)
             .setBuffer(buffer),
         )
@@ -589,7 +599,10 @@ function inferImageMimeType(filename: string) {
   return null;
 }
 
-export function parsePMX(bytes: Uint8Array): ParsedMMDModel {
+export function parsePMX(
+  bytes: Uint8Array,
+  options: MMDConversionOptions = {},
+): ParsedMMDModel {
   const reader = new PMXBinaryReader(bytes);
   const { config } = readPMXHeader(reader);
   const { encoding, additionalUvCount, vertexIndexSize, textureIndexSize, boneIndexSize } = config;
@@ -604,19 +617,24 @@ export function parsePMX(bytes: Uint8Array): ParsedMMDModel {
     max: DEFAULT_PARSE_BUDGET.maxVertices,
     label: "PMX vertices",
   });
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const joints: number[] = [];
-  const weights: number[] = [];
+  assertMemoryEstimateWithinBudget(
+    estimateMMDConversionMemory(bytes.byteLength, vertexCount),
+    options.maxPeakBytes ?? NODE_PEAK_MEMORY_LIMIT_BYTES,
+    "PMX conversion",
+  );
+  const positions = new Float32Array(vertexCount * 3);
+  const normals = new Float32Array(vertexCount * 3);
+  const uvs = new Float32Array(vertexCount * 2);
+  const joints = new Int32Array(vertexCount * 4);
+  const weights = new Float32Array(vertexCount * 4);
   for (let index = 0; index < vertexCount; index += 1) {
-    positions.push(...flipMMDVector(reader.readVector3()));
-    normals.push(...flipMMDVector(reader.readVector3()));
-    uvs.push(...reader.readVector2());
+    positions.set(flipMMDVector(reader.readVector3()), index * 3);
+    normals.set(flipMMDVector(reader.readVector3()), index * 3);
+    uvs.set(reader.readVector2(), index * 2);
     reader.skip(additionalUvCount * 16);
     const weight = readPMXWeight(reader, boneIndexSize);
-    joints.push(...weight.joints);
-    weights.push(...weight.weights);
+    joints.set(weight.joints, index * 4);
+    weights.set(weight.weights, index * 4);
     reader.readFloat32();
   }
 
@@ -624,9 +642,10 @@ export function parsePMX(bytes: Uint8Array): ParsedMMDModel {
     max: DEFAULT_PARSE_BUDGET.maxIndices,
     label: "PMX indices",
   });
-  const indices = Array.from({ length: indexCount }, () =>
-    reader.readUnsignedIndex(vertexIndexSize),
-  );
+  const indices = new Uint32Array(indexCount);
+  for (let index = 0; index < indexCount; index += 1) {
+    indices[index] = reader.readUnsignedIndex(vertexIndexSize);
+  }
   validateTriangleIndices(indices, vertexCount, "PMX");
   reverseTriangleWinding(indices);
 
@@ -770,7 +789,10 @@ export function parsePMX(bytes: Uint8Array): ParsedMMDModel {
   return { bones, indices, joints, materials, name, normals, positions, textures, uvs, weights };
 }
 
-function parsePMD(bytes: Uint8Array): ParsedMMDModel {
+function parsePMD(
+  bytes: Uint8Array,
+  options: MMDConversionOptions = {},
+): ParsedMMDModel {
   const reader = new PMXBinaryReader(bytes);
   if (reader.readAscii(3) !== "Pmd") {
     throw new Error("PMD header is invalid.");
@@ -783,28 +805,36 @@ function parsePMD(bytes: Uint8Array): ParsedMMDModel {
     max: DEFAULT_PARSE_BUDGET.maxVertices,
     label: "PMD vertices",
   });
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const uvs: number[] = [];
-  const joints: number[] = [];
-  const weights: number[] = [];
+  assertMemoryEstimateWithinBudget(
+    estimateMMDConversionMemory(bytes.byteLength, vertexCount),
+    options.maxPeakBytes ?? NODE_PEAK_MEMORY_LIMIT_BYTES,
+    "PMD conversion",
+  );
+  const positions = new Float32Array(vertexCount * 3);
+  const normals = new Float32Array(vertexCount * 3);
+  const uvs = new Float32Array(vertexCount * 2);
+  const joints = new Int32Array(vertexCount * 4);
+  const weights = new Float32Array(vertexCount * 4);
   for (let index = 0; index < vertexCount; index += 1) {
-    positions.push(...flipMMDVector(reader.readVector3()));
-    normals.push(...flipMMDVector(reader.readVector3()));
-    uvs.push(...reader.readVector2());
+    positions.set(flipMMDVector(reader.readVector3()), index * 3);
+    normals.set(flipMMDVector(reader.readVector3()), index * 3);
+    uvs.set(reader.readVector2(), index * 2);
     const bone0 = reader.readUint16();
     const bone1 = reader.readUint16();
     const weight0 = reader.readUint8() / 100;
     reader.readUint8();
-    joints.push(bone0, bone1, 0, 0);
-    weights.push(weight0, 1 - weight0, 0, 0);
+    joints.set([bone0, bone1, 0, 0], index * 4);
+    weights.set([weight0, 1 - weight0, 0, 0], index * 4);
   }
 
   const indexCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxIndices,
     label: "PMD indices",
   });
-  const indices = Array.from({ length: indexCount }, () => reader.readUint16());
+  const indices = new Uint32Array(indexCount);
+  for (let index = 0; index < indexCount; index += 1) {
+    indices[index] = reader.readUint16();
+  }
   validateTriangleIndices(indices, vertexCount, "PMD");
   reverseTriangleWinding(indices);
 
@@ -916,7 +946,7 @@ function flipMMDVector(
   return [value[0], value[1], -value[2]];
 }
 
-function reverseTriangleWinding(indices: number[]) {
+function reverseTriangleWinding(indices: Uint32Array) {
   for (let index = 0; index + 2 < indices.length; index += 3) {
     [indices[index + 1], indices[index + 2]] = [
       indices[index + 2]!,
@@ -926,16 +956,18 @@ function reverseTriangleWinding(indices: number[]) {
 }
 
 function validateTriangleIndices(
-  indices: readonly number[],
+  indices: ArrayLike<number>,
   vertexCount: number,
   label: string,
 ) {
   if (indices.length % 3 !== 0) {
     throw new Error(`${label} index count must be divisible by three.`);
   }
-  const invalid = indices.find((index) => index < 0 || index >= vertexCount);
-  if (invalid !== undefined) {
-    throw new Error(`${label} triangle references invalid vertex index ${invalid}.`);
+  for (let index = 0; index < indices.length; index += 1) {
+    const vertexIndex = indices[index]!;
+    if (vertexIndex < 0 || vertexIndex >= vertexCount) {
+      throw new Error(`${label} triangle references invalid vertex index ${vertexIndex}.`);
+    }
   }
 }
 
@@ -947,7 +979,7 @@ function validateMMDStructure({
   label,
 }: {
   bones: readonly ParsedMMDBone[];
-  indices: readonly number[];
+  indices: ArrayLike<number>;
   materials: readonly ParsedMMDMaterial[];
   textureCount: number;
   label: string;

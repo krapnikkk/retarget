@@ -16,6 +16,7 @@ import { createRetargetError } from "@/retarget";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
 import { MAX_MOTION_FILE_BYTES } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
+import { collectTransferableGLTFResources } from "@/import/gltf-document";
 
 const MOTION_FORMATS = [
   "mixamo-fbx",
@@ -140,17 +141,26 @@ function createImportedMotionToAvatarPipeline(
         "@/browser/avatar-target-pipeline"
       );
 
+      const motionBytes = await readFileArrayBufferWithSignal(
+        motionFile,
+        MAX_MOTION_FILE_BYTES,
+        "motion",
+        signal,
+      );
+      const resources = motionFormat === "gltf-animation"
+        ? await collectTransferableGLTFResources(
+            new Uint8Array(motionBytes),
+            motionFile,
+            signal,
+          )
+        : undefined;
       const sourceClip = await runRetargetJob(
         {
           type: "import-motion",
           formatId: motionFormat,
           filename: motionFile.name,
-          bytes: await readFileArrayBufferWithSignal(
-            motionFile,
-            MAX_MOTION_FILE_BYTES,
-            "motion",
-            signal,
-          ),
+          bytes: motionBytes,
+          resources,
         },
         { signal },
       );

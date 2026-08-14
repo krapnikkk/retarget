@@ -145,6 +145,7 @@ function assertTaskFields(task: RetargetJobTask) {
       assertArrayBuffer(task.bytes, "inspect-humanoid-avatar.bytes");
       assertFilename(task.filename);
       assertFormat(task.formatId, AVATAR_FORMAT_IDS);
+      assertResources(task.resources, "inspect-humanoid-avatar.resources");
       return;
     case "convert-mmd-avatar":
       assertArrayBuffer(task.bytes, "convert-mmd-avatar.bytes");
@@ -153,11 +154,13 @@ function assertTaskFields(task: RetargetJobTask) {
     case "inspect-rigged-gltf":
       assertArrayBuffer(task.bytes, "inspect-rigged-gltf.bytes");
       assertFilename(task.filename);
+      assertResources(task.resources, "inspect-rigged-gltf.resources");
       return;
     case "import-motion":
       assertArrayBuffer(task.bytes, "import-motion.bytes");
       assertFilename(task.filename);
       assertFormat(task.formatId, MOTION_FORMAT_IDS);
+      assertResources(task.resources, "import-motion.resources");
       return;
     case "solve-humanoid":
       if (!isRecord(task.motion)) protocolError("solve-humanoid.motion is invalid.");
@@ -171,6 +174,14 @@ function assertTaskFields(task: RetargetJobTask) {
       if (task.targetBytes !== undefined) {
         assertArrayBuffer(task.targetBytes, "retarget-rigged-gltf.targetBytes");
       }
+      assertResources(
+        task.motionResources,
+        "retarget-rigged-gltf.motionResources",
+      );
+      assertResources(
+        task.targetResources,
+        "retarget-rigged-gltf.targetResources",
+      );
       if (task.targetInspection !== undefined && !isRecord(task.targetInspection)) {
         protocolError("retarget-rigged-gltf.targetInspection is invalid.");
       }
@@ -270,6 +281,19 @@ function assertTaskResult(task: RetargetJobTask, result: unknown) {
 
 function assertArrayBuffer(value: unknown, label: string) {
   if (!(value instanceof ArrayBuffer)) protocolError(`${label} must be ArrayBuffer.`);
+}
+
+function assertResources(value: unknown, label: string) {
+  if (value === undefined) return;
+  const resources = asRecord(value, label);
+  const entries = Object.entries(resources);
+  if (entries.length > 512) {
+    protocolError(`${label} contains too many entries.`);
+  }
+  for (const [uri, bytes] of entries) {
+    assertBoundedString(uri, `${label} URI`, 4096);
+    assertArrayBuffer(bytes, `${label}[${JSON.stringify(uri)}]`);
+  }
 }
 
 function assertFilename(value: unknown) {

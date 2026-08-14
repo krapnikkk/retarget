@@ -22,18 +22,19 @@ export async function readBlobArrayBufferWithSignal(
   assertInputByteLength(blob.size, maxBytes, label);
   signal?.throwIfAborted();
   const reader = blob.stream().getReader();
-  const chunks: Uint8Array[] = [];
-  let byteLength = 0;
+  const bytes = new Uint8Array(blob.size);
+  let offset = 0;
   try {
     while (true) {
       signal?.throwIfAborted();
       const { done, value } = await reader.read();
       if (done) break;
-      byteLength += value.byteLength;
-      if (byteLength > maxBytes) {
-        assertInputByteLength(byteLength, maxBytes, label);
+      const nextOffset = offset + value.byteLength;
+      if (nextOffset > blob.size || nextOffset > maxBytes) {
+        assertInputByteLength(nextOffset, Math.min(blob.size, maxBytes), label);
       }
-      chunks.push(value);
+      bytes.set(value, offset);
+      offset = nextOffset;
     }
   } catch (error) {
     await reader.cancel(error).catch(() => undefined);
@@ -41,11 +42,10 @@ export async function readBlobArrayBufferWithSignal(
   } finally {
     reader.releaseLock();
   }
-  const bytes = new Uint8Array(byteLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
+  if (offset !== blob.size) {
+    throw new RangeError(
+      `${label} stream produced ${offset} bytes; Blob declares ${blob.size}.`,
+    );
   }
   signal?.throwIfAborted();
   return bytes.buffer;

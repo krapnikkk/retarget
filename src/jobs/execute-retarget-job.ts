@@ -47,6 +47,7 @@ import {
   getAvatarEagerInputLimit,
 } from "./asset-memory-policy";
 import { assertRetargetJobRequest } from "./runtime-protocol";
+import { BROWSER_PEAK_MEMORY_LIMIT_BYTES } from "./memory-budget";
 
 export type RetargetJobReporter = (
   phase: RetargetJobPhase,
@@ -97,6 +98,7 @@ async function executeTask(
       new Uint8Array(task.bytes),
       task.filename,
       resolveResource,
+      { maxPeakBytes: BROWSER_PEAK_MEMORY_LIMIT_BYTES },
     );
     deadline.checkpoint("convert-mmd-avatar");
     report("export", 0.78);
@@ -146,7 +148,13 @@ async function executeTask(
           : task.formatId === "vrma"
             ? await importVRMA(bytes, task.filename)
             : task.formatId === "gltf-animation"
-              ? await importGLTFAnimation(bytes, task.filename)
+              ? await importGLTFAnimation(
+                  bytes,
+                  task.filename,
+                  undefined,
+                  undefined,
+                  restoreGLTFResources(task.resources),
+                )
               : assertNever(task.formatId);
     deadline.checkpoint("parse");
     report("normalize", 0.82);
@@ -309,6 +317,7 @@ function assertTaskInputBudgets(task: RetargetJobTask) {
       MAX_MOTION_FILE_BYTES,
       `motion:${task.filename}`,
     );
+    assertResourceBudgets(task.resources, task.filename);
     return;
   }
   if (

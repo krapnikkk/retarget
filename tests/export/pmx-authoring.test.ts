@@ -62,8 +62,13 @@ describe("PMX authoring", () => {
     expect(parsed.bones).toHaveLength(REQUIRED_VRM_BONES.length + 1);
     expect(upperChestIndex).toBeGreaterThanOrEqual(0);
     expect(head?.parentIndex).toBe(upperChestIndex);
-    expect(parsed.joints.slice(0, 4)).toEqual([upperChestIndex, 0, 0, 0]);
-    expect(parsed.weights.slice(0, 4)).toEqual([1, 0, 0, 0]);
+    expect(Array.from(parsed.joints.slice(0, 4))).toEqual([
+      upperChestIndex,
+      0,
+      0,
+      0,
+    ]);
+    expect(Array.from(parsed.weights.slice(0, 4))).toEqual([1, 0, 0, 0]);
   });
 
   it("bundles an embedded baseColorTexture beside the PMX model", async () => {

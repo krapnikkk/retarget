@@ -119,6 +119,7 @@ export type RetargetJobTask =
       formatId: WorkerMotionImportFormatId;
       filename: string;
       bytes: ArrayBuffer;
+      resources?: SerializedGLTFResources;
     }
   | {
       type: "solve-humanoid";

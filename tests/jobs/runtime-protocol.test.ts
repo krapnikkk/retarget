@@ -30,6 +30,20 @@ describe("retarget Worker runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "UNSUPPORTED_FORMAT" }));
   });
 
+  it("rejects malformed external-resource maps", () => {
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "bad-resources",
+      task: {
+        type: "import-motion",
+        formatId: "gltf-animation",
+        filename: "motion.gltf",
+        bytes: new ArrayBuffer(8),
+        resources: { "motion.bin": new Uint8Array(8) },
+      },
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+  });
+
   it("rejects requests from another protocol version", () => {
     expect(() => assertRetargetJobRequest({
       schemaVersion: 99,

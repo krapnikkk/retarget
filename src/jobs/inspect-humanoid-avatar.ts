@@ -17,6 +17,7 @@ import {
 import type { AvatarFormatId } from "@/formats";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { convertMMDModelToGLBDocument } from "@/export/avatar-conversion";
+import { BROWSER_PEAK_MEMORY_LIMIT_BYTES } from "./memory-budget";
 import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
 import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
 import { resolveProfileBoneName } from "@/import/humanoid-motion";
@@ -79,6 +80,7 @@ export async function inspectHumanoidAvatarBytes({
       new Uint8Array(bytes),
       filename,
       createTransferableAssetPackageResolver(assetPackage),
+      { maxPeakBytes: BROWSER_PEAK_MEMORY_LIMIT_BYTES },
     );
     return inspectDocument(document, formatId, filename, profile);
   }

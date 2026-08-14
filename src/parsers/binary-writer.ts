@@ -89,7 +89,10 @@ export class GrowableBuffer {
   }
 
   toUint8Array() {
-    return new Uint8Array(this.buffer, 0, this.pos);
+    const exactBuffer = this.buffer.byteLength === this.pos
+      ? this.buffer
+      : this.buffer.slice(0, this.pos);
+    return new Uint8Array(exactBuffer);
   }
 
   private ensureCapacity(needed: number) {

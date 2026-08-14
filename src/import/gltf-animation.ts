@@ -22,12 +22,13 @@ export async function importGLTFAnimation(
   filename = "motion.glb",
   sourceFile?: File,
   animationName?: string,
+  providedResources?: Record<string, Uint8Array<ArrayBuffer>>,
 ) {
   assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
     filename,
     section: "glTF animation",
   });
-  const document = await readGLTFDocument(bytes, sourceFile);
+  const document = await readGLTFDocument(bytes, sourceFile, providedResources);
   const animations = document.getRoot().listAnimations();
   const animation = animationName
     ? [...animations]

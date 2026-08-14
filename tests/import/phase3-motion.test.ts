@@ -83,6 +83,29 @@ describe("Phase 3 motion importers", () => {
     );
   });
 
+  it("imports text glTF animation channels from supplied sidecars", async () => {
+    const serialized = await new WebIO().writeJSON(
+      createMinimalAnimatedDocument(),
+    );
+    const jsonBytes = new TextEncoder().encode(JSON.stringify(serialized.json));
+
+    const clip = await importGLTFAnimation(
+      jsonBytes,
+      "idle.gltf",
+      undefined,
+      undefined,
+      serialized.resources,
+    );
+
+    expect(Object.keys(serialized.resources)).toEqual(["buffer.bin"]);
+    expect(clip.tracks).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ bone: "hips", path: "translation" }),
+        expect.objectContaining({ bone: "head", path: "rotation" }),
+      ]),
+    );
+  });
+
   it("imports humanoid FBX animation tracks through a profile mapping", () => {
     const animationClip = new AnimationClip("actorcore-idle", 1, [
       new VectorKeyframeTrack("CC_Base_Hip.position", [0, 1], [0, 0, 0, 0, 1, 0]),
@@ -319,6 +342,14 @@ function writeVMDFrame(
 async function createMinimalAnimatedGLB(
   interpolation: "LINEAR" | "STEP" | "CUBICSPLINE" = "LINEAR",
 ) {
+  return new WebIO().writeBinary(
+    createMinimalAnimatedDocument(interpolation),
+  );
+}
+
+function createMinimalAnimatedDocument(
+  interpolation: "LINEAR" | "STEP" | "CUBICSPLINE" = "LINEAR",
+) {
   const document = new Document();
   const buffer = document.createBuffer("buffer");
   const scene = document.createScene("scene");
@@ -391,7 +422,7 @@ async function createMinimalAnimatedGLB(
         .setTargetPath("rotation"),
     );
 
-  return new WebIO().writeBinary(document);
+  return document;
 }
 
 function writeAscii(

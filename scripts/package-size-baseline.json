@@ -3,9 +3,9 @@
   "entries": {
     "dist/index.js": 102000,
     "dist/io.js": 170000,
-    "dist/node.js": 475000,
+    "dist/node.js": 485000,
     "dist/browser/index.js": 287000,
-    "dist/workers/retarget.worker.js": 517000,
-    "dist/workers/node-tooling.worker.js": 232000
+    "dist/workers/retarget.worker.js": 525000,
+    "dist/workers/node-tooling.worker.js": 240000
   }
 }
