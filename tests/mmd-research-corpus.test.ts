@@ -1,12 +1,18 @@
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   convertMMDModelToGLBDocument,
   parsePMX,
 } from "@/export/avatar-conversion";
+import {
+  exportAnimatedGLB,
+  validateAvatarExportReload,
+  validateAvatarExportSemantics,
+} from "@/export";
+import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import {
   readAnimatedPMXMotionSummary,
   writeAnimatedPMX,
@@ -16,6 +22,11 @@ import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
 import { MMD_BODY_PROFILE } from "@/profiles";
 import { importVMD } from "@/import/vmd";
 import { createRetargetedMotionClipStub } from "./fixtures/retarget-stub";
+
+vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
+  return { ...actual, runRetargetJob: actual.runRetargetJobInline };
+});
 
 const corpusRoot = path.resolve("references/mmd/research-corpus");
 
@@ -105,6 +116,32 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
       expect(clip.diagnostics?.assumptions.fingerTracks).toBe(true);
     });
   }
+
+  it("runs a real Gene VMD/PMX pair through target binding and Animated GLB semantics", async () => {
+    const geneRoot = path.join(corpusRoot, "mmdagent-gene");
+    const [avatarBytes, motionBytes] = await Promise.all([
+      readFile(path.join(geneRoot, "Gene_light.pmx")),
+      readFile(path.join(geneRoot, "motion", "stand.vmd")),
+    ]);
+    const avatarFile = new File([avatarBytes], "Gene_light.pmx");
+    const bound = await bindMotionClipToAvatar({
+      avatarFile,
+      avatarFormatId: "mmd-model",
+      clip: importVMD(new Uint8Array(motionBytes), "stand.vmd"),
+    });
+    const output = await exportAnimatedGLB({
+      avatarFile,
+      avatarFormatId: "mmd-model",
+      clip: bound,
+    });
+
+    await expect(
+      validateAvatarExportReload("animated-glb", output),
+    ).resolves.toMatchObject({ level: "structural", ok: true });
+    await expect(
+      validateAvatarExportSemantics("animated-glb", output, bound),
+    ).resolves.toMatchObject({ level: "semantic", ok: true });
+  });
 
   it("keeps the expression-only Gene VMD as a negative fixture", async () => {
     const filename = "00_normal.vmd";
