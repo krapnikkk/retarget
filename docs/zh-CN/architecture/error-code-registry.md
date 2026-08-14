@@ -25,6 +25,7 @@
 | `BVH_*`、`GLTF_*`、`VRMA_DUPLICATE_TRACK` | 格式解析 | 有界解析已定位到稳定、格式特定的违规。 |
 | `PROCESSING_*` | 处理预算 | 动作结构、时长、FPS、选项、期限或输出工作量超过限制。 |
 | `WORKER_UNAVAILABLE` | 平台隔离 | 所需浏览器或 Node Worker 不可用；公开隔离路径不会改为内联执行。 |
+| `WORKER_PROTOCOL_INVALID` | Worker 边界 | 请求或响应未通过协议版本、判别字段、字段或结果校验。 |
 | `RETARGET_JOB_FAILED` | Worker | 未知错误跨越 Worker 边界，且没有更具体的已注册错误码。 |
 | `TARGET_RIG_IDENTITY_MISSING` | 目标绑定/导出 | 角色导出收到未求解或缺少目标骨架身份的旧动作。 |
 | `TARGET_RIG_INVALID` | 目标绑定/导出 | 目标静止姿态证据无效或包含非有限数值。 |

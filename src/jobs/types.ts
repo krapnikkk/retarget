@@ -191,13 +191,17 @@ export type RetargetJobResult<TTask extends RetargetJobTask> =
                     ? SemanticMotionValidationResult
                     : never;
 
+export const RETARGET_JOB_PROTOCOL_VERSION = 1 as const;
+
 export type RetargetJobRequest = {
+  schemaVersion: typeof RETARGET_JOB_PROTOCOL_VERSION;
   jobId: string;
   deadlineMs?: number;
   task: RetargetJobTask;
 };
 
 export type RetargetJobProgress = {
+  schemaVersion: typeof RETARGET_JOB_PROTOCOL_VERSION;
   jobId: string;
   type: "progress";
   phase: RetargetJobPhase;
@@ -205,12 +209,14 @@ export type RetargetJobProgress = {
 };
 
 export type RetargetJobSuccess = {
+  schemaVersion: typeof RETARGET_JOB_PROTOCOL_VERSION;
   jobId: string;
   type: "success";
   result: unknown;
 };
 
 export type RetargetJobFailure = {
+  schemaVersion: typeof RETARGET_JOB_PROTOCOL_VERSION;
   jobId: string;
   type: "failure";
   error: {

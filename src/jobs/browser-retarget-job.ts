@@ -2,15 +2,16 @@ import {
   DEFAULT_PROCESSING_BUDGET,
   ProcessingBudgetError,
 } from "./processing-budget";
+import { RETARGET_JOB_PROTOCOL_VERSION } from "./types";
 import type {
   RetargetJobProgress,
   RetargetJobRequest,
-  RetargetJobResponse,
   RetargetJobResult,
   RetargetJobTask,
 } from "./types";
 import { RetargetError } from "@/retarget/errors";
 import { collectArrayBufferTransfers } from "./transferables";
+import { assertRetargetJobResponse } from "./runtime-protocol";
 
 export type BufferOwnership = "copy" | "transfer";
 
@@ -34,6 +35,7 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     ? structuredClone(task)
     : task;
   const request: RetargetJobRequest = {
+    schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),
     deadlineMs,
     task: workerTask,
@@ -75,9 +77,14 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
         message: "Retarget worker returned an unreadable message.",
       }));
     };
-    const onMessage = (event: MessageEvent<RetargetJobResponse>) => {
+    const onMessage = (event: MessageEvent<unknown>) => {
       const response = event.data;
-      if (!response || response.jobId !== request.jobId) return;
+      try {
+        assertRetargetJobResponse(response, request);
+      } catch (cause) {
+        fail(cause);
+        return;
+      }
       if (response.type === "progress") {
         try {
           onProgress?.(response);
@@ -147,6 +154,7 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
 ): Promise<RetargetJobResult<TTask>> {
   if (signal?.aborted) throw createAbortError();
   const request: RetargetJobRequest = {
+    schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),
     deadlineMs,
     task,
@@ -154,6 +162,7 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
   const { executeRetargetJob } = await import("./execute-retarget-job");
   const result = await executeRetargetJob(request, (phase, progress) =>
     onProgress?.({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
       jobId: request.jobId,
       type: "progress",
       phase,

@@ -14,6 +14,10 @@ Worker 拥有的副本，调用方缓冲区不会 detached。受信任且追求�
 去重；成功、失败、取消、超时、克隆异常、`messageerror` 与进度回调异常统一进入同一
 Worker 清理路径。
 
+重定向消息使用协议 schema version `1`。双方都会校验版本、task/response 判别字段、
+已注册格式 ID、有界核心字段、进度值、已注册错误码和对应 task 的成功结果。未知 task
+或格式会 fail-closed，绝不会落入另一 importer、exporter 或验证分支。
+
 活动 Worker 路由为：
 
 ```text

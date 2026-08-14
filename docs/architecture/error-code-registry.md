@@ -27,6 +27,7 @@ the stable code for support and telemetry.
 | `BVH_*`, `GLTF_*`, `VRMA_DUPLICATE_TRACK` | parser domain | Bounded parsing succeeded far enough to identify a stable format-specific violation. |
 | `PROCESSING_*` | processing budget | Clip shape, duration, FPS, options, deadline, or output work exceeds a processing limit. |
 | `WORKER_UNAVAILABLE` | platform isolation | The required browser or Node Worker is unavailable; isolated public paths do not run the job inline. |
+| `WORKER_PROTOCOL_INVALID` | Worker boundary | A request or response failed protocol version, discriminator, field, or result validation. |
 | `RETARGET_JOB_FAILED` | Worker | An unexpected failure crossed the Worker boundary without a more specific registered code. |
 | `TARGET_RIG_IDENTITY_MISSING` | target bind/export | Avatar export received an unsolved or legacy clip without target-rig identity. |
 | `TARGET_RIG_INVALID` | target bind/export | Target rest-pose evidence is invalid or non-finite. |

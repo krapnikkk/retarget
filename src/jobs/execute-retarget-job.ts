@@ -18,18 +18,27 @@ import { createRetargetError, serializeMotionClip } from "@/retarget";
 import { validateHumanoidMotionSemantics } from "@/validation";
 import { solveHumanoidCustomRigMotion } from "@/solvers";
 import { getRigSolver } from "@/solvers";
-import { inspectGLTFRig } from "@/rigs";
+import {
+  calculateRequiredChainCoverage,
+  getRequiredRigRoles,
+  getRigDefinition,
+  getSemanticRigProfile,
+  inspectGLTFRig,
+} from "@/rigs";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import { createTransferableAssetPackageResolver } from "@/import/asset-package";
 import {
   assertMotionProcessingBudget,
   assertOutputBytes,
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
+  DEFAULT_PROCESSING_BUDGET,
 } from "./processing-budget";
 import type {
   RetargetJobPhase,
   RetargetJobRequest,
   RetargetJobTask,
+  SerializedRigInspection,
 } from "./types";
 import { serializeRigInspection } from "./serialize-rig-inspection";
 import {
@@ -37,6 +46,7 @@ import {
   assertInputByteLength,
   getAvatarEagerInputLimit,
 } from "./asset-memory-policy";
+import { assertRetargetJobRequest } from "./runtime-protocol";
 
 export type RetargetJobReporter = (
   phase: RetargetJobPhase,
@@ -47,6 +57,7 @@ export async function executeRetargetJob(
   request: RetargetJobRequest,
   report: RetargetJobReporter = () => undefined,
 ) {
+  assertRetargetJobRequest(request);
   const deadline = createProcessingDeadline(request.deadlineMs);
   report("validate", 0.02);
   deadline.checkpoint("validate");
@@ -134,7 +145,9 @@ async function executeTask(
           ? importVMD(bytes, task.filename)
           : task.formatId === "vrma"
             ? await importVRMA(bytes, task.filename)
-            : await importGLTFAnimation(bytes, task.filename);
+            : task.formatId === "gltf-animation"
+              ? await importGLTFAnimation(bytes, task.filename)
+              : assertNever(task.formatId);
     deadline.checkpoint("parse");
     report("normalize", 0.82);
     assertMotionProcessingBudget(clip);
@@ -276,14 +289,17 @@ async function executeTask(
     return { structural, semantic };
   }
 
-  report("semantic-validate", 0.15);
-  assertMotionProcessingBudget(task.actual);
-  assertMotionProcessingBudget(task.expected);
-  return validateHumanoidMotionSemantics({
-    actual: task.actual,
-    expected: task.expected,
-    restPose: task.restPose ? new Map(task.restPose) : undefined,
-  });
+  if (task.type === "semantic-validate") {
+    report("semantic-validate", 0.15);
+    assertMotionProcessingBudget(task.actual);
+    assertMotionProcessingBudget(task.expected);
+    return validateHumanoidMotionSemantics({
+      actual: task.actual,
+      expected: task.expected,
+      restPose: task.restPose ? new Map(task.restPose) : undefined,
+    });
+  }
+  return assertNever(task);
 }
 
 function assertTaskInputBudgets(task: RetargetJobTask) {
@@ -315,10 +331,12 @@ function assertTaskInputBudgets(task: RetargetJobTask) {
         `avatar-structure:${task.filename}`,
       );
     }
-    assertResourceBudgets(
-      task.type === "convert-mmd-avatar" || task.type === "inspect-humanoid-avatar"
-        ? task.assetPackage?.resources
-        : task.resources,
+    assertResourceGroupsBudgets(
+      task.type === "convert-mmd-avatar"
+        ? [task.assetPackage?.resources]
+        : task.type === "inspect-humanoid-avatar"
+          ? [task.resources, task.assetPackage?.resources]
+          : [task.resources],
       task.filename,
     );
     return;
@@ -341,6 +359,9 @@ function assertTaskInputBudgets(task: RetargetJobTask) {
     }
     assertResourceBudgets(task.motionResources, task.motionFilename);
     assertResourceBudgets(task.targetResources, task.targetFilename);
+    if (task.targetInspection) {
+      assertSerializedRigInspection(task.targetInspection);
+    }
     return;
   }
   if (task.type === "validate-motion-export") {
@@ -349,6 +370,197 @@ function assertTaskInputBudgets(task: RetargetJobTask) {
       MAX_MOTION_FILE_BYTES,
       `motion-export:${task.formatId}`,
     );
+    assertMotionProcessingBudget(task.expected);
+    return;
+  }
+  if (task.type === "validate-avatar-export") {
+    assertOutputBytes(task.bytes.byteLength);
+    assertMotionProcessingBudget(task.expected);
+  }
+}
+
+function assertSerializedRigInspection(inspection: SerializedRigInspection) {
+  const canonicalDefinition = getRigDefinition(inspection.definition?.id);
+  if (
+    !canonicalDefinition ||
+    JSON.stringify(inspection.definition) !== JSON.stringify(canonicalDefinition)
+  ) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+  const canonicalProfile = getSemanticRigProfile(inspection.profile?.id);
+  if (
+    !canonicalProfile ||
+    canonicalProfile.rigDefinitionId !== canonicalDefinition.id ||
+    JSON.stringify(inspection.profile) !== JSON.stringify(canonicalProfile) ||
+    !new RegExp(
+      `^${escapeRegExp(canonicalDefinition.id)}:rest-node-skin-v3:sha256:[0-9a-f]{64}$`,
+    ).test(inspection.signature)
+  ) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+  if (!Array.isArray(inspection.restPose) || inspection.restPose.length === 0) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+  if (
+    inspection.restPose.length > DEFAULT_PROCESSING_BUDGET.maxTracks ||
+    !Number.isFinite(inspection.requiredChainCoverage) ||
+    inspection.requiredChainCoverage < 0 ||
+    inspection.requiredChainCoverage > 1 ||
+    !isBoundedStringArray(inspection.unmappedNodes) ||
+    !isBoundedStringArray(inspection.axisWarnings) ||
+    !Array.isArray(inspection.topologyConflicts) ||
+    inspection.topologyConflicts.length > DEFAULT_PROCESSING_BUDGET.maxTracks ||
+    inspection.topologyConflicts.some((conflict) =>
+      !conflict ||
+      typeof conflict !== "object" ||
+      !validRolesForConflict(canonicalDefinition, conflict)
+    )
+  ) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+  const validRoles = new Set(canonicalDefinition.roles.map((role) => role.id));
+  const mappedRoles = new Set<string>();
+  const nodeIndices = new Set<number>();
+  for (const transform of inspection.restPose) {
+    if (!transform || typeof transform !== "object") {
+      throw createRetargetError("TARGET_RIG_INVALID");
+    }
+    const identity = transform.nodeIdentity;
+    if (
+      !validRoles.has(transform.role) ||
+      mappedRoles.has(transform.role) ||
+      (transform.parentRole !== undefined && !validRoles.has(transform.parentRole)) ||
+      !isFiniteTuple(transform.translation, 3) ||
+      !isFiniteTuple(transform.rotation, 4) ||
+      !isFiniteTuple(transform.worldTranslation, 3) ||
+      !isFiniteTuple(transform.worldRotation, 4) ||
+      (transform.primaryAxis !== undefined && !isFiniteTuple(transform.primaryAxis, 3)) ||
+      !identity ||
+      !Number.isInteger(identity.nodeIndex) ||
+      identity.nodeIndex < 0 ||
+      nodeIndices.has(identity.nodeIndex) ||
+      typeof identity.canonicalPath !== "string" ||
+      identity.canonicalPath.length === 0 ||
+      identity.canonicalPath.length > 4096 ||
+      !isOptionalNonNegativeInteger(identity.skinIndex) ||
+      !isOptionalNonNegativeInteger(identity.jointIndex)
+    ) {
+      throw createRetargetError("TARGET_RIG_INVALID");
+    }
+    mappedRoles.add(transform.role);
+    nodeIndices.add(identity.nodeIndex);
+  }
+  assertValidParentGraph({
+    nodeIds: mappedRoles,
+    edges: inspection.restPose.flatMap((transform) =>
+      transform.parentRole
+        ? [{ childId: transform.role, parentId: transform.parentRole }]
+        : []
+    ),
+    label: "Serialized target rig inspection",
+  });
+  const missingRequiredRoles = getRequiredRigRoles(canonicalDefinition)
+    .filter((role) => !mappedRoles.has(role))
+    .sort();
+  if (
+    !sameStrings(inspection.missingRequiredRoles, missingRequiredRoles) ||
+    Math.abs(
+      inspection.requiredChainCoverage -
+      calculateRequiredChainCoverage(canonicalDefinition, mappedRoles)
+    ) > 1e-12
+  ) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+  const roleDefinitions = new Map(
+    canonicalDefinition.roles.map((role) => [role.id, role]),
+  );
+  const derivedConflicts = inspection.restPose.flatMap((transform) => {
+    let expectedParentRole = roleDefinitions.get(transform.role)?.parent;
+    while (expectedParentRole && !mappedRoles.has(expectedParentRole)) {
+      expectedParentRole = roleDefinitions.get(expectedParentRole)?.parent;
+    }
+    if (expectedParentRole === transform.parentRole) return [];
+    if (!expectedParentRole && !transform.parentRole) return [];
+    return [{
+      role: transform.role,
+      ...(expectedParentRole ? { expectedParentRole } : {}),
+      ...(transform.parentRole ? { actualParentRole: transform.parentRole } : {}),
+    }];
+  });
+  if (
+    JSON.stringify(sortTopologyConflicts(inspection.topologyConflicts)) !==
+      JSON.stringify(sortTopologyConflicts(derivedConflicts))
+  ) {
+    throw createRetargetError("TARGET_RIG_INVALID");
+  }
+}
+
+function isFiniteTuple(value: unknown, size: number) {
+  return Array.isArray(value) && value.length === size &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item));
+}
+
+function sameStrings(actual: unknown, expected: readonly string[]) {
+  return Array.isArray(actual) &&
+    actual.every((item) => typeof item === "string") &&
+    JSON.stringify([...actual].sort()) === JSON.stringify(expected);
+}
+
+function isBoundedStringArray(value: unknown) {
+  return Array.isArray(value) &&
+    value.length <= DEFAULT_PROCESSING_BUDGET.maxTracks &&
+    value.every((item) => typeof item === "string" && item.length <= 1024);
+}
+
+function validRolesForConflict(
+  definition: NonNullable<ReturnType<typeof getRigDefinition>>,
+  conflict: { role?: unknown; expectedParentRole?: unknown; actualParentRole?: unknown },
+) {
+  const roles = new Set(definition.roles.map((role) => role.id));
+  return typeof conflict.role === "string" && roles.has(conflict.role) &&
+    (conflict.expectedParentRole === undefined ||
+      (typeof conflict.expectedParentRole === "string" &&
+        roles.has(conflict.expectedParentRole))) &&
+    (conflict.actualParentRole === undefined ||
+      (typeof conflict.actualParentRole === "string" &&
+        roles.has(conflict.actualParentRole)));
+}
+
+function isOptionalNonNegativeInteger(value: unknown) {
+  return value === undefined || (Number.isInteger(value) && (value as number) >= 0);
+}
+
+function sortTopologyConflicts(
+  conflicts: readonly {
+    role: string;
+    expectedParentRole?: string;
+    actualParentRole?: string;
+  }[],
+) {
+  return conflicts.map((conflict) => ({ ...conflict })).sort((left, right) =>
+    left.role.localeCompare(right.role)
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function assertResourceGroupsBudgets(
+  groups: ReadonlyArray<Readonly<Record<string, ArrayBuffer>> | undefined>,
+  owner: string,
+) {
+  let total = 0;
+  for (const resources of groups) {
+    assertResourceBudgets(resources, owner);
+    for (const bytes of Object.values(resources ?? {})) {
+      total += bytes.byteLength;
+      assertInputByteLength(
+        total,
+        MAX_MOTION_FILE_BYTES,
+        `resources:${owner}`,
+      );
+    }
   }
 }
 
@@ -403,8 +615,15 @@ async function exportMotion(
   if (task.formatId === "bvh") {
     return (await import("@/export/bvh")).exportBVH(task.clip, task.options);
   }
-  return (await import("@/export/fbx")).exportFBXAnimation(
-    task.clip,
-    task.options,
-  );
+  if (task.formatId === "fbx-animation") {
+    return (await import("@/export/fbx")).exportFBXAnimation(
+      task.clip,
+      task.options,
+    );
+  }
+  return assertNever(task.formatId);
+}
+
+function assertNever(value: never): never {
+  throw createRetargetError("UNSUPPORTED_FORMAT", String(value));
 }

@@ -1,17 +1,20 @@
 /// <reference lib="webworker" />
 
 import { executeRetargetJob } from "@/jobs/execute-retarget-job";
+import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 import type {
   RetargetJobFailure,
-  RetargetJobRequest,
   RetargetJobResponse,
 } from "@/jobs/types";
 import { isRetargetError } from "@/retarget";
 import { executeBrowserInputPreparation } from "@/browser/input-preparation-worker";
 import { collectArrayBufferTransfers } from "@/jobs/transferables";
 import {
+  assertRetargetJobRequest,
+  assertRetargetJobResponse,
+} from "@/jobs/runtime-protocol";
+import {
   isBrowserInputPreparationRequest,
-  type BrowserInputPreparationRequest,
   type BrowserInputPreparationResponse,
 } from "@/browser/input-preparation-protocol";
 
@@ -20,11 +23,13 @@ const workerScope = self as DedicatedWorkerGlobalScope;
 workerScope.addEventListener(
   "message",
   async (
-    event: MessageEvent<
-      RetargetJobRequest | BrowserInputPreparationRequest
-    >,
+    event: MessageEvent<unknown>,
   ) => {
     const request = event.data;
+    const jobId = request && typeof request === "object" &&
+        "jobId" in request && typeof request.jobId === "string"
+      ? request.jobId
+      : "invalid-request";
     try {
       if (isBrowserInputPreparationRequest(request)) {
         const result = await executeBrowserInputPreparation(
@@ -44,21 +49,31 @@ workerScope.addEventListener(
         );
         return;
       }
+      assertRetargetJobRequest(request);
       const result = await executeRetargetJob(request, (phase, progress) => {
         post({
+          schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
           jobId: request.jobId,
           type: "progress",
           phase,
           progress,
         });
       });
+      const response = {
+        schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+        jobId: request.jobId,
+        type: "success" as const,
+        result,
+      };
+      assertRetargetJobResponse(response, request);
       post(
-        { jobId: request.jobId, type: "success", result },
+        response,
         collectArrayBufferTransfers(result),
       );
     } catch (cause) {
       post({
-        jobId: request.jobId,
+        schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+        jobId,
         type: "failure",
         error: serializeError(cause),
       });

@@ -8,6 +8,7 @@ import {
 } from "@/jobs/processing-budget";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 import type { RigMotionV2 } from "@/rig-motion";
+import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 
 describe("retarget job runtime", () => {
   it("runs export and independent structural/semantic validation phases", async () => {
@@ -26,6 +27,7 @@ describe("retarget job runtime", () => {
     const phases: string[] = [];
     const bytes = await executeRetargetJob(
       {
+        schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
         jobId: "export",
         task: { type: "export-motion", formatId: "vrma", clip },
       },
@@ -37,6 +39,7 @@ describe("retarget job runtime", () => {
     );
 
     const validated = (await executeRetargetJob({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
       jobId: "validate",
       task: {
         type: "validate-motion-export",
@@ -68,6 +71,20 @@ describe("retarget job runtime", () => {
         },
       }),
     ).toThrowError(ProcessingBudgetError);
+  });
+
+  it("rejects forged serialized target inspections before parsing source bytes", async () => {
+    await expect(executeRetargetJob({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "forged-inspection",
+      task: {
+        type: "retarget-rigged-gltf",
+        motionBytes: new ArrayBuffer(8),
+        motionFilename: "motion.glb",
+        targetFilename: "target.glb",
+        targetInspection: {} as never,
+      },
+    })).rejects.toMatchObject({ code: "TARGET_RIG_INVALID" });
   });
 
   it("rejects non-finite and out-of-range solver options", () => {

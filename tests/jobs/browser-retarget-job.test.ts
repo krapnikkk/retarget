@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
+import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 
 class PendingWorker extends EventTarget {
   static instances: PendingWorker[] = [];
@@ -192,6 +193,7 @@ describe("browser retarget worker boundary", () => {
     const result = new Uint8Array([1, 2, 3]);
 
     worker.dispatchEvent(new MessageEvent("message", { data: {
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
       jobId: request.jobId,
       type: "success",
       result,
@@ -215,6 +217,7 @@ describe("browser retarget worker boundary", () => {
     const request = worker.messages[0] as { jobId: string };
 
     worker.dispatchEvent(new MessageEvent("message", { data: {
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
       jobId: request.jobId,
       type: "progress",
       phase: "parse",
