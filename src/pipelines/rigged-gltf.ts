@@ -15,6 +15,37 @@ import { serializeRigInspection } from "@/jobs/serialize-rig-inspection";
 import type {
   SerializedRigInspection,
 } from "@/jobs/types";
+import { exportAnimatedRigGLB } from "@/export/rig-motion-gltf";
+
+export type RiggedGLTFPipelineOutput = {
+  format: "animated-glb";
+  bytes: Uint8Array;
+};
+
+export async function runRiggedGLTFPipeline(
+  input: Parameters<typeof retargetRiggedGLTF>[0],
+) {
+  const result = await retargetRiggedGLTF(input);
+  input.signal?.throwIfAborted();
+  const inspectionOptions = {
+    familyOverride: input.recipe?.family ?? "auto",
+    profileId: input.recipe?.targetProfileId ?? "auto",
+    roleOverrides: input.recipe?.targetRoleOverrides,
+  } as const;
+  const bytes = await exportAnimatedRigGLB({
+    avatarFile: input.avatarFile,
+    motion: result.motion,
+    inspectionOptions,
+    signal: input.signal,
+  });
+  return {
+    ...result,
+    output: {
+      format: "animated-glb" as const,
+      bytes,
+    } satisfies RiggedGLTFPipelineOutput,
+  };
+}
 
 export async function retargetRiggedGLTF({
   motionFile,

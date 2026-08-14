@@ -26,19 +26,24 @@ export async function exportAnimatedRigGLB({
   avatarFile,
   motion,
   inspectionOptions = {},
+  signal,
 }: {
   avatarFile: File;
   motion: RetargetedRigMotionV2;
   inspectionOptions?: RigInspectionOptions;
+  signal?: AbortSignal;
 }) {
   const bytes = new Uint8Array(
     await readFileArrayBufferWithSignal(
       avatarFile,
       getAvatarEagerInputLimit(avatarFile),
       "avatar",
+      signal,
     ),
   );
+  signal?.throwIfAborted();
   const document = await readGLTFDocument(bytes, avatarFile);
+  signal?.throwIfAborted();
   const inspection = inspectGLTFRig(document, inspectionOptions);
   if (inspection.signature !== motion.target.rigSignature) {
     throw new Error(
@@ -48,7 +53,9 @@ export async function exportAnimatedRigGLB({
   const buffer =
     document.getRoot().listBuffers()[0] ?? document.createBuffer("rig-motion-buffer");
   addRigMotionAnimation(document, buffer, inspection.nodesByRole, motion);
-  return new WebIO().writeBinary(document);
+  const output = await new WebIO().writeBinary(document);
+  signal?.throwIfAborted();
+  return output;
 }
 
 export async function validateRigMotionGLTFReload(

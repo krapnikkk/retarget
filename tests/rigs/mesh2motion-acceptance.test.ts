@@ -9,9 +9,15 @@ import {
 } from "three";
 import { Document, WebIO, type Animation } from "@gltf-transform/core";
 import { describe, expect, it, vi } from "vitest";
-import { exportAnimatedRigGLB } from "@/export/rig-motion-gltf";
+import {
+  exportAnimatedRigGLB,
+  validateRigMotionGLTFReload,
+} from "@/export/rig-motion-gltf";
 import { importRigMotionDocument } from "@/import/rig-motion-gltf";
-import { retargetRiggedGLTF } from "@/pipelines/rigged-gltf";
+import {
+  retargetRiggedGLTF,
+  runRiggedGLTFPipeline,
+} from "@/pipelines/rigged-gltf";
 import {
   inspectGLTFRig,
 } from "@/rigs";
@@ -47,38 +53,39 @@ describe("Mesh2Motion CC0 non-humanoid acceptance", () => {
     }
   });
 
-  it("retargets the real Fox Idle, Walk, Run, and Jump action matrix to Fox, Dog, and Horse", async () => {
+  it("fox-dog-horse-animated-glb-beta: exports Idle, Walk, Run, and Jump with independent world-space semantics", async () => {
     const targets = ["fox-base.glb", "fox-dog.glb", "fox-horse.glb"];
     const actions = ["Idle", "Walk", "Run", "Jump"];
 
     for (const actionName of actions) {
-      const source = await readDocument("fox-animations.glb");
-      const action = source
-        .getRoot()
-        .listAnimations()
-        .find((animation) => animation.getName() === actionName);
-      expect(action, actionName).toBeDefined();
-      const motion = importRigMotionDocument(
-        documentWithAnimation(source, action!),
-        `fox-${actionName.toLowerCase()}.glb`,
-        { createdAt: "2026-08-13T00:00:00.000Z" },
-      );
-
       for (const targetFilename of targets) {
-        const target = inspectGLTFRig(await readDocument(targetFilename));
-        const solved = solveRigMotionToTarget({
-          motion,
-          target,
-          targetFilename,
+        const result = await runRiggedGLTFPipeline({
+          motionFile: await readFileAsWebFile("fox-animations.glb"),
+          avatarFile: await readFileAsWebFile(targetFilename),
+          animationName: actionName,
         });
-        expect(solved.diagnostics.mapping.requiredChainCoverage).toBe(1);
-        expect(solved.diagnostics.mapping.topologyConflicts.target).toEqual([]);
-        expect(solved.diagnostics.contacts.transferredRoles).toHaveLength(4);
-        expect(solved.diagnostics.contacts.drift).toHaveLength(4);
-        expect(solved.diagnostics.rootScale).toBeGreaterThan(0);
+        expect(result.output.format).toBe("animated-glb");
+        expect(result.motion.diagnostics.mapping.requiredChainCoverage).toBe(1);
+        expect(result.motion.diagnostics.mapping.topologyConflicts.target).toEqual([]);
+        expect(result.motion.diagnostics.contacts.transferredRoles).toHaveLength(4);
+        expect(result.motion.diagnostics.contacts.drift).toHaveLength(4);
+        expect(result.motion.diagnostics.rootScale).toBeGreaterThan(0);
         expect(
-          solved.diagnostics.loopBoundary.maxRotationDeltaDegrees,
+          result.motion.diagnostics.loopBoundary.maxRotationDeltaDegrees,
         ).toBeGreaterThanOrEqual(0);
+        const validation = await validateRigMotionGLTFReload(
+          result.output.bytes,
+          result.motion,
+        );
+        expect(validation, `${actionName} -> ${targetFilename}`).toMatchObject({
+          ok: true,
+          semantic: {
+            ok: true,
+            level: "semantic",
+            issues: [],
+            missingTracks: [],
+          },
+        });
       }
     }
   });
