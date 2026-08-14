@@ -84,24 +84,44 @@ const cases = [
   certificationCase("avian-v1", "avian", "mesh2motion-bird", {
     sourceFixtures: ["bird-animations.glb"],
     targetFixtures: ["bird-eagle.glb"],
+    actions: ["Flap", "Glide", "Idle", "Walk"],
+    promotion: remainingFamilyPromotion(
+      4,
+      "Pinned Mesh2Motion Bird Flap/Glide/Idle/Walk source actions to the pinned Eagle target fixture.",
+    ),
   }),
   certificationCase("serpentine-v1", "serpentine", "mesh2motion-snake", {
     sourceFixtures: ["snake-animations.glb"],
+    actions: ["Bite", "Coiled", "Dance", "Death", "Hit", "Idle", "Side winding"],
     targetDerivation: "Pinned rig with scaled rest translations and an 8-joint axial-chain acceptance target.",
+    promotion: remainingFamilyPromotion(
+      7,
+      "Pinned Mesh2Motion Snake non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
+    ),
   }),
   certificationCase("arachnid-v1", "arachnid", "mesh2motion-spider", {
     sourceFixtures: ["spider-animations.glb"],
+    actions: ["Attack", "Bite", "Death", "Death 2", "Eating", "Hit", "Idle", "Jump", "Walk"],
     targetDerivation: "Pinned rig with scaled rest translations.",
+    promotion: remainingFamilyPromotion(
+      9,
+      "Pinned Mesh2Motion Spider non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
+    ),
   }),
   certificationCase("creature-v1", "creature", "mesh2motion-dragon", {
     sourceFixtures: ["dragon-animations.glb"],
+    actions: ["Fly Flap", "Fly Glide", "Idle", "Walk"],
     targetDerivation: "Pinned rig with scaled rest translations.",
+    promotion: remainingFamilyPromotion(
+      4,
+      "Pinned Mesh2Motion Dragon Fly Flap/Fly Glide/Idle/Walk source actions to a deterministically scaled target derived from the pinned rig.",
+    ),
   }),
 ];
 
 const manifestBody = {
-  schemaVersion: 3,
-  validatorVersion: 3,
+  schemaVersion: 4,
+  validatorVersion: 4,
   sourceRepository: provenance.sourceRepository,
   sourceCommit: provenance.sourceCommit,
   license: provenance.license,
@@ -170,6 +190,37 @@ function fixtureReference(filename) {
   const hash = sourceHash(filename);
   if (!hash) throw new Error(`Missing provenance for ${filename}.`);
   return { filename, sha256: hash };
+}
+
+function remainingFamilyPromotion(pairCount, scope) {
+  return {
+    assurance: "beta",
+    sourceFormat: "gltf-rigged",
+    targetFormat: "gltf-rigged",
+    outputFormat: "animated-glb",
+    publicEntry: "3dretarget/browser#runRiggedGLTFPipeline",
+    scope,
+    evidence: {
+      structural: {
+        status: "passed",
+        result: `All ${pairCount} exported Animated GLBs reload with the expected animation channel set.`,
+        test:
+          "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta",
+      },
+      semantic: {
+        status: "passed",
+        result: `An independent glTF sampler and world-transform oracle passes all ${pairCount} action/target pairs with no missing tracks.`,
+        test:
+          "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta",
+      },
+      ecosystem: {
+        status: "pending",
+        result:
+          "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+        test: null,
+      },
+    },
+  };
 }
 
 function sha256(bytes) {

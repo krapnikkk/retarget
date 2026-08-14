@@ -5,13 +5,15 @@ import {
 } from "@/certification";
 
 describe("non-humanoid pipeline certification", () => {
-  it("publishes only the pinned Fox-to-Fox/Dog/Horse Animated GLB matrix as beta", () => {
+  it("publishes only pinned real-action Animated GLB matrices as beta", () => {
     expect(NON_HUMANOID_PIPELINE_CERTIFICATION).toMatchObject({
-      schemaVersion: 3,
-      validatorVersion: 3,
+      schemaVersion: 4,
+      validatorVersion: 4,
     });
-    expect(getNonHumanoidBetaPromotions()).toEqual([
-      expect.objectContaining({
+    const promotions = getNonHumanoidBetaPromotions();
+    expect(promotions).toHaveLength(5);
+    for (const promotion of promotions) {
+      expect(promotion).toEqual(expect.objectContaining({
         assurance: "beta",
         sourceFormat: "gltf-rigged",
         targetFormat: "gltf-rigged",
@@ -22,22 +24,21 @@ describe("non-humanoid pipeline certification", () => {
           semantic: expect.objectContaining({ status: "passed" }),
           ecosystem: expect.objectContaining({ status: "pending" }),
         },
-      }),
-    ]);
+      }));
+    }
 
     const promoted = NON_HUMANOID_PIPELINE_CERTIFICATION.cases.filter(
       (item) => item.promotion !== undefined,
     );
-    expect(promoted).toHaveLength(1);
-    expect(promoted[0]).toMatchObject({
-      rigDefinitionId: "quadruped-v1",
-      profileId: "mesh2motion-fox",
-      actions: ["Idle", "Walk", "Run", "Jump"],
-      targetFixtures: [
-        { filename: "fox-base.glb" },
-        { filename: "fox-dog.glb" },
-        { filename: "fox-horse.glb" },
-      ],
-    });
+    expect(promoted.map((item) => [
+      item.rigDefinitionId,
+      item.actions?.length,
+    ])).toEqual([
+      ["quadruped-v1", 4],
+      ["avian-v1", 4],
+      ["serpentine-v1", 7],
+      ["arachnid-v1", 9],
+      ["creature-v1", 4],
+    ]);
   });
 });

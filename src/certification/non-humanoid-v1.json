@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "validatorVersion": 3,
+  "schemaVersion": 4,
+  "validatorVersion": 4,
   "sourceRepository": "https://github.com/Mesh2Motion/mesh2motion-app",
   "sourceCommit": "a9bf18a6007d7e12d197657f023f77a5e33473fe",
   "license": "CC0-1.0",
@@ -113,6 +113,37 @@
           "sha256": "8321c6df6ddba0a17e204e7ba704f65d3737e7677cb9682d62a6ea2befca9e56"
         }
       ],
+      "actions": [
+        "Flap",
+        "Glide",
+        "Idle",
+        "Walk"
+      ],
+      "promotion": {
+        "assurance": "beta",
+        "sourceFormat": "gltf-rigged",
+        "targetFormat": "gltf-rigged",
+        "outputFormat": "animated-glb",
+        "publicEntry": "3dretarget/browser#runRiggedGLTFPipeline",
+        "scope": "Pinned Mesh2Motion Bird Flap/Glide/Idle/Walk source actions to the pinned Eagle target fixture.",
+        "evidence": {
+          "structural": {
+            "status": "passed",
+            "result": "All 4 exported Animated GLBs reload with the expected animation channel set.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "semantic": {
+            "status": "passed",
+            "result": "An independent glTF sampler and world-transform oracle passes all 4 action/target pairs with no missing tracks.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "ecosystem": {
+            "status": "pending",
+            "result": "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+            "test": null
+          }
+        }
+      },
       "evidence": {
         "structural": {
           "status": "passed",
@@ -148,6 +179,40 @@
       ],
       "targetFixtures": [],
       "targetDerivation": "Pinned rig with scaled rest translations and an 8-joint axial-chain acceptance target.",
+      "actions": [
+        "Bite",
+        "Coiled",
+        "Dance",
+        "Death",
+        "Hit",
+        "Idle",
+        "Side winding"
+      ],
+      "promotion": {
+        "assurance": "beta",
+        "sourceFormat": "gltf-rigged",
+        "targetFormat": "gltf-rigged",
+        "outputFormat": "animated-glb",
+        "publicEntry": "3dretarget/browser#runRiggedGLTFPipeline",
+        "scope": "Pinned Mesh2Motion Snake non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
+        "evidence": {
+          "structural": {
+            "status": "passed",
+            "result": "All 7 exported Animated GLBs reload with the expected animation channel set.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "semantic": {
+            "status": "passed",
+            "result": "An independent glTF sampler and world-transform oracle passes all 7 action/target pairs with no missing tracks.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "ecosystem": {
+            "status": "pending",
+            "result": "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+            "test": null
+          }
+        }
+      },
       "evidence": {
         "structural": {
           "status": "passed",
@@ -183,6 +248,42 @@
       ],
       "targetFixtures": [],
       "targetDerivation": "Pinned rig with scaled rest translations.",
+      "actions": [
+        "Attack",
+        "Bite",
+        "Death",
+        "Death 2",
+        "Eating",
+        "Hit",
+        "Idle",
+        "Jump",
+        "Walk"
+      ],
+      "promotion": {
+        "assurance": "beta",
+        "sourceFormat": "gltf-rigged",
+        "targetFormat": "gltf-rigged",
+        "outputFormat": "animated-glb",
+        "publicEntry": "3dretarget/browser#runRiggedGLTFPipeline",
+        "scope": "Pinned Mesh2Motion Spider non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
+        "evidence": {
+          "structural": {
+            "status": "passed",
+            "result": "All 9 exported Animated GLBs reload with the expected animation channel set.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "semantic": {
+            "status": "passed",
+            "result": "An independent glTF sampler and world-transform oracle passes all 9 action/target pairs with no missing tracks.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "ecosystem": {
+            "status": "pending",
+            "result": "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+            "test": null
+          }
+        }
+      },
       "evidence": {
         "structural": {
           "status": "passed",
@@ -218,6 +319,37 @@
       ],
       "targetFixtures": [],
       "targetDerivation": "Pinned rig with scaled rest translations.",
+      "actions": [
+        "Fly Flap",
+        "Fly Glide",
+        "Idle",
+        "Walk"
+      ],
+      "promotion": {
+        "assurance": "beta",
+        "sourceFormat": "gltf-rigged",
+        "targetFormat": "gltf-rigged",
+        "outputFormat": "animated-glb",
+        "publicEntry": "3dretarget/browser#runRiggedGLTFPipeline",
+        "scope": "Pinned Mesh2Motion Dragon Fly Flap/Fly Glide/Idle/Walk source actions to a deterministically scaled target derived from the pinned rig.",
+        "evidence": {
+          "structural": {
+            "status": "passed",
+            "result": "All 4 exported Animated GLBs reload with the expected animation channel set.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "semantic": {
+            "status": "passed",
+            "result": "An independent glTF sampler and world-transform oracle passes all 4 action/target pairs with no missing tracks.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#remaining-family-animated-glb-beta"
+          },
+          "ecosystem": {
+            "status": "pending",
+            "result": "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+            "test": null
+          }
+        }
+      },
       "evidence": {
         "structural": {
           "status": "passed",
@@ -237,5 +369,5 @@
       }
     }
   ],
-  "acceptanceHash": "f3d5cbd95acdff8351ed4b5fdd0ac2f5c6510ed4bbe20ec4d207501e0862c1c2"
+  "acceptanceHash": "1fe729feea381fb2b0f61e4394dc7c54649744d155c148636f1ba985147accee"
 }
