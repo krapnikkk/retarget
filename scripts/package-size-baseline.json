@@ -1,10 +1,10 @@
 {
   "packageTarballMaxBytes": 1400000,
   "entries": {
-    "dist/index.js": 100000,
+    "dist/index.js": 101000,
     "dist/io.js": 165000,
     "dist/node.js": 450000,
-    "dist/browser/index.js": 260000,
+    "dist/browser/index.js": 270000,
     "dist/workers/retarget.worker.js": 485000,
     "dist/workers/node-tooling.worker.js": 225000
   }

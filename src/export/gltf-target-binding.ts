@@ -1,5 +1,6 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 import type { Node } from "@gltf-transform/core";
+import { collectParentChain } from "@/core/parent-graph";
 import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertHumanoidTargetIdentity,
@@ -59,12 +60,13 @@ export function createGLTFHumanoidRigSignature(
   return createHumanoidRigSignature(
     profileId,
     Array.from(nodesByBone, ([bone, node]) => {
-      let parent = node.getParentNode();
-      let parentBone: HumanoidBoneName | undefined;
-      while (parent && !parentBone) {
-        parentBone = boneByNode.get(parent);
-        parent = parent.getParentNode();
-      }
+      const parentBone = collectParentChain(
+        node.getParentNode(),
+        (parent) => parent.getParentNode(),
+        { label: `${profileId} glTF rig parent chain` },
+      )
+        .map((parent) => boneByNode.get(parent))
+        .find((candidate): candidate is HumanoidBoneName => Boolean(candidate));
       return {
         bone,
         parentBone,

@@ -10,6 +10,10 @@ import {
 import type { VRM, VRMHumanBoneName } from "@pixiv/three-vrm";
 import type { MMD } from "@moeru/three-mmd";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
+import {
+  assertValidParentGraph,
+  collectParentChain,
+} from "@/core/parent-graph";
 import { findAvatarImportAdapter } from "@/adapters/avatar";
 import type { AvatarFormatId } from "@/formats";
 import {
@@ -231,15 +235,17 @@ export async function loadStructuralGLBScene(
     applyGLTFNodeTransform(object, node);
     return object;
   });
-  const childIndices = new Set<number>();
-  for (const [index, node] of nodesJSON.entries()) {
-    for (const childIndex of toIndexArray(node.children)) {
-      const child = nodes[childIndex];
-      if (child && child !== nodes[index]) {
-        nodes[index]!.add(child);
-        childIndices.add(childIndex);
-      }
-    }
+  const edges = nodesJSON.flatMap((node, parentId) =>
+    toIndexArray(node.children).map((childId) => ({ childId, parentId }))
+  );
+  assertValidParentGraph({
+    nodeIds: nodes.keys(),
+    edges,
+    label: `${file.name} structural glTF hierarchy`,
+  });
+  const childIndices = new Set(edges.map((edge) => edge.childId));
+  for (const { childId, parentId } of edges) {
+    nodes[parentId]!.add(nodes[childId]!);
   }
   const root = new Group();
   root.name = `${file.name} structural rig`;
@@ -307,9 +313,14 @@ function hasVRM0Extension(json: Record<string, unknown>) {
 }
 
 function toIndexArray(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is number => Number.isInteger(item) && item >= 0)
-    : [];
+  if (value === undefined) return [];
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => !Number.isInteger(item) || item < 0)
+  ) {
+    throw new Error("glTF node children must contain non-negative integer indices.");
+  }
+  return value as number[];
 }
 
 function isNumberArray(value: unknown, length: number): value is number[] {
@@ -462,12 +473,13 @@ function createObjectRigSignature(
     profileId,
     Array.from(bones, ([bone, object]) => {
       object.updateWorldMatrix(true, false);
-      let parent = object.parent;
-      let parentBone: HumanoidBoneName | undefined;
-      while (parent && !parentBone) {
-        parentBone = boneByObject.get(parent);
-        parent = parent.parent;
-      }
+      const parentBone = collectParentChain(
+        object.parent,
+        (parent) => parent.parent,
+        { label: `${profileId} browser rig parent chain` },
+      )
+        .map((parent) => boneByObject.get(parent))
+        .find((candidate): candidate is HumanoidBoneName => Boolean(candidate));
       const position = object.getWorldPosition(new Vector3());
       const rotation = object.getWorldQuaternion(new Quaternion());
       return {

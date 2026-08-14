@@ -232,6 +232,9 @@ describe("non-humanoid quadruped contract", () => {
     sourceMissing.restPose = sourceMissing.restPose.filter(
       (transform) => transform.role !== "frontLeft.paw",
     );
+    sourceMissing.restPose.find(
+      (transform) => transform.role === "frontLeft.toes",
+    )!.parentRole = "frontLeft.ankle";
     expect(() =>
       solveRigMotionToTarget({
         motion: sourceMissing,
@@ -275,6 +278,9 @@ describe("non-humanoid quadruped contract", () => {
     motion.restPose = motion.restPose.filter(
       (transform) => transform.role !== "tail.3",
     );
+    motion.restPose.find(
+      (transform) => transform.role === "tail.4",
+    )!.parentRole = "tail.2";
     motion.source.axisWarnings = ["tail.3"];
     const inspectedTarget = inspectGLTFRig(
       createQuadrupedDocument({ omit: "tail.4", scale: 1.2 }),

@@ -6,6 +6,10 @@ import type {
   Texture as GltfTexture,
 } from "@gltf-transform/core";
 import { Matrix3, Matrix4, Vector3 } from "three";
+import {
+  assertValidParentGraph,
+  collectParentChain,
+} from "@/core/parent-graph";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { MMD_EXPORT_BONE_NAMES } from "@/export/bone-naming";
 import { parsePMX } from "@/export/avatar-conversion";
@@ -199,7 +203,11 @@ function collectPMXBones(nodesByBone: ReadonlyMap<HumanoidBoneName, GltfNode>) {
   const indexByBone = new Map(bones.map((bone) => [bone.bone, bone.index]));
 
   const resolveSkinJointIndex = (joint: GltfNode) => {
-    for (let node: GltfNode | null = joint; node; node = node.getParentNode()) {
+    for (const node of collectParentChain(
+      joint,
+      (candidate) => candidate.getParentNode(),
+      { label: "PMX skin joint parent chain" },
+    )) {
       const bone = nodeToBone.get(node);
       if (!bone) {
         continue;
@@ -231,6 +239,16 @@ function collectPMXBones(nodesByBone: ReadonlyMap<HumanoidBoneName, GltfNode>) {
     }
   }
 
+  assertValidParentGraph({
+    nodeIds: bones.map((bone) => bone.index),
+    edges: bones.flatMap((bone) =>
+      bone.parentIndex >= 0
+        ? [{ childId: bone.index, parentId: bone.parentIndex }]
+        : []
+    ),
+    label: "Authored PMX bone hierarchy",
+  });
+
   return { bones, resolveSkinJointIndex };
 }
 
@@ -239,7 +257,11 @@ function findNearestIncludedAncestorIndex(
   nodeToBone: ReadonlyMap<GltfNode, HumanoidBoneName>,
   indexByBone: ReadonlyMap<HumanoidBoneName, number>,
 ) {
-  for (let current = node; current; current = current.getParentNode()) {
+  for (const current of collectParentChain(
+    node,
+    (candidate) => candidate.getParentNode(),
+    { label: "PMX included ancestor chain" },
+  )) {
     const bone = nodeToBone.get(current);
     if (!bone) {
       continue;
@@ -685,11 +707,11 @@ function textureExtension(texture: GltfTexture) {
 }
 
 function nodeDepth(node: GltfNode) {
-  let depth = 0;
-  for (let parent = node.getParentNode(); parent; parent = parent.getParentNode()) {
-    depth += 1;
-  }
-  return depth;
+  return collectParentChain(
+    node.getParentNode(),
+    (parent) => parent.getParentNode(),
+    { label: "PMX node depth chain" },
+  ).length;
 }
 
 function tailOffset(bone: HumanoidBoneName): [number, number, number] {

@@ -5,6 +5,7 @@ import type {
   Node,
 } from "@gltf-transform/core";
 import { Matrix4, Quaternion, Vector3 } from "three";
+import { assertParentChains } from "@/core/parent-graph";
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
 import type {
   RigMotionTrack,
@@ -57,6 +58,10 @@ export function validateRigMotionDocumentSemantics({
   expected: RigMotionV2;
   thresholds?: SemanticValidationThresholds;
 }): RigMotionSemanticValidationResult {
+  const documentNodes = document.getRoot().listNodes();
+  assertParentChains(documentNodes, (node) => node.getParentNode(), {
+    label: "Rig Motion semantic document hierarchy",
+  });
   const issues: string[] = [];
   const definition = getRigDefinition(expected.rigDefinitionId);
   if (!definition) {

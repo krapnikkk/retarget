@@ -1,6 +1,10 @@
 import type { Document, Node } from "@gltf-transform/core";
 import { Quaternion, Vector3 } from "three";
 import {
+  assertParentChains,
+  collectParentChain,
+} from "@/core/parent-graph";
+import {
   getRequiredRigRoles,
   getRigDefinition,
 } from "./definitions";
@@ -41,6 +45,7 @@ export function inspectGLTFRig(
   document: Document,
   options: RigInspectionOptions = {},
 ): RigInspection {
+  assertDocumentParentGraph(document);
   const candidates = collectCandidateNodes(document);
   const profile = selectProfile(candidates, options);
   const definition = getRigDefinition(profile.rigDefinitionId);
@@ -277,12 +282,11 @@ function createRestPose(
   return [...nodesByRole].map(([role, node]): RigRestTransform => {
     const child = findPrimaryChild(definition, role, nodesByRole);
     const primaryAxis = child ? getDirectionInNodeSpace(node, child) : undefined;
+    const parentRole = findMappedParentRole(node, rolesByNode);
     return {
       role,
       nodeName: node.getName() || role,
-      ...(findMappedParentRole(node, rolesByNode)
-        ? { parentRole: findMappedParentRole(node, rolesByNode)! }
-        : {}),
+      ...(parentRole ? { parentRole } : {}),
       translation: tuple3(node.getTranslation()),
       rotation: tuple4(node.getRotation()),
       worldTranslation: tuple3(node.getWorldTranslation()),
@@ -339,7 +343,11 @@ function findMappedParentRole(
   node: Node,
   rolesByNode: ReadonlyMap<Node, RigRoleId>,
 ) {
-  for (let parent = node.getParentNode(); parent; parent = parent.getParentNode()) {
+  for (const parent of collectParentChain(
+    node.getParentNode(),
+    (candidate) => candidate.getParentNode(),
+    { label: "glTF rig mapped parent chain" },
+  )) {
     const role = rolesByNode.get(parent);
     if (role) return role;
   }
@@ -376,11 +384,19 @@ function createRigSignature(
 }
 
 function createNodePath(node: Node) {
-  const segments: string[] = [];
-  for (let current: Node | null = node; current; current = current.getParentNode()) {
-    segments.unshift(normalizeRigNodeName(current.getName()) || "(unnamed)");
-  }
-  return segments.join("/");
+  return collectParentChain(node, (current) => current.getParentNode(), {
+    label: "glTF rig node path",
+  })
+    .reverse()
+    .map((current) => normalizeRigNodeName(current.getName()) || "(unnamed)")
+    .join("/");
+}
+
+function assertDocumentParentGraph(document: Document) {
+  const nodes = document.getRoot().listNodes();
+  assertParentChains(nodes, (node) => node.getParentNode(), {
+    label: "glTF rig node hierarchy",
+  });
 }
 
 function createSkinBindingEvidence(document: Document, joint: Node) {

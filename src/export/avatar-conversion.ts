@@ -8,6 +8,7 @@ import type { Object3D } from "three";
 import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import type { AvatarFormatId } from "@/formats";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
 import {
   PMXBinaryReader,
@@ -980,4 +981,13 @@ function validateMMDStructure({
       );
     }
   }
+  assertValidParentGraph({
+    nodeIds: bones.keys(),
+    edges: bones.flatMap((bone, childId) =>
+      bone.parentIndex >= 0
+        ? [{ childId, parentId: bone.parentIndex }]
+        : []
+    ),
+    label: `${label} bone hierarchy`,
+  });
 }

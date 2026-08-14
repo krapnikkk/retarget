@@ -1,4 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertHumanoidTargetIdentity,
@@ -165,6 +166,11 @@ function collectParents(nodes: readonly RawGLTFNode[]) {
       parents.set(child as number, parentIndex);
     }
   }
+  assertValidParentGraph({
+    nodeIds: nodes.keys(),
+    edges: Array.from(parents, ([childId, parentId]) => ({ childId, parentId })),
+    label: "glTF node hierarchy",
+  });
   return parents;
 }
 

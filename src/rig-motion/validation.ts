@@ -9,6 +9,10 @@ import {
   validateQuaternionSamples,
 } from "@/validation/time-series";
 import {
+  formatParentGraphIssue,
+  validateParentGraph,
+} from "@/core/parent-graph";
+import {
   RIG_MOTION_SCHEMA_VERSION,
   type RigMotionTrack,
   type RigMotionV2,
@@ -171,6 +175,25 @@ function validateRestPose(
       roles.add(transform.role);
     }
   });
+  const parentGraph = validateParentGraph({
+    nodeIds: restPose.flatMap((transform) =>
+      transform && typeof transform.role === "string" ? [transform.role] : []
+    ),
+    edges: restPose.flatMap((transform) =>
+      transform &&
+        typeof transform.role === "string" &&
+        typeof transform.parentRole === "string"
+        ? [{ childId: transform.role, parentId: transform.parentRole }]
+        : []
+    ),
+  });
+  if (!parentGraph.ok) {
+    issues.push(
+      ...parentGraph.issues.map(
+        (issue) => `restPose parent graph: ${formatParentGraphIssue(issue)}`,
+      ),
+    );
+  }
 }
 
 function validateTracks(

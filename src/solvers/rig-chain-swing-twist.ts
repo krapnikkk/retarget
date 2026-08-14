@@ -1,4 +1,5 @@
 import { Quaternion, Vector3 } from "three";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import {
   getRequiredRigRoles,
   getRigCompatibility,
@@ -15,6 +16,7 @@ import type {
   RigMotionSolverId,
   Vec3,
 } from "@/rig-motion";
+import { validateRigMotion } from "@/rig-motion";
 
 export function solveRigMotionToTarget({
   motion,
@@ -25,6 +27,19 @@ export function solveRigMotionToTarget({
   target: Omit<RigInspection, "nodesByRole" | "rolesByNode">;
   targetFilename: string;
 }): RetargetedRigMotionV2 {
+  const sourceValidation = validateRigMotion(motion);
+  if (!sourceValidation.ok) {
+    throw new Error(sourceValidation.issues.join(" "));
+  }
+  assertValidParentGraph({
+    nodeIds: target.restPose.map((transform) => transform.role),
+    edges: target.restPose.flatMap((transform) =>
+      transform.parentRole
+        ? [{ childId: transform.role, parentId: transform.parentRole }]
+        : []
+    ),
+    label: "Target rig rest-pose hierarchy",
+  });
   const compatibility = getRigCompatibility(
     {
       rigFamily: motion.family,

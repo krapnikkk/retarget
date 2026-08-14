@@ -1,5 +1,6 @@
 import { Document, type Accessor } from "@gltf-transform/core";
 import { Matrix4, Quaternion, Vector3 } from "three";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import type { GLBRangeInfo } from "@/import/glb-range";
 import { readBlobRange } from "@/import/glb-range";
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
@@ -71,9 +72,16 @@ export async function createStreamedAnimationValidationDocument(
         throw new Error(`Streamed GLB node ${childIndex} has multiple parents.`);
       }
       parents.set(childIndex, parentIndex);
-      documentNodes[parentIndex]!.addChild(documentNodes[childIndex]!);
     }
   });
+  assertValidParentGraph({
+    nodeIds: documentNodes.keys(),
+    edges: Array.from(parents, ([childId, parentId]) => ({ childId, parentId })),
+    label: "Streamed GLB node hierarchy",
+  });
+  for (const [childIndex, parentIndex] of parents) {
+    documentNodes[parentIndex]!.addChild(documentNodes[childIndex]!);
+  }
   documentNodes.forEach((node, index) => {
     if (!parents.has(index)) scene.addChild(node);
   });

@@ -136,4 +136,22 @@ describe("glTF target binding", () => {
       });
     });
   });
+
+  it("rejects cyclic raw glTF parent graphs before walking ancestors", () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "avatar.glb" },
+      fbxFile: { name: "motion.fbx" },
+    });
+    expect(() =>
+      bindCanonicalClipToRawGLTFTarget(
+        clip,
+        [
+          { name: "hips", children: [1] },
+          { name: "spine", children: [0] },
+        ],
+        new Map([["hips", 0]]),
+        GENERIC_GLTF_HUMANOID_PROFILE,
+      ),
+    ).toThrow(/cycle detected/i);
+  });
 });

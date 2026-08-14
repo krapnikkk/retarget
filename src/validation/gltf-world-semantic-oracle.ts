@@ -5,6 +5,7 @@ import type {
   Node,
 } from "@gltf-transform/core";
 import { Matrix4, Quaternion, Vector3 } from "three";
+import { assertParentChains } from "@/core/parent-graph";
 import { HUMANOID_BONES, type HumanoidBoneName, type RetargetedMotionClip } from "@/retarget";
 import {
   createSemanticSampleTimes,
@@ -32,6 +33,10 @@ export function validateGLTFWorldSemantics({
   thresholds: SemanticValidationThresholds;
   worldAxisCorrection?: Quaternion;
 }): SemanticMotionValidationResult {
+  const documentNodes = document.getRoot().listNodes();
+  assertParentChains(documentNodes, (node) => node.getParentNode(), {
+    label: "glTF semantic document hierarchy",
+  });
   const animation = selectAnimation(document, animationName);
   const { channels, issues: channelIssues } = collectChannels(
     animation,

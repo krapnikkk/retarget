@@ -10,6 +10,10 @@ import {
   type Object3D,
 } from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import {
+  assertValidParentGraph,
+  collectParentChain,
+} from "@/core/parent-graph";
 import type { AvatarFormatId } from "@/formats";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { convertMMDModelToGLBDocument } from "@/export/avatar-conversion";
@@ -306,6 +310,11 @@ function collectRawParents(nodes: readonly Record<string, unknown>[]) {
       parents.set(child, parentIndex);
     }
   }
+  assertValidParentGraph({
+    nodeIds: nodes.keys(),
+    edges: Array.from(parents, ([childId, parentId]) => ({ childId, parentId })),
+    label: "glTF node hierarchy",
+  });
   return parents;
 }
 
@@ -413,12 +422,11 @@ function createSemanticSkeleton<T extends object>(
   );
   const roots: RetargetSkeletonNode[] = [];
   for (const [bone, node] of bones) {
-    let parent = getParent(node);
-    let parentBone: HumanoidBoneName | undefined;
-    while (parent && !parentBone) {
-      parentBone = boneByNode.get(parent);
-      parent = getParent(parent);
-    }
+    const parentBone = collectParentChain(getParent(node), getParent, {
+      label: `${filename} skeleton parent chain`,
+    })
+      .map((parent) => boneByNode.get(parent))
+      .find((candidate): candidate is HumanoidBoneName => Boolean(candidate));
     const entry = entries.get(bone)!;
     if (parentBone) entries.get(parentBone)?.children.push(entry);
     else roots.push(entry);
@@ -436,12 +444,13 @@ function createObjectRigSignature(
   return createHumanoidRigSignature(
     profileId,
     Array.from(bones, ([bone, object]) => {
-      let parent = object.parent;
-      let parentBone: HumanoidBoneName | undefined;
-      while (parent && !parentBone) {
-        parentBone = boneByObject.get(parent);
-        parent = parent.parent;
-      }
+      const parentBone = collectParentChain(
+        object.parent,
+        (parent) => parent.parent,
+        { label: `${profileId} object rig parent chain` },
+      )
+        .map((parent) => boneByObject.get(parent))
+        .find((candidate): candidate is HumanoidBoneName => Boolean(candidate));
       const position = object.getWorldPosition(new Vector3());
       const rotation = object.getWorldQuaternion(new Quaternion());
       return {

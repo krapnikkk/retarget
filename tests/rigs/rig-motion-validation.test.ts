@@ -78,6 +78,43 @@ describe("Rig Motion v2 validation", () => {
     });
   });
 
+  it.each([
+    {
+      label: "missing parent",
+      configure(motion: RigMotionV2) {
+        motion.restPose[0]!.parentRole = "pelvis";
+      },
+      issue: /parent graph.*missing parent pelvis/i,
+    },
+    {
+      label: "self parent",
+      configure(motion: RigMotionV2) {
+        motion.restPose[0]!.parentRole = "root";
+      },
+      issue: /parent graph.*itself as parent/i,
+    },
+    {
+      label: "cycle",
+      configure(motion: RigMotionV2) {
+        motion.restPose[0]!.parentRole = "pelvis";
+        motion.restPose.push({
+          ...structuredClone(motion.restPose[0]!),
+          role: "pelvis",
+          nodeName: "pelvis",
+          parentRole: "root",
+        });
+      },
+      issue: /parent graph.*cycle detected/i,
+    },
+  ])("rejects rest-pose $label", ({ configure, issue }) => {
+    const motion = createValidRigMotion();
+    configure(motion);
+    expect(validateRigMotion(motion)).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([expect.stringMatching(issue)]),
+    });
+  });
+
   it("enforces duration, FPS, track, per-track, and total-sample budgets", () => {
     const motion = createValidRigMotion();
     expect(

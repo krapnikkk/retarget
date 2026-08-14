@@ -1,4 +1,5 @@
 import type { Node } from "@gltf-transform/core";
+import { collectParentChain } from "@/core/parent-graph";
 import type { HumanoidBoneName } from "@/retarget";
 import type { HumanoidSemanticRestPose } from "./semantic-motion";
 
@@ -10,12 +11,13 @@ export function createGLTFHumanoidSemanticRestPose(
   );
   return new Map(
     [...nodesByBone].map(([bone, node]) => {
-      let parent = node.getParentNode();
-      let parentBone: HumanoidBoneName | undefined;
-      while (parent && !parentBone) {
-        parentBone = boneByNode.get(parent);
-        parent = parent.getParentNode();
-      }
+      const parentBone = collectParentChain(
+        node.getParentNode(),
+        (parent) => parent.getParentNode(),
+        { label: "glTF semantic rest-pose parent chain" },
+      )
+        .map((parent) => boneByNode.get(parent))
+        .find((candidate): candidate is HumanoidBoneName => Boolean(candidate));
       return [
         bone,
         {
