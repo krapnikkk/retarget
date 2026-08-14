@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = path.join(
   root,
-  "docs/generated/non-humanoid-v1-certification.json",
+  "src/certification/non-humanoid-v1.json",
 );
 const provenance = JSON.parse(
   await readFile(
@@ -49,6 +49,37 @@ const cases = [
     sourceFixtures: ["fox-animations.glb"],
     targetFixtures: ["fox-base.glb", "fox-dog.glb", "fox-horse.glb"],
     actions: ["Idle", "Walk", "Run", "Jump"],
+    promotion: {
+      assurance: "beta",
+      sourceFormat: "gltf-rigged",
+      targetFormat: "gltf-rigged",
+      outputFormat: "animated-glb",
+      publicEntry: "3dretarget/browser#runRiggedGLTFPipeline",
+      scope:
+        "Pinned Mesh2Motion Fox Idle/Walk/Run/Jump source actions to the pinned Fox, Dog, and Horse target fixtures.",
+      evidence: {
+        structural: {
+          status: "passed",
+          result:
+            "All 12 exported Animated GLBs reload with the expected animation channel set.",
+          test:
+            "tests/rigs/mesh2motion-acceptance.test.ts#fox-dog-horse-animated-glb-beta",
+        },
+        semantic: {
+          status: "passed",
+          result:
+            "An independent glTF sampler and world-transform oracle passes all 12 source-action/target pairs with no missing tracks.",
+          test:
+            "tests/rigs/mesh2motion-acceptance.test.ts#fox-dog-horse-animated-glb-beta",
+        },
+        ecosystem: {
+          status: "pending",
+          result:
+            "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+          test: null,
+        },
+      },
+    },
   }),
   certificationCase("avian-v1", "avian", "mesh2motion-bird", {
     sourceFixtures: ["bird-animations.glb"],
@@ -69,8 +100,8 @@ const cases = [
 ];
 
 const manifestBody = {
-  schemaVersion: 2,
-  validatorVersion: 2,
+  schemaVersion: 3,
+  validatorVersion: 3,
   sourceRepository: provenance.sourceRepository,
   sourceCommit: provenance.sourceCommit,
   license: provenance.license,
@@ -130,6 +161,7 @@ function certificationCase(rigDefinitionId, family, profileId, evidence) {
       ? { targetDerivation: evidence.targetDerivation }
       : {}),
     ...(evidence.actions ? { actions: evidence.actions } : {}),
+    ...(evidence.promotion ? { promotion: evidence.promotion } : {}),
     evidence: commonEvidence,
   };
 }

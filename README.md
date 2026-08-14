@@ -48,13 +48,19 @@ Committed fixtures include provenance and hashes.
 - `3dretarget/validation`: serializable semantic validation results.
 - `3dretarget/certification`: provenance and assurance manifests.
 
-The public pipeline registry currently exposes one complete beta combination:
-`gltf-animation -> gltf-humanoid -> animated-glb`. Lookup requires all three
-format IDs; other implemented combinations remain experimental and
-`getRetargetPipeline` returns `null` for them. The pinned Golden Motion case
-inside this beta capability has stronger, case-scoped certified evidence from
-Blender and Godot. Calling `pipeline.run(...)` executes this public end-to-end
-path and returns the `animated-glb` bytes together with the solved motion.
+The public humanoid pipeline registry exposes six complete beta combinations:
+`gltf-animation` to `gltf-humanoid` with `animated-glb`, `vrma`,
+`gltf-animation`, or `motion-json` output; `vrma` to `gltf-humanoid` with
+`animated-glb` output; and `gltf-animation` to `vrm` with `baked-vrm` output.
+Lookup requires all three format IDs. Calling `pipeline.run(...)` returns the
+declared bytes together with the solved motion. The pinned Golden
+`gltf-animation -> gltf-humanoid -> animated-glb` case has stronger,
+case-scoped Blender and Godot certification.
+
+The browser entry also exposes `runRiggedGLTFPipeline` for non-humanoid rigged
+glTF pairs. Its beta scope is intentionally narrower: the pinned Mesh2Motion
+Fox Idle/Walk/Run/Jump source matrix to the pinned Fox, Dog, and Horse targets
+with Animated GLB output. Other rig families remain experimental.
 
 See [library stability gates](docs/stabilization-gates.md) for the current local
 readiness criteria.

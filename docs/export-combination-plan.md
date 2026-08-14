@@ -37,11 +37,18 @@ x execution mode x rig detection mode
 x solver revision x target-binding revision
 ```
 
-Accordingly, public pipeline lookup requires the motion, avatar, and export
-format IDs. The registry currently admits one generalized beta capability,
-`gltf-animation -> gltf-humanoid -> animated-glb`; its pinned Golden Motion
-case is independently certified without promoting every glTF asset to
-certified assurance.
+Accordingly, public humanoid pipeline lookup requires the motion, avatar, and
+export format IDs. The registry admits six beta combinations: four
+`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `vrma`,
+`gltf-animation`, and `motion-json`), `vrma -> gltf-humanoid -> animated-glb`,
+and `gltf-animation -> vrm -> baked-vrm`. Their pinned cases have structural
+reload and independent semantic evidence. Only the first pinned Golden Motion
+case is independently certified in Blender and Godot.
+
+Non-humanoid rigged glTF uses the separate coarse browser entry
+`runRiggedGLTFPipeline`. Only the pinned Fox action matrix to the pinned Fox,
+Dog, and Horse targets with Animated GLB output is beta; this fixture-scoped
+promotion does not generalize to every rigged glTF pair.
 
 ## Dispatch boundaries
 

@@ -16,7 +16,10 @@ registry publication promise.
   lookup requires the motion, avatar, and output format IDs so assurance is
   attached to a complete input-to-output combination rather than a format pair.
   The selected pipeline's `run` method returns the declared output bytes and
-  solved motion; `retarget` remains the solve-only operation.
+  solved motion; `retarget` remains the solve-only operation. Non-humanoid
+  rigged glTF uses the separate coarse `runRiggedGLTFPipeline` operation, which
+  preserves the same complete input-to-Animated-GLB boundary without exposing
+  glTF-Transform or Three.js objects.
 - `3dretarget/io` accepts and returns bytes and serializable data only.
 - `3dretarget/node` exposes the byte IO surface plus explicit inline jobs for
   local tools and tests. Inline execution is not re-exported by the browser

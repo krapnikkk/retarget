@@ -113,6 +113,12 @@ Studio 和目录必须从 rig definition 推导选项，不能把禁用的生态
 
 Studio 显示检测到的 family/definition/profile，允许显式覆盖 family/profile，提供可视化链起点/终点映射和 JSON 配方导入导出。联动双视口可冻结两侧静止姿势并绘制每个映射关节的局部轴。诊断报告必需链覆盖率、拓扑冲突、缺失坐标轴、根缩放、接触与落地漂移、循环边界旋转/根增量。配方不包含也不再分发任何用户资产。
 
+## 当前 beta 范围
+
+粗粒度浏览器操作 `runRiggedGLTFPipeline` 负责从一对 rigged glTF 输入到 Animated GLB 输出的完整路径。当前 beta 保证仅覆盖固定 Mesh2Motion `fox-animations.glb` 的 Idle、Walk、Run、Jump 动作到固定 `fox-base.glb`、`fox-dog.glb`、`fox-horse.glb` 目标。12 个动作/目标配对全部通过结构重载，以及独立 glTF 采样器与世界变换判定器，并且没有缺失轨道。
+
+这是固定资源及 profile 范围的晋升，不代表任意四足或所有 rigged glTF 配对均为 beta。鸟类、蛇形、蛛形和复合生物路径保留既有验收证据，但在固定同等级真实动作/输出语义矩阵前仍为实验性。
+
 ## 固定资源和验收矩阵
 
 `tests/fixtures/non-humanoid/mesh2motion` 下固定资源锁定到 Mesh2Motion 提交 `a9bf18a6007d7e12d197657f023f77a5e33473fe`。上游明确将所有模型、骨架和动画贡献为 CC0 1.0；每个文件都记录源路径和 SHA-256。四足固定资源覆盖：
@@ -139,4 +145,4 @@ SDK 验收要求：
 - 导出的 glTF Animation 与 Animated GLB 以预期通道重载，并能通过 Three.js `AnimationMixer` 前进；
 - 现有人形、浏览器运行时和导出测试保持通过。
 
-生成的验收记录及认证哈希位于 `docs/generated/non-humanoid-v1-certification.json`。固定资源准入不会把资产变为公共目录条目；目录发布仍有独立的清单、完整性、预览和发布门禁。
+生成的验收记录及认证哈希位于 `src/certification/non-humanoid-v1.json`，并由 `3dretarget/certification` 导出。固定资源准入不会把资产变为公共目录条目；目录发布仍有独立的清单、完整性、预览和发布门禁。

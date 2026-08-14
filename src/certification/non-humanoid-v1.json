@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 2,
-  "validatorVersion": 2,
+  "schemaVersion": 3,
+  "validatorVersion": 3,
   "sourceRepository": "https://github.com/Mesh2Motion/mesh2motion-app",
   "sourceCommit": "a9bf18a6007d7e12d197657f023f77a5e33473fe",
   "license": "CC0-1.0",
@@ -49,6 +49,31 @@
         "Run",
         "Jump"
       ],
+      "promotion": {
+        "assurance": "beta",
+        "sourceFormat": "gltf-rigged",
+        "targetFormat": "gltf-rigged",
+        "outputFormat": "animated-glb",
+        "publicEntry": "3dretarget/browser#runRiggedGLTFPipeline",
+        "scope": "Pinned Mesh2Motion Fox Idle/Walk/Run/Jump source actions to the pinned Fox, Dog, and Horse target fixtures.",
+        "evidence": {
+          "structural": {
+            "status": "passed",
+            "result": "All 12 exported Animated GLBs reload with the expected animation channel set.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#fox-dog-horse-animated-glb-beta"
+          },
+          "semantic": {
+            "status": "passed",
+            "result": "An independent glTF sampler and world-transform oracle passes all 12 source-action/target pairs with no missing tracks.",
+            "test": "tests/rigs/mesh2motion-acceptance.test.ts#fox-dog-horse-animated-glb-beta"
+          },
+          "ecosystem": {
+            "status": "pending",
+            "result": "External Blender and Godot receipts remain specific to the humanoid certified artifact.",
+            "test": null
+          }
+        }
+      },
       "evidence": {
         "structural": {
           "status": "passed",
@@ -212,5 +237,5 @@
       }
     }
   ],
-  "acceptanceHash": "549e7e068dbaf653a3502849a43999b878a91cc3b4724e574df96a1bbebbbeb8"
+  "acceptanceHash": "f3d5cbd95acdff8351ed4b5fdd0ac2f5c6510ed4bbe20ec4d207501e0862c1c2"
 }

@@ -34,7 +34,9 @@ x 执行模式 x 骨架检测模式
 x 求解器修订 x 目标绑定修订
 ```
 
-因此，公开流水线查询必须提供动作、角色和导出格式 ID。注册表当前只准入一个泛化 beta 能力：`gltf-animation -> gltf-humanoid -> animated-glb`；其中锁定的 Golden Motion 用例独立达到 `certified`，但这不会把所有 glTF 资源一并提升为认证等级。
+因此，公开人形流水线查询必须提供动作、角色和导出格式 ID。注册表现准入六个 beta 组合：`gltf-animation -> gltf-humanoid` 的四种输出（`animated-glb`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation -> vrm -> baked-vrm`。这些固定用例均有结构重载与独立语义证据；只有第一个 Golden Motion 固定用例另在 Blender 与 Godot 中达到认证。
+
+非人形 rigged glTF 使用独立的粗粒度浏览器入口 `runRiggedGLTFPipeline`。只有固定 Fox 动作矩阵到固定 Fox、Dog、Horse 目标并输出 Animated GLB 的范围为 beta；该固定资源范围的晋升不会泛化为所有 rigged glTF 配对。
 
 ## 调度边界
 

@@ -154,6 +154,20 @@ coverage, topology conflicts, missing axes, root scale, contacts and grounded
 drift, and loop-boundary rotation/root deltas. A recipe does not contain or
 redistribute either user asset.
 
+## Current beta scope
+
+The coarse browser operation `runRiggedGLTFPipeline` owns the complete
+rigged-glTF input pair to Animated GLB output path. Beta assurance is currently
+limited to the pinned Mesh2Motion `fox-animations.glb` Idle, Walk, Run, and Jump
+actions retargeted to the pinned `fox-base.glb`, `fox-dog.glb`, and
+`fox-horse.glb` targets. All 12 action/target pairs pass structural reload and
+an independent glTF sampler plus world-transform oracle with no missing tracks.
+
+This is a fixture- and profile-scoped promotion, not a claim that arbitrary
+quadrupeds or every rigged glTF pair are beta. Avian, serpentine, arachnid, and
+creature paths retain their acceptance evidence but remain experimental until
+equivalent real action/output semantic matrices are pinned.
+
 ## Fixture and acceptance matrix
 
 Fixtures under `tests/fixtures/non-humanoid/mesh2motion` are pinned to
@@ -188,6 +202,7 @@ SDK acceptance requires:
 - existing humanoid, browser-runtime, and export tests remain green.
 
 The generated acceptance record and its certification hash live at
-`docs/generated/non-humanoid-v1-certification.json`. Fixture admission does not
+`src/certification/non-humanoid-v1.json` and are exported by
+`3dretarget/certification`. Fixture admission does not
 make an asset a public catalog entry; catalog publication keeps its separate
 manifest, integrity, preview, and release gates.
