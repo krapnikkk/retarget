@@ -3,8 +3,10 @@ import { runRetargetJob } from "@/jobs/browser-retarget-job";
 
 class PendingWorker extends EventTarget {
   static instances: PendingWorker[] = [];
+  static postError: unknown;
 
   readonly transfers: Transferable[][] = [];
+  readonly messages: unknown[] = [];
   terminated = false;
 
   constructor() {
@@ -12,8 +14,13 @@ class PendingWorker extends EventTarget {
     PendingWorker.instances.push(this);
   }
 
-  postMessage(_message: unknown, transfers: Transferable[]) {
+  postMessage(message: unknown, transfers: Transferable[]) {
+    if (PendingWorker.postError) throw PendingWorker.postError;
+    this.messages.push(message);
     this.transfers.push(transfers);
+    structuredClone(message, {
+      transfer: transfers,
+    });
   }
 
   terminate() {
@@ -24,6 +31,8 @@ class PendingWorker extends EventTarget {
 describe("browser retarget worker boundary", () => {
   afterEach(() => {
     PendingWorker.instances = [];
+    PendingWorker.postError = undefined;
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -59,8 +68,7 @@ describe("browser retarget worker boundary", () => {
     expect(PendingWorker.instances[0]?.terminated).toBe(true);
   });
 
-  it("transfers glTF sidecar buffers without copying them", async () => {
-    vi.stubGlobal("window", globalThis);
+  it("copies glTF buffers by default before transferring worker-owned clones", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();
     const primary = new ArrayBuffer(8);
@@ -76,13 +84,16 @@ describe("browser retarget worker boundary", () => {
     );
     const worker = PendingWorker.instances[0]!;
 
-    expect(worker.transfers[0]).toEqual([primary, sidecar]);
+    expect(worker.transfers[0]).toHaveLength(2);
+    expect(worker.transfers[0]).not.toContain(primary);
+    expect(worker.transfers[0]).not.toContain(sidecar);
+    expect(primary.byteLength).toBe(8);
+    expect(sidecar.byteLength).toBe(16);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("transfers MMD package resources with the model conversion job", async () => {
-    vi.stubGlobal("window", globalThis);
+  it("allows callers to explicitly transfer MMD package ownership", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();
     const primary = new ArrayBuffer(8);
@@ -97,22 +108,23 @@ describe("browser retarget worker boundary", () => {
           resources: { "model/textures/base.png": texture },
         },
       },
-      { signal: controller.signal },
+      { bufferOwnership: "transfer", signal: controller.signal },
     );
     const worker = PendingWorker.instances[0]!;
 
     expect(worker.transfers[0]).toEqual([primary, texture]);
+    expect(primary.byteLength).toBe(0);
+    expect(texture.byteLength).toBe(0);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("transfers humanoid avatar inspection inputs without copying them", async () => {
-    vi.stubGlobal("window", globalThis);
+  it("deduplicates aliased avatar inspection buffers", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();
     const primary = new ArrayBuffer(8);
     const structuralJSONBytes = new ArrayBuffer(10);
-    const sidecar = new ArrayBuffer(12);
+    const sidecar = primary;
     const texture = new ArrayBuffer(16);
     const promise = runRetargetJob(
       {
@@ -130,13 +142,110 @@ describe("browser retarget worker boundary", () => {
       { signal: controller.signal },
     );
 
-    expect(PendingWorker.instances[0]!.transfers[0]).toEqual([
-      primary,
-      structuralJSONBytes,
-      sidecar,
-      texture,
-    ]);
+    expect(PendingWorker.instances[0]!.transfers[0]).toHaveLength(3);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("cleans up when postMessage throws synchronously", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    PendingWorker.postError = new DOMException("cannot clone", "DataCloneError");
+
+    await expect(runRetargetJob({
+      type: "inspect-rigged-gltf",
+      bytes: new ArrayBuffer(8),
+      filename: "rig.glb",
+    })).rejects.toMatchObject({
+      code: "RETARGET_JOB_FAILED",
+      message: "Retarget worker request could not be cloned.",
+    });
+    expect(PendingWorker.instances[0]?.terminated).toBe(true);
+  });
+
+  it("rejects messageerror and terminates the worker", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    const promise = runRetargetJob({
+      type: "inspect-rigged-gltf",
+      bytes: new ArrayBuffer(8),
+      filename: "rig.glb",
+    });
+    const worker = PendingWorker.instances[0]!;
+
+    worker.dispatchEvent(new MessageEvent("messageerror"));
+
+    await expect(promise).rejects.toMatchObject({
+      code: "RETARGET_JOB_FAILED",
+      message: "Retarget worker returned an unreadable message.",
+    });
+    expect(worker.terminated).toBe(true);
+  });
+
+  it("settles successful responses and terminates the worker", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    const promise = runRetargetJob({
+      type: "export-motion",
+      formatId: "motion-json",
+      clip: {} as never,
+    });
+    const worker = PendingWorker.instances[0]!;
+    const request = worker.messages[0] as { jobId: string };
+    const result = new Uint8Array([1, 2, 3]);
+
+    worker.dispatchEvent(new MessageEvent("message", { data: {
+      jobId: request.jobId,
+      type: "success",
+      result,
+    } }));
+
+    await expect(promise).resolves.toEqual(result);
+    expect(worker.terminated).toBe(true);
+  });
+
+  it("contains progress callback failures and rejects immediately", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    const promise = runRetargetJob(
+      {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+      { onProgress: () => { throw new Error("observer failed"); } },
+    );
+    const worker = PendingWorker.instances[0]!;
+    const request = worker.messages[0] as { jobId: string };
+
+    worker.dispatchEvent(new MessageEvent("message", { data: {
+      jobId: request.jobId,
+      type: "progress",
+      phase: "parse",
+      progress: 0.5,
+    } }));
+
+    await expect(promise).rejects.toMatchObject({
+      code: "RETARGET_JOB_FAILED",
+      message: "Retarget progress callback failed.",
+    });
+    expect(worker.terminated).toBe(true);
+  });
+
+  it("terminates and rejects when the worker deadline expires", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("Worker", PendingWorker);
+    const promise = runRetargetJob(
+      {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+      { deadlineMs: 50 },
+    );
+    const rejection = expect(promise).rejects.toMatchObject({
+      code: "PROCESSING_DEADLINE_EXCEEDED",
+    });
+
+    await vi.advanceTimersByTimeAsync(50);
+
+    await rejection;
+    expect(PendingWorker.instances[0]?.terminated).toBe(true);
   });
 });

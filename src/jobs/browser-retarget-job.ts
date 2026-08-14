@@ -10,11 +10,15 @@ import type {
   RetargetJobTask,
 } from "./types";
 import { RetargetError } from "@/retarget/errors";
+import { collectArrayBufferTransfers } from "./transferables";
+
+export type BufferOwnership = "copy" | "transfer";
 
 export type RunRetargetJobOptions = {
   signal?: AbortSignal;
   deadlineMs?: number;
   onProgress?: (progress: RetargetJobProgress) => void;
+  bufferOwnership?: BufferOwnership;
 };
 
 export async function runRetargetJob<TTask extends RetargetJobTask>(
@@ -23,20 +27,81 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     deadlineMs = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
     onProgress,
     signal,
+    bufferOwnership = "copy",
   }: RunRetargetJobOptions = {},
 ): Promise<RetargetJobResult<TTask>> {
+  const workerTask = bufferOwnership === "copy"
+    ? structuredClone(task)
+    : task;
   const request: RetargetJobRequest = {
     jobId: crypto.randomUUID(),
     deadlineMs,
-    task,
+    task: workerTask,
   };
   if (signal?.aborted) throw createAbortError();
 
   return new Promise<RetargetJobResult<TTask>>((resolve, reject) => {
     const worker = createRetargetWorker(request.jobId);
-    const timeout = window.setTimeout(() => {
+    let settled = false;
+    let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
+    const cleanup = () => {
+      if (timeout !== undefined) globalThis.clearTimeout(timeout);
+      signal?.removeEventListener("abort", abort);
+      worker.removeEventListener("error", onError);
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("messageerror", onMessageError);
       worker.terminate();
-      reject(
+    };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const succeed = (result: RetargetJobResult<TTask>) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(result);
+    };
+    const abort = () => fail(createAbortError());
+    const onError = (event: ErrorEvent) => {
+      fail(new RetargetError("RETARGET_JOB_FAILED", {
+        message: event.message || "Retarget worker failed.",
+      }));
+    };
+    const onMessageError = () => {
+      fail(new RetargetError("RETARGET_JOB_FAILED", {
+        message: "Retarget worker returned an unreadable message.",
+      }));
+    };
+    const onMessage = (event: MessageEvent<RetargetJobResponse>) => {
+      const response = event.data;
+      if (!response || response.jobId !== request.jobId) return;
+      if (response.type === "progress") {
+        try {
+          onProgress?.(response);
+        } catch (cause) {
+          fail(new RetargetError("RETARGET_JOB_FAILED", {
+            cause,
+            message: "Retarget progress callback failed.",
+          }));
+        }
+        return;
+      }
+      if (response.type === "failure") {
+        const error = new RetargetError(response.error.code, {
+          details: response.error.details,
+          message: response.error.message,
+        });
+        error.name = response.error.name;
+        fail(error);
+        return;
+      }
+      succeed(response.result as RetargetJobResult<TTask>);
+    };
+    timeout = globalThis.setTimeout(() => {
+      fail(
         new ProcessingBudgetError({
           code: "PROCESSING_DEADLINE_EXCEEDED",
           limit: deadlineMs,
@@ -45,42 +110,18 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
         }),
       );
     }, deadlineMs);
-    const cleanup = () => {
-      window.clearTimeout(timeout);
-      signal?.removeEventListener("abort", abort);
-      worker.terminate();
-    };
-    const abort = () => {
-      cleanup();
-      reject(createAbortError());
-    };
     signal?.addEventListener("abort", abort, { once: true });
-    worker.addEventListener("error", (event) => {
-      cleanup();
-      reject(new RetargetError("RETARGET_JOB_FAILED", {
-        message: event.message || "Retarget worker failed.",
+    worker.addEventListener("error", onError);
+    worker.addEventListener("message", onMessage);
+    worker.addEventListener("messageerror", onMessageError);
+    try {
+      worker.postMessage(request, collectArrayBufferTransfers(workerTask));
+    } catch (cause) {
+      fail(new RetargetError("RETARGET_JOB_FAILED", {
+        cause,
+        message: "Retarget worker request could not be cloned.",
       }));
-    });
-    worker.addEventListener("message", (event: MessageEvent<RetargetJobResponse>) => {
-      const response = event.data;
-      if (!response || response.jobId !== request.jobId) return;
-      if (response.type === "progress") {
-        onProgress?.(response);
-        return;
-      }
-      cleanup();
-      if (response.type === "failure") {
-        const error = new RetargetError(response.error.code, {
-          details: response.error.details,
-          message: response.error.message,
-        });
-        error.name = response.error.name;
-        reject(error);
-        return;
-      }
-      resolve(response.result as RetargetJobResult<TTask>);
-    });
-    worker.postMessage(request, collectTaskTransfers(task));
+    }
   });
 }
 
@@ -121,51 +162,6 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
   );
   if (signal?.aborted) throw createAbortError();
   return result as RetargetJobResult<TTask>;
-}
-
-function collectTaskTransfers(task: RetargetJobTask): Transferable[] {
-  if (
-    task.type === "import-motion" ||
-    task.type === "inspect-humanoid-avatar" ||
-    task.type === "convert-mmd-avatar" ||
-    task.type === "inspect-rigged-gltf" ||
-    task.type === "validate-motion-export" ||
-    task.type === "validate-avatar-export"
-  ) {
-    if (task.type === "inspect-humanoid-avatar") {
-      return [
-        task.bytes,
-        ...(task.structuralJSONBytes ? [task.structuralJSONBytes] : []),
-        ...collectResourceTransfers(task.resources),
-        ...collectResourceTransfers(task.assetPackage?.resources),
-      ];
-    }
-    if (task.type === "inspect-rigged-gltf") {
-      return [task.bytes, ...collectResourceTransfers(task.resources)];
-    }
-    if (task.type === "convert-mmd-avatar") {
-      return [
-        task.bytes,
-        ...collectResourceTransfers(task.assetPackage?.resources),
-      ];
-    }
-    return [task.bytes];
-  }
-  if (task.type === "retarget-rigged-gltf") {
-    return [
-      task.motionBytes,
-      ...(task.targetBytes ? [task.targetBytes] : []),
-      ...collectResourceTransfers(task.motionResources),
-      ...collectResourceTransfers(task.targetResources),
-    ];
-  }
-  return [];
-}
-
-function collectResourceTransfers(
-  resources?: Readonly<Record<string, ArrayBuffer>>,
-) {
-  return resources ? Object.values(resources) : [];
 }
 
 function createAbortError() {

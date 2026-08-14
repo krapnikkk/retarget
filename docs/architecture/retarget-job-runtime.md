@@ -14,6 +14,14 @@ work instead of merely suppressing a stale callback. Requests and
 results use structured messages with a job id, progress phase, error code, and
 transferable `ArrayBuffer` payloads.
 
+`runRetargetJob()` uses `bufferOwnership: "copy"` by default: it clones the
+task first, transfers only the worker-owned clone, and leaves caller buffers
+attached. Trusted high-throughput callers may explicitly select `"transfer"`;
+that choice detaches their input buffers. Transfer lists are recursively
+collected and deduplicated. Success, failure, abort, timeout, clone errors,
+`messageerror`, and progress-callback failures all converge on the same Worker
+cleanup path.
+
 The active worker routes are:
 
 ```text

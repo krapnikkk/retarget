@@ -8,6 +8,7 @@ import type {
 } from "@/jobs/types";
 import { isRetargetError } from "@/retarget";
 import { executeBrowserInputPreparation } from "@/browser/input-preparation-worker";
+import { collectArrayBufferTransfers } from "@/jobs/transferables";
 import {
   isBrowserInputPreparationRequest,
   type BrowserInputPreparationRequest,
@@ -37,7 +38,10 @@ workerScope.addEventListener(
             });
           },
         );
-        post({ jobId: request.jobId, type: "success", result });
+        post(
+          { jobId: request.jobId, type: "success", result },
+          collectArrayBufferTransfers(result),
+        );
         return;
       }
       const result = await executeRetargetJob(request, (phase, progress) => {
@@ -50,7 +54,7 @@ workerScope.addEventListener(
       });
       post(
         { jobId: request.jobId, type: "success", result },
-        result instanceof Uint8Array ? [result.buffer] : [],
+        collectArrayBufferTransfers(result),
       );
     } catch (cause) {
       post({
