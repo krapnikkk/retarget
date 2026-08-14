@@ -1,5 +1,6 @@
 import { Accessor, Document, WebIO, type Node } from "@gltf-transform/core";
 import { Quaternion } from "three";
+import { assertValidParentGraph } from "@/core/parent-graph";
 import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
 import type { HumanoidBoneName, RetargetedMotionClip } from "@/retarget";
 import {
@@ -211,11 +212,27 @@ function createHumanoidNodes(
 
   for (const bone of needed) {
     if (bone === "hips") continue;
-    const node = document.createNode(resolveExportBoneName(bone, boneNamingProfile));
+    nodesByBone.set(
+      bone,
+      document.createNode(resolveExportBoneName(bone, boneNamingProfile)),
+    );
+  }
+
+  assertValidParentGraph({
+    nodeIds: needed,
+    edges: [...needed].flatMap((bone) => {
+      const parentId = HUMANOID_BONE_PARENT[bone];
+      return parentId ? [{ childId: bone, parentId }] : [];
+    }),
+    label: "Standalone glTF humanoid hierarchy",
+  });
+
+  for (const bone of needed) {
+    if (bone === "hips") continue;
+    const node = nodesByBone.get(bone)!;
     const parentBone = HUMANOID_BONE_PARENT[bone];
     const parent = parentBone ? nodesByBone.get(parentBone) : undefined;
     (parent ?? hips).addChild(node);
-    nodesByBone.set(bone, node);
   }
 
   return nodesByBone;

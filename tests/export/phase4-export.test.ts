@@ -193,6 +193,38 @@ describe("Phase 4 export adapters", () => {
     expect(nodeNames).toContain(resolveExportBoneName("leftUpperArm", "mixamo"));
   });
 
+  it("builds standalone GLB hierarchy independently of track order", () => {
+    const source = createClip();
+    for (let seed = 0; seed < 100; seed += 1) {
+      const document = createGLTFAnimationDocument({
+        ...source,
+        tracks: shuffled(source.tracks, seed),
+      });
+      expectDirectNodeParent(document, "rightUpperArm", "rightShoulder");
+      expectDirectNodeParent(document, "rightShoulder", "upperChest");
+      expectDirectNodeParent(document, "upperChest", "chest");
+      expectDirectNodeParent(document, "chest", "spine");
+      expectDirectNodeParent(document, "spine", "hips");
+    }
+  });
+
+  it.each([
+    ["head", "neck"],
+    ["leftIndexDistal", "leftIndexIntermediate"],
+  ] as const)("creates the ancestor closure for a terminal-only %s track", (bone, parent) => {
+    const source = createClip();
+    const document = createGLTFAnimationDocument({
+      ...source,
+      tracks: [{
+        bone,
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
+      }],
+    });
+    expectDirectNodeParent(document, bone, parent);
+  });
+
   it("preserves the source hips rest height through a GLB round trip", async () => {
     const clip = createClip();
     clip.metadata = {
@@ -758,6 +790,28 @@ function createClip() {
       solvePass: 1 as const,
     },
   };
+}
+
+function expectDirectNodeParent(
+  document: Document,
+  nodeName: string,
+  parentName: string,
+) {
+  const node = document.getRoot().listNodes().find(
+    (candidate) => candidate.getName() === nodeName,
+  );
+  expect(node?.getParentNode()?.getName()).toBe(parentName);
+}
+
+function shuffled<T>(values: readonly T[], seed: number) {
+  const output = [...values];
+  let state = seed + 1;
+  for (let index = output.length - 1; index > 0; index -= 1) {
+    state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+    const swapIndex = state % (index + 1);
+    [output[index], output[swapIndex]] = [output[swapIndex]!, output[index]!];
+  }
+  return output;
 }
 
 async function createClipForAvatar(
