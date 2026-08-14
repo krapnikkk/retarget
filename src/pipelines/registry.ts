@@ -9,9 +9,9 @@ import type {
 import { importedMotionToAvatarPipelines } from "./imported-motion-to-avatar";
 
 export const RETARGET_PIPELINES: readonly RetargetPipeline[] = Object.freeze(
-  importedMotionToAvatarPipelines.filter(
-    (pipeline) => pipeline.availability === "available",
-  ),
+  importedMotionToAvatarPipelines
+    .filter((pipeline) => pipeline.availability === "available")
+    .sort((left, right) => left.id.localeCompare(right.id)),
 );
 
 export function getRetargetPipeline(

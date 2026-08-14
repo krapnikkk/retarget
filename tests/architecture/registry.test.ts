@@ -53,9 +53,14 @@ describe("adapter registries", () => {
     expect(getRetargetPipeline("mixamo-fbx", "vrm", "vrma")).toBeNull();
   });
 
-  it("registers one complete beta input-to-output combination", () => {
+  it("registers only evidence-backed complete beta combinations", () => {
     expect(RETARGET_PIPELINES.map((pipeline) => pipeline.id)).toEqual([
       "gltf-animation-to-gltf-humanoid-to-animated-glb",
+      "gltf-animation-to-gltf-humanoid-to-gltf-animation",
+      "gltf-animation-to-gltf-humanoid-to-motion-json",
+      "gltf-animation-to-gltf-humanoid-to-vrma",
+      "gltf-animation-to-vrm-to-baked-vrm",
+      "vrma-to-gltf-humanoid-to-animated-glb",
     ]);
     expect(
       getRetargetPipeline(
@@ -69,13 +74,37 @@ describe("adapter registries", () => {
       outputFormat: "animated-glb",
       run: expect.any(Function),
     });
+    for (const outputFormat of [
+      "gltf-animation",
+      "motion-json",
+      "vrma",
+    ] as const) {
+      expect(
+        getRetargetPipeline(
+          "gltf-animation",
+          "gltf-humanoid",
+          outputFormat,
+        ),
+      ).toMatchObject({
+        assurance: "beta",
+        outputFormat,
+        run: expect.any(Function),
+      });
+    }
     expect(
-      getRetargetPipeline(
-        "gltf-animation",
-        "gltf-humanoid",
-        "gltf-animation",
-      ),
-    ).toBeNull();
+      getRetargetPipeline("vrma", "gltf-humanoid", "animated-glb"),
+    ).toMatchObject({
+      assurance: "beta",
+      outputFormat: "animated-glb",
+      run: expect.any(Function),
+    });
+    expect(
+      getRetargetPipeline("gltf-animation", "vrm", "baked-vrm"),
+    ).toMatchObject({
+      assurance: "beta",
+      outputFormat: "baked-vrm",
+      run: expect.any(Function),
+    });
     expect(getRetargetPipeline("bvh", "gltf-humanoid", "animated-glb")).toBeNull();
     expect(getRetargetPipeline("actorcore-fbx", "reallusion", "animated-glb")).toBeNull();
     expect(getRetargetPipeline("vmd", "mmd-model", "animated-pmx")).toBeNull();

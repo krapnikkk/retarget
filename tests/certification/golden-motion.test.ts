@@ -8,11 +8,16 @@ import {
   getPipelineExportAssurance,
   isFullyCertified,
 } from "@/certification";
-import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
-import { exportAnimatedGLB, validateAvatarExportReload, validateAvatarExportSemantics } from "@/export";
-import { importGLTFAnimation } from "@/import/gltf-animation";
-import { importVRMA } from "@/import/vrma";
+import {
+  validateAvatarExportReload,
+  validateAvatarExportSemantics,
+  validateMotionExportReload,
+  validateMotionExportSemantics,
+} from "@/export";
+import type { AvatarExportFormatId } from "@/formats";
 import { getRetargetPipeline } from "@/pipelines";
+import { DEFAULT_RETARGET_SOLVE_OPTIONS } from "@/retarget";
+import { DEFAULT_CUSTOM_RIG_MAPPING_CONFIG } from "@/solvers";
 import { sampleSemanticMotionPose } from "@/validation";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
@@ -39,7 +44,7 @@ describe("Golden Motion certification", () => {
   });
 
   it("keeps status, evidence, ids, and pipeline triples internally consistent", () => {
-    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(3);
+    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(4);
     const ids = HUMANOID_PIPELINE_CERTIFICATION.cases.map((item) => item.id);
     const triples = HUMANOID_PIPELINE_CERTIFICATION.cases.map(
       (item) =>
@@ -115,19 +120,37 @@ describe("Golden Motion certification", () => {
     HUMANOID_PIPELINE_CERTIFICATION.cases.filter(
       (item) => item.status === "semantic-passed" || item.status === "certified",
     ),
-  )("locks $id provenance and validates its avatar roundtrip", async (golden) => {
+  )("locks $id provenance and validates its public pipeline roundtrip", async (golden) => {
     const sourceBytes = new Uint8Array(await readFile(projectPath(golden.source.path)));
     const avatarBytes = new Uint8Array(await readFile(projectPath(golden.avatar.path)));
     expect(sha256(sourceBytes)).toBe(golden.source.sha256);
     expect(sha256(avatarBytes)).toBe(golden.avatar.sha256);
 
-    const sourceClip =
-      golden.motionFormat === "vrma"
-        ? await importVRMA(sourceBytes, "quaternius-walk.vrma")
-        : await importGLTFAnimation(
-            sourceBytes,
-            "quaternius-walk.animation.glb",
-          );
+    const pipeline = getRetargetPipeline(
+      golden.motionFormat,
+      golden.avatarFormat,
+      golden.exportFormat,
+    );
+    expect(pipeline).toMatchObject({
+      assurance: "beta",
+      outputFormat: golden.exportFormat,
+    });
+    const avatarFile = new File(
+      [avatarBytes],
+      path.basename(golden.avatar.path),
+      { type: "model/gltf-binary" },
+    );
+    const result = await pipeline!.run({
+      motionFile: new File(
+        [sourceBytes],
+        path.basename(golden.source.path),
+        { type: "model/gltf-binary" },
+      ),
+      avatarFile,
+      mapping: DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
+      solveOptions: DEFAULT_RETARGET_SOLVE_OPTIONS,
+    });
+    const sourceClip = result.sourceClip;
     const expectedCanonical = golden.expectedCanonicalFrom
       ? HUMANOID_PIPELINE_CERTIFICATION.cases.find(
           (item) => item.id === golden.expectedCanonicalFrom,
@@ -135,7 +158,7 @@ describe("Golden Motion certification", () => {
       : golden.expectedCanonical;
     expect(expectedCanonical).toBeDefined();
     expect({
-      duration: sourceClip.duration,
+      duration: Number(sourceClip.duration.toFixed(6)),
       fps: sourceClip.fps,
       trackCount: sourceClip.tracks.length,
       samples: golden.sampleFractions.map((fraction) => {
@@ -151,28 +174,17 @@ describe("Golden Motion certification", () => {
         );
       }),
     }).toEqual(expectedCanonical);
-    const avatarFile = new File([avatarBytes], "studio-mannequin-male.glb", {
-      type: "model/gltf-binary",
-    });
-    const boundClip = await bindMotionClipToAvatar({
-      avatarFile,
-      avatarFormatId: golden.avatarFormat,
-      clip: sourceClip,
-    });
-    const exported = await exportAnimatedGLB({
-      avatarFile,
-      avatarFormatId: golden.avatarFormat,
-      clip: boundClip,
-    });
-
-    await expect(
-      validateAvatarExportReload(golden.exportFormat as "animated-glb", exported),
-    ).resolves.toMatchObject({ level: "structural", ok: true });
-    const semantic = await validateAvatarExportSemantics(
-      golden.exportFormat as "animated-glb",
-      exported,
-      boundClip,
-    );
+    const semantic = isAvatarExportFormatId(result.output.format)
+      ? await validateAvatarOutput(
+          result.output.format,
+          result.output.bytes,
+          result.solvedClip,
+        )
+      : await validateMotionOutput(
+          result.output.format,
+          result.output.bytes,
+          result.solvedClip,
+        );
     expect(semantic).toMatchObject({ level: "semantic", ok: true });
     expect(semantic.metrics).toEqual(
       expect.objectContaining({
@@ -245,4 +257,40 @@ function roundPose(
         ]),
       )
     : undefined;
+}
+
+function isAvatarExportFormatId(
+  format: string,
+): format is AvatarExportFormatId {
+  return [
+    "animated-glb",
+    "vrm-external-vrma",
+    "baked-vrm",
+    "fbx-avatar-animation",
+    "animated-pmx",
+  ].includes(format);
+}
+
+async function validateAvatarOutput(
+  format: AvatarExportFormatId,
+  bytes: Uint8Array,
+  expected: Parameters<typeof validateAvatarExportSemantics>[2],
+) {
+  await expect(validateAvatarExportReload(format, bytes)).resolves.toMatchObject({
+    level: "structural",
+    ok: true,
+  });
+  return validateAvatarExportSemantics(format, bytes, expected);
+}
+
+async function validateMotionOutput(
+  format: Parameters<typeof validateMotionExportReload>[0],
+  bytes: Uint8Array,
+  expected: Parameters<typeof validateMotionExportSemantics>[2],
+) {
+  await expect(validateMotionExportReload(format, bytes)).resolves.toMatchObject({
+    level: "structural",
+    ok: true,
+  });
+  return validateMotionExportSemantics(format, bytes, expected);
 }

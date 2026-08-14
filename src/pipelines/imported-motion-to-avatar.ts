@@ -1,5 +1,6 @@
 import type {
   AvatarFormatId,
+  MotionExportFormatId,
   MotionFormatId,
 } from "@/formats";
 import type { RetargetPipeline, RetargetPipelineId } from "./types";
@@ -36,25 +37,56 @@ const AVATAR_FORMATS = [
   "generic-fbx-avatar",
 ] as const satisfies readonly AvatarFormatId[];
 
-export const importedMotionToAvatarPipelines = MOTION_FORMATS.flatMap(
+const BETA_MOTION_OUTPUTS = [
+  "gltf-animation",
+  "motion-json",
+  "vrma",
+] as const;
+
+const importedMotionToAvatarPairPipelines = MOTION_FORMATS.flatMap(
   (motionFormat) =>
     AVATAR_FORMATS.map((avatarFormat) =>
       createImportedMotionToAvatarPipeline(motionFormat, avatarFormat),
     ),
 );
 
+export const importedMotionToAvatarPipelines = [
+  ...importedMotionToAvatarPairPipelines,
+  ...BETA_MOTION_OUTPUTS.map((outputFormat) =>
+    createImportedMotionToAvatarPipeline(
+      "gltf-animation",
+      "gltf-humanoid",
+      {
+        assurance: "beta",
+        availability: "available",
+        outputFormat,
+      },
+    ),
+  ),
+];
+
 function createImportedMotionToAvatarPipeline(
   motionFormat: MotionFormatId,
   avatarFormat: AvatarFormatId,
+  override?: Pick<RetargetPipeline, "assurance" | "availability"> & {
+    outputFormat: MotionExportFormatId;
+  },
 ): RetargetPipeline {
   const isMixamoToVrm = motionFormat === "mixamo-fbx" && avatarFormat === "vrm";
-  const isGoldenHumanoidPath =
-    motionFormat === "gltf-animation" && avatarFormat === "gltf-humanoid";
-  const outputFormat = isGoldenHumanoidPath
-    ? "animated-glb"
-    : isMixamoToVrm
-      ? "vrma"
-      : "gltf-animation";
+  const isAnimatedGlbBetaPath =
+    avatarFormat === "gltf-humanoid" &&
+    (motionFormat === "gltf-animation" || motionFormat === "vrma");
+  const isBakedVrmBetaPath =
+    motionFormat === "gltf-animation" && avatarFormat === "vrm";
+  const outputFormat = override?.outputFormat ?? (
+    isAnimatedGlbBetaPath
+      ? "animated-glb"
+      : isBakedVrmBetaPath
+        ? "baked-vrm"
+        : isMixamoToVrm
+          ? "vrma"
+          : "gltf-animation"
+  );
 
   const pipeline: RetargetPipeline = {
     id: `${motionFormat}-to-${avatarFormat}-to-${outputFormat}` as RetargetPipelineId,
@@ -62,8 +94,12 @@ function createImportedMotionToAvatarPipeline(
     motionFormat,
     avatarFormat,
     outputFormat,
-    availability: isGoldenHumanoidPath ? "available" : "hidden",
-    assurance: isGoldenHumanoidPath ? "beta" : "experimental",
+    availability:
+      override?.availability ??
+      (isAnimatedGlbBetaPath || isBakedVrmBetaPath ? "available" : "hidden"),
+    assurance:
+      override?.assurance ??
+      (isAnimatedGlbBetaPath || isBakedVrmBetaPath ? "beta" : "experimental"),
     async retarget({
       motionFile,
       avatarFile,
@@ -137,6 +173,15 @@ function createImportedMotionToAvatarPipeline(
               signal: input.signal,
             }),
           )
+        : outputFormat === "baked-vrm"
+          ? await import("@/export/avatar-glb").then(({ exportBakedVRM }) =>
+              exportBakedVRM({
+                avatarFile: input.avatarFile,
+                avatarFormatId: avatarFormat,
+                clip: result.solvedClip,
+                signal: input.signal,
+              }),
+            )
         : await runRetargetJob(
             {
               type: "export-motion",

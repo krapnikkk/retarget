@@ -22,9 +22,12 @@ The machine-readable manifest is
   the status label alone.
 
 Case assurance and generalized capability assurance are intentionally
-different scopes. The pinned Golden case below is `certified`; the broader
-public `gltf-animation -> gltf-humanoid -> animated-glb` combination is beta
-because one certified fixture does not certify every conforming glTF asset.
+different scopes. The pinned Golden Animated GLB case below is `certified`.
+Six broader public combinations are beta: four
+`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `vrma`,
+`gltf-animation`, and `motion-json`), `vrma -> gltf-humanoid -> animated-glb`,
+and `gltf-animation -> vrm -> baked-vrm`. One proven fixture does not certify
+every conforming asset, so only the first exact pinned case is certified.
 
 ## Golden evidence
 
@@ -80,14 +83,13 @@ pose changes across fixed samples of the same artifact. Unity is explicitly
 deferred and is not a required runtime in the current local certification
 profile; no Unity compatibility is claimed.
 
-The existing
-market VRMA is retained as a provenance-locked candidate, but it is not treated
-as equivalent to the normalized glTF source: it predates the canonical-space
-contract and its axis signs differ. VRMA import now converts animated local
-transforms through the file's T-pose and subtracts the rest hips position, while
-VRMA export writes the absolute hips translation required by glTF animation.
-That code-level roundtrip is covered by tests but does not upgrade the legacy
-market artifact. BVH, VMD,
-ActorCore, Mixamo-to-generic-FBX, FBX avatar, and PMX paths remain experimental
-until provenance-locked real assets and equivalent evidence are added. Synthetic
+The provenance-locked market VRMA now reaches `semantic-passed`: after T-pose
+normalization and rest-hips subtraction, its full public pipeline output agrees
+with the Golden canonical samples within the same independent thresholds. The
+reverse VRMA exporter, glTF Animation exporter, Motion JSON exporter, and Baked
+VRM path also pass structural reload and independent semantic checks for their
+exact pinned triples. They remain beta rather than certified because no matching
+external ecosystem receipt is pinned. BVH, VMD, ActorCore,
+Mixamo-to-generic-FBX, FBX avatar, and PMX paths remain experimental until
+provenance-locked real assets and equivalent evidence are added. Synthetic
 fixtures may test math or failure handling but cannot promote assurance.

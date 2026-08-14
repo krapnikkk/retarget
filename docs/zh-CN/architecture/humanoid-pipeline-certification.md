@@ -16,7 +16,7 @@ x 求解器修订 x 目标绑定修订
 - `semantic-passed`：结构重载和确定性世界空间检查通过；消费端可将该精确组合描述为 beta。
 - `certified`：结构、语义以及固定第三方生态回执要求的全部运行时均通过。代码不会仅根据状态标签推导该状态。
 
-用例保证等级与泛化能力保证等级刻意采用不同范围。下述固定 Golden 用例为 `certified`；更宽泛的公开 `gltf-animation -> gltf-humanoid -> animated-glb` 组合为 beta，因为一个认证固定资源不能证明所有合规 glTF 资源都已认证。
+用例保证等级与泛化能力保证等级刻意采用不同范围。下述固定 Golden Animated GLB 用例为 `certified`。六个更宽泛的公开组合为 beta：`gltf-animation -> gltf-humanoid` 的四种输出（`animated-glb`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation -> vrm -> baked-vrm`。一个已证明固定资源不能认证所有合规资产，因此只有第一个精确固定用例达到认证。
 
 ## Golden 证据
 
@@ -46,4 +46,4 @@ x 求解器修订 x 目标绑定修订
 
 机器可读回执固定在 `src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json`。两个运行时都必须从同一产物导入网格、骨架/Armature 和动画，并在固定采样点观察到姿势变化。Unity 已明确延期，不属于当前本地认证配置要求的运行时，因此不声明 Unity 兼容性。
 
-现有市场 VRMA 保留为来源锁定候选，但不等同于已规范化 glTF 源：它早于规范空间契约，轴符号也不同。VRMA 导入现会通过文件 T-pose 转换动画局部变换并减去静止 Hips 位置；VRMA 导出写入 glTF 动画要求的绝对 Hips 平移。测试覆盖该代码往返，但不会提升旧市场产物。BVH、VMD、ActorCore、Mixamo 到通用 FBX、FBX 角色及 PMX 路径仍为实验性，直至加入来源锁定真实资产和同等级证据。合成固定资源只能测试数学或失败处理，不能提升保证等级。
+已锁定来源的市场 VRMA 现达到 `semantic-passed`：经过 T-pose 规范化和静止 Hips 扣除后，其完整公开流水线输出在同一独立阈值内与 Golden 规范采样一致。反向 VRMA 导出器、glTF Animation 导出器、Motion JSON 导出器和 Baked VRM 路径，也都针对各自精确固定三元组通过结构重载与独立语义检查。由于没有对应的外部生态回执，它们保持 beta 而非 certified。BVH、VMD、ActorCore、Mixamo 到通用 FBX、FBX 角色及 PMX 路径仍为实验性，直至加入来源锁定真实资产和同等级证据。合成固定资源只能测试数学或失败处理，不能提升保证等级。
