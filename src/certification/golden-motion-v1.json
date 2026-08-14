@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "validatorVersion": 4,
+  "validatorVersion": 6,
   "cases": [
     {
       "id": "quaternius-walk-gltf-to-studio-mannequin-glb",
@@ -225,6 +225,44 @@
       }
     },
     {
+      "id": "quaternius-walk-gltf-to-studio-mannequin-fbx-animation",
+      "motionFormat": "gltf-animation",
+      "avatarFormat": "gltf-humanoid",
+      "exportFormat": "fbx-animation",
+      "executionMode": "in-memory",
+      "rigDetectionMode": "name-heuristic",
+      "solverRevision": 4,
+      "targetBindingRevision": 1,
+      "status": "semantic-passed",
+      "source": {
+        "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.animation.glb",
+        "sha256": "d822f2801e2bae22f5780d86c69cb6cef722df99352fbb5ad24e7c4622d233d8",
+        "license": "CC0-1.0",
+        "sourceUrl": "https://quaternius.itch.io/universal-animation-library"
+      },
+      "avatar": {
+        "path": "tests/fixtures/certification/golden-motion/characters/studio-mannequin-male/studio-mannequin-male.glb",
+        "sha256": "cb67d0ade736bb4a6c915a93a3efcfc0aefe0a3774faf11a573465690c79d0c6",
+        "license": "CC0-1.0",
+        "sourceUrl": "https://quaternius.com/packs/universalanimationlibrary.html"
+      },
+      "sampleFractions": [0, 0.5, 1],
+      "thresholds": {
+        "durationSeconds": 0.008333333333333333,
+        "rotationDegrees": 0.5,
+        "rootDisplacementMeters": 0.005,
+        "rootDirectionDegrees": 1,
+        "endEffectorMeters": 0.01,
+        "symmetryMeters": 0.01
+      },
+      "expectedCanonicalFrom": "quaternius-walk-gltf-to-studio-mannequin-glb",
+      "evidence": {
+        "structural": "passed",
+        "semantic": "passed",
+        "ecosystem": "pending"
+      }
+    },
+    {
       "id": "quaternius-walk-vrma-to-studio-mannequin-glb",
       "motionFormat": "vrma",
       "avatarFormat": "gltf-humanoid",
@@ -271,10 +309,10 @@
       "rigDetectionMode": "vrm-extension",
       "solverRevision": 4,
       "targetBindingRevision": 1,
-      "status": "candidate",
+      "status": "semantic-passed",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.bvh",
-        "sha256": "31e72d24938d3264bcc0f54e6418c1c964d050fd9c48b9bbcd6e086659fbcdb5",
+        "sha256": "f4eedf845bc9049a38487f32ebda64c7bcd7a5cb30b6cd0d4dd03db58cf4181e",
         "license": "CC0-1.0",
         "sourceUrl": "https://quaternius.itch.io/universal-animation-library"
       },
@@ -293,9 +331,10 @@
         "endEffectorMeters": 0.01,
         "symmetryMeters": 0.01
       },
+      "expectedCanonicalFrom": "quaternius-walk-gltf-to-studio-mannequin-glb",
       "evidence": {
         "structural": "passed",
-        "semantic": "pending",
+        "semantic": "passed",
         "ecosystem": "pending"
       }
     },
@@ -308,7 +347,7 @@
       "rigDetectionMode": "vrm-extension",
       "solverRevision": 4,
       "targetBindingRevision": 1,
-      "status": "candidate",
+      "status": "semantic-passed",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.vmd",
         "sha256": "cb32834ae6083762dedd98d8ce7b6b0c914fe1934f1f12a23ca335783144eb1c",
@@ -330,9 +369,10 @@
         "endEffectorMeters": 0.01,
         "symmetryMeters": 0.01
       },
+      "expectedCanonicalFrom": "quaternius-walk-gltf-to-studio-mannequin-glb",
       "evidence": {
         "structural": "passed",
-        "semantic": "pending",
+        "semantic": "passed",
         "ecosystem": "pending"
       }
     }

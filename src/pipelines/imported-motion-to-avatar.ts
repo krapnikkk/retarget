@@ -38,6 +38,7 @@ const AVATAR_FORMATS = [
 ] as const satisfies readonly AvatarFormatId[];
 
 const BETA_MOTION_OUTPUTS = [
+  "fbx-animation",
   "gltf-animation",
   "motion-json",
   "vrma",
@@ -77,7 +78,10 @@ function createImportedMotionToAvatarPipeline(
     avatarFormat === "gltf-humanoid" &&
     (motionFormat === "gltf-animation" || motionFormat === "vrma");
   const isBakedVrmBetaPath =
-    motionFormat === "gltf-animation" && avatarFormat === "vrm";
+    (motionFormat === "gltf-animation" ||
+      motionFormat === "bvh" ||
+      motionFormat === "vmd") &&
+    avatarFormat === "vrm";
   const outputFormat = override?.outputFormat ?? (
     isAnimatedGlbBetaPath
       ? "animated-glb"

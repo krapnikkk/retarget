@@ -44,7 +44,7 @@ describe("Golden Motion certification", () => {
   });
 
   it("keeps status, evidence, ids, and pipeline triples internally consistent", () => {
-    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(4);
+    expect(HUMANOID_PIPELINE_CERTIFICATION.validatorVersion).toBe(6);
     const ids = HUMANOID_PIPELINE_CERTIFICATION.cases.map((item) => item.id);
     const triples = HUMANOID_PIPELINE_CERTIFICATION.cases.map(
       (item) =>
@@ -230,9 +230,9 @@ describe("Golden Motion certification", () => {
         rigDetectionMode: "vrm-extension",
         solverRevision: 4,
         targetBindingRevision: 1,
-        fallback: "beta",
+        fallback: "experimental",
       }),
-    ).toBe("experimental");
+    ).toBe("beta");
   });
 });
 
