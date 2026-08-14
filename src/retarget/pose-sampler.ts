@@ -165,9 +165,13 @@ function slerpQuaternion(
   right: QuatTuple,
   ratio: number,
 ): QuatTuple {
-  const [x1, y1, z1, w1] = left;
-  let [x2, y2, z2, w2] = right;
-  let cosHalfTheta = x1 * x2 + y1 * y2 + z1 * z2 + w1 * w2;
+  const [x1, y1, z1, w1] = normalizeQuaternion(left);
+  let [x2, y2, z2, w2] = normalizeQuaternion(right);
+  let cosHalfTheta = clamp(
+    x1 * x2 + y1 * y2 + z1 * z2 + w1 * w2,
+    -1,
+    1,
+  );
 
   if (cosHalfTheta < 0) {
     x2 = -x2;
@@ -177,7 +181,7 @@ function slerpQuaternion(
     cosHalfTheta = -cosHalfTheta;
   }
 
-  if (cosHalfTheta >= 1) return normalizeQuaternion(left);
+  if (cosHalfTheta >= 1) return [x1, y1, z1, w1];
   if (cosHalfTheta > 0.9995) {
     return normalizeQuaternion([
       x1 + (x2 - x1) * ratio,

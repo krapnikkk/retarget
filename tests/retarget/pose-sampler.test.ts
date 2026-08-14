@@ -56,7 +56,7 @@ describe("sampleMotionClipPose", () => {
     expect(rotation?.[3]).toBeCloseTo(Math.SQRT1_2, 5);
   });
 
-  it("mutation guard: normalizes quaternion samples after interpolation", () => {
+  it("normalizes quaternion endpoints before selecting the slerp branch", () => {
     const nonUnitClip: RetargetedMotionClip = {
       ...clip,
       tracks: [
@@ -64,7 +64,7 @@ describe("sampleMotionClipPose", () => {
           bone: "leftUpperArm",
           path: "rotation",
           times: [0, 1],
-          values: [0, 0, 0, 2, 0, 0, 2, 0],
+          values: [0, 0, 0, 2, 0, 0, 1.5, 1.5],
         },
       ],
     };
@@ -73,6 +73,27 @@ describe("sampleMotionClipPose", () => {
 
     expect(rotation).toBeDefined();
     expect(Math.hypot(...rotation!)).toBeCloseTo(1, 6);
+    expect(rotation?.[2]).toBeCloseTo(Math.sin(Math.PI / 8), 6);
+    expect(rotation?.[3]).toBeCloseTo(Math.cos(Math.PI / 8), 6);
+  });
+
+  it("clamps non-looping samples to the first and last authored keyframes", () => {
+    const insetKeyframes: RetargetedMotionClip = {
+      ...clip,
+      tracks: [{
+        bone: "hips",
+        path: "translation",
+        times: [0.25, 0.75],
+        values: [1, 2, 3, 4, 5, 6],
+      }],
+    };
+
+    expect(sampleMotionClipPose(insetKeyframes, 0, false).hips?.position).toEqual([
+      1, 2, 3,
+    ]);
+    expect(sampleMotionClipPose(insetKeyframes, 1, false).hips?.position).toEqual([
+      4, 5, 6,
+    ]);
   });
 
   it("wraps motion time when looped", () => {
