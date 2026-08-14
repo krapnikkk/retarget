@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "package": "3dretarget",
+  "version": "0.1.0",
+  "channel": "local-controlled-preview",
+  "sourceCommit": "dceb35dc814053ef961e9024de3bfef44bdfda6f",
+  "artifact": {
+    "filename": "3dretarget-0.1.0.tgz",
+    "byteLength": 939396,
+    "sha256": "b732f6e71cd4d5881e7ddfc48dd6b565190fab21433e991468cb34b61e72f273",
+    "trackedByGit": false,
+    "reproducibleRepack": "passed",
+    "containsLicense": true,
+    "containsThirdPartyNotices": true
+  },
+  "toolchain": {
+    "node": "24.11.1",
+    "pnpm": "10.24.0"
+  },
+  "verification": {
+    "frozenInstall": "passed",
+    "verify": {
+      "status": "passed",
+      "testFiles": 44,
+      "tests": 257,
+      "correctnessTestFiles": 18,
+      "correctnessTests": 103,
+      "branchCoveragePercent": 73.82,
+      "packedPublicEntries": 6,
+      "packedWorkerSmoke": "passed",
+      "packedConsumerTypecheck": "passed"
+    },
+    "ecosystem": {
+      "status": "passed",
+      "blender": "5.2.0 LTS",
+      "godot": "4.7.1-stable (official)",
+      "certifiedArtifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7"
+    },
+    "productionAudit": "no-known-vulnerabilities",
+    "productionLicenseExpressions": [
+      "Apache-2.0",
+      "MIT"
+    ]
+  }
+}
