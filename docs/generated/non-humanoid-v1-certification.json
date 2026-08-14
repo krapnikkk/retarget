@@ -18,7 +18,7 @@
       "rigDefinitionId": "quadruped-v1",
       "family": "quadruped",
       "profileId": "mesh2motion-fox",
-      "status": "active",
+      "status": "semantic-passed",
       "solver": {
         "id": "definition-mapped-swing-twist-v1",
         "specialization": "shared-definition-mapped"
@@ -61,8 +61,8 @@
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
         },
         "ecosystem": {
-          "status": "passed",
-          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "status": "pending",
+          "result": "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
         }
       }
@@ -71,7 +71,7 @@
       "rigDefinitionId": "avian-v1",
       "family": "avian",
       "profileId": "mesh2motion-bird",
-      "status": "active",
+      "status": "semantic-passed",
       "solver": {
         "id": "definition-mapped-swing-twist-v1",
         "specialization": "shared-definition-mapped"
@@ -100,8 +100,8 @@
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
         },
         "ecosystem": {
-          "status": "passed",
-          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "status": "pending",
+          "result": "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
         }
       }
@@ -110,7 +110,7 @@
       "rigDefinitionId": "serpentine-v1",
       "family": "serpentine",
       "profileId": "mesh2motion-snake",
-      "status": "active",
+      "status": "semantic-passed",
       "solver": {
         "id": "serpentine-chain-resample-v1",
         "specialization": "axial-chain-resample"
@@ -135,8 +135,8 @@
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
         },
         "ecosystem": {
-          "status": "passed",
-          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "status": "pending",
+          "result": "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
         }
       }
@@ -145,7 +145,7 @@
       "rigDefinitionId": "arachnid-v1",
       "family": "arachnid",
       "profileId": "mesh2motion-spider",
-      "status": "active",
+      "status": "semantic-passed",
       "solver": {
         "id": "definition-mapped-swing-twist-v1",
         "specialization": "shared-definition-mapped"
@@ -170,8 +170,8 @@
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
         },
         "ecosystem": {
-          "status": "passed",
-          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "status": "pending",
+          "result": "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
         }
       }
@@ -180,7 +180,7 @@
       "rigDefinitionId": "creature-v1",
       "family": "creature",
       "profileId": "mesh2motion-dragon",
-      "status": "active",
+      "status": "semantic-passed",
       "solver": {
         "id": "definition-mapped-swing-twist-v1",
         "specialization": "shared-definition-mapped"
@@ -205,12 +205,12 @@
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance"
         },
         "ecosystem": {
-          "status": "passed",
-          "result": "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+          "status": "pending",
+          "result": "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
           "test": "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family"
         }
       }
     }
   ],
-  "certificationHash": "20d32f13201a0a8a993e4c412ce85818caa2e04dd0a3333720612c69c2b2c8aa"
+  "acceptanceHash": "549e7e068dbaf653a3502849a43999b878a91cc3b4724e574df96a1bbebbbeb8"
 }

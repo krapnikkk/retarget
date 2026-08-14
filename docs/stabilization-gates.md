@@ -1,29 +1,28 @@
-# Stabilization gates before consumer installation
+# Library stability gates
 
 [简体中文](zh-CN/stabilization-gates.md)
 
-`3dretarget-online` must not install `3dretarget` merely because the initial
-extraction builds. Consumer integration requires a separate approval after all
-of these conditions are met:
+The current maintenance profile is local-only. These gates measure the library
+using commands, packed artifacts, fixtures, and runtime evidence contained in
+this repository. Publication and consumer integration are separate activities
+and do not determine library readiness.
 
-1. Public entry names and serializable request/result contracts have completed
-   an API review.
-2. The packed browser entry resolves its Worker from the installed tarball and
-   passes a real Vinext production-start smoke test.
-3. Browser execution no longer silently falls back to CPU-heavy inline work for
-   untrusted uploads. Inline execution, if retained for Node or tests, must be an
-   explicit API.
-4. The overlap with `3d-core` has been audited by semantic contract so generic
-   format logic is neither duplicated nor coupled through provider-specific APIs.
-5. Committed fixtures, optional downloaded corpora, Golden Motion, structural
-   reload, semantic comparison, and ecosystem receipts all pass independently.
-6. Package size and browser chunk impact have measured baselines. Heavy formats
-   remain off the application main thread.
-7. A temporary installation into an isolated `3dretarget-online` worktree passes
-   type checking, tests, Vinext build, production-start smoke, and Cloudflare
-   packaging without modifying the real consumer.
-8. A cutover ADR defines versioning, rollback, source deletion, and how fixes are
-   handled while the two repositories still contain temporary duplicate code.
+1. **Passed locally:** public entry names and serializable request/result
+   contracts have completed an API review. See
+   `architecture/public-api-contract.md`.
+2. **Passed locally:** the packed browser entry resolves its Worker from the
+   installed tarball and the bundled Worker completes a request/result runtime
+   smoke test.
+3. **Passed locally:** browser execution does not silently fall back to
+   CPU-heavy inline work for untrusted uploads. Inline execution for Node or
+   tests is an explicit API.
+4. **Partial:** committed fixtures, Golden Motion, structural reload, and
+   semantic comparison pass independently. Named external ecosystem receipts
+   remain pending and no case is promoted to `certified` without them.
+5. **Passed locally:** package size and browser/Worker entries have measured,
+   enforced baselines. The public high-level import, target inspection, and
+   solve path executes through the Worker.
 
-Only after these gates pass should the web repository replace local engine
-imports with the package and remove its duplicate implementation.
+A capability may remain experimental while its evidence is incomplete. Stable
+or certified status depends only on the applicable library-owned gates; it must
+not depend on a particular consumer build or deployment.

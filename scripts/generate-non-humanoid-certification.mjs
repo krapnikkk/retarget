@@ -36,9 +36,9 @@ const commonEvidence = {
       "tests/rigs/mesh2motion-acceptance.test.ts#non-humanoid-semantic-acceptance",
   },
   ecosystem: {
-    status: "passed",
+    status: "pending",
     result:
-      "Three.js AnimationMixer binds the exported channels and advances at least one target object.",
+      "Local Three.js playback passes, but no pinned external Blender, Unity, or Godot receipt is recorded.",
     test:
       "tests/rigs/mesh2motion-acceptance.test.ts#reloads-and-actually-plays-every-family",
   },
@@ -87,7 +87,7 @@ const manifestBody = {
 };
 const manifest = {
   ...manifestBody,
-  certificationHash: sha256(
+  acceptanceHash: sha256(
     Buffer.from(JSON.stringify(manifestBody), "utf8"),
   ),
 };
@@ -100,7 +100,7 @@ if (process.argv.includes("--check")) {
       "Non-humanoid certification is stale; run pnpm generate:non-humanoid-certification.",
     );
   }
-  console.log(`Verified ${cases.length} non-humanoid certification cases.`);
+  console.log(`Verified ${cases.length} non-humanoid acceptance cases.`);
 } else {
   await mkdir(path.dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serialized, "utf8");
@@ -114,7 +114,7 @@ function certificationCase(rigDefinitionId, family, profileId, evidence) {
     rigDefinitionId,
     family,
     profileId,
-    status: "active",
+    status: "semantic-passed",
     solver: family === "serpentine"
       ? {
           id: "serpentine-chain-resample-v1",
