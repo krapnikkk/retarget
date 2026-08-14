@@ -21,7 +21,7 @@
 
 ## 技术栈
 
-- Vite、TypeScript、Three.js、Vitest、Cloudflare Wrangler
+- Vite、TypeScript、Three.js、Vitest
 - JSZip、file-saver、tippy.js
 
 重要文件：
@@ -132,10 +132,10 @@ Vite 有三个页面入口：`src/index.html`（探索/营销预览）、`src/cr
 - 导出和重定向可能高度依赖骨骼命名、姿势假设和模型比例。
 - 非人形通用性在自动蒙皮流程中强于重定向流程。
 
-## 对 3dretarget-online 的意义
+## 相关架构证据
 
-可借鉴：分阶段流程、集中骨架配置、自动骨骼映射、骨架链配置、swing/twist 求解器、GLB 导出及动画预览库模型。
+需要在本库独立验证的候选思路：分阶段流程、集中骨架配置、自动骨骼映射、骨架链配置、swing/twist 求解器、GLB 导出及格式无关的固定资源组织。
 
-不应直接复制：大型 DOM 绑定流程类、产品验证前的广泛资产捆绑，以及在一个 MVP 中同时解决自动绑定、蒙皮、重定向、预览和导出。
+必须保持的边界：不复制大型 DOM 绑定流程类，不把大型资产库打进包，也不在一个 API 中同时解决自动绑定、蒙皮、重定向、预览和导出。
 
-对当前 `3dretarget-online` 而言，`mesh2motion-app` 最适合作为未来通用重定向技术参考，而不是当前 VRM/Mixamo MVP 的直接产品模板。
+`mesh2motion-app` 仅作为架构参考，不是本库的依赖、兼容目标或公开契约来源。

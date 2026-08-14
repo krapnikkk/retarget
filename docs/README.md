@@ -1,14 +1,15 @@
-# Documentation ownership
+# Documentation map
 
-[简体中文](zh-CN/README.md) · [Handoff inventory](handoff-inventory.md)
+[简体中文](zh-CN/README.md)
 
-The normative engine documentation was migrated from `3dretarget-online` at the
-source commit recorded in `migration/source-provenance.md`.
+This tree documents the library's contracts, evidence, and maintenance rules:
 
-- `architecture/` defines stable processing contracts.
+- `architecture/` defines stable processing and package contracts.
 - `checklists/` defines parser, certification, and resource review gates.
 - Corpus documents define reproducible test resources and licensing boundaries.
-- `research/` is non-normative background evidence, not implementation truth.
+- `research/` contains non-normative technical references and does not define
+  implementation truth.
+- `stabilization-gates.md` records local library-readiness evidence.
 
-Web product, SEO, market, deployment, and Vinext documents remain owned by
-`3dretarget-online` and are intentionally not copied here.
+Product strategy, application integration, hosting, and deployment documentation
+are outside this repository's scope.

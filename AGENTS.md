@@ -2,8 +2,9 @@
 
 [简体中文](AGENTS.zh-CN.md)
 
-`3dretarget` is the sole intended owner of reusable animation-retargeting logic.
-It is being stabilized independently before any web consumer installs it.
+`3dretarget` is a consumer-neutral library and the sole owner of reusable
+animation-retargeting behavior. It evolves independently of any application,
+deployment, or downstream release cycle.
 
 ## Correctness boundaries
 
@@ -12,8 +13,8 @@ It is being stabilized independently before any web consumer installs it.
 - File names and extensions are hints. Importers require bounded content probes.
 - Treat files as untrusted. Preserve byte/processing budgets, cancellation,
   Worker isolation, and structured public error codes.
-- Parsing, solving, validation, and export must not depend on React, Next.js,
-  product routes, localization, market catalogs, or preview scenes.
+- Parsing, solving, validation, and export must not depend on product UI,
+  application state, routes, localization, catalogs, or preview scenes.
 - A certification case requires structural reload, semantic comparison, and
   pinned ecosystem evidence. Generated hashes and locks are separate changes.
 
@@ -23,7 +24,9 @@ It is being stabilized independently before any web consumer installs it.
   to avoid designing a stable contract.
 - Root and Worker messages must remain serializable. Keep `File` and DOM helpers
   in browser-facing adapters; do not expose Three.js scene objects from core APIs.
-- Tests and reproducible corpus manifests move with the behavior they prove.
+- Tests and reproducible corpus manifests live with the behavior they prove.
   Large downloaded corpora stay ignored and never enter the package tarball.
-- Do not add `3dretarget-online` as a dependency or modify that consumer until an
-  explicit stabilization and integration task is approved.
+- Consumer repositories are not dependencies, release gates, or synchronization
+  targets. Do not modify them as part of library work.
+- Accept downstream requests only when they can be expressed as reusable
+  capabilities with stable contracts, legal fixtures, and independent evidence.

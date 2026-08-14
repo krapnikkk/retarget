@@ -25,7 +25,6 @@ The project also has a separate retargeting mode for applying animation between 
 - TypeScript
 - Three.js
 - Vitest
-- Cloudflare Wrangler
 - JSZip
 - file-saver
 - tippy.js
@@ -213,9 +212,9 @@ Weakly covered or uncovered:
 - Export and retarget behavior are likely sensitive to skeleton naming, pose assumptions, and model scale.
 - The generality of non-human rigs is stronger in the auto-skinning workflow than in the retarget workflow.
 
-## Relevance To 3dretarget-online
+## Relevant Architectural Evidence
 
-Useful ideas to borrow:
+Candidate ideas that require independent validation here:
 
 - staged workflow design
 - centralized rig configuration
@@ -223,12 +222,13 @@ Useful ideas to borrow:
 - skeleton chain configs
 - swing/twist retarget solver
 - GLB export pipeline
-- animation preview library model
+- format-independent fixture organization
 
-Ideas to avoid copying directly:
+Boundaries to preserve:
 
 - large DOM-bound process classes
-- broad asset bundling before product validation
-- trying to solve auto-rigging, skinning, retargeting, preview, and export in one MVP
+- bundling a large asset library into the package
+- combining auto-rigging, skinning, retargeting, preview, and export in one API
 
-For the current `3dretarget-online` direction, `mesh2motion-app` is best treated as a technical reference for future general retargeting. It is not a direct product template for the current VRM/Mixamo MVP.
+`mesh2motion-app` is an architectural reference only. It is not a dependency,
+compatibility target, or source of public contracts for this library.

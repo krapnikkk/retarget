@@ -1,4 +1,4 @@
-# ADR-0002: Retargeting engine ownership moves to `3dretarget`
+# ADR-0002: Consumer-neutral library boundary
 
 [简体中文](../zh-CN/architecture/ADR-0002-package-boundary.md)
 
@@ -7,25 +7,33 @@
 
 ## Context
 
-The web application currently contains reusable parsers, import/export adapters,
-rig models, solvers, validation, certification, and Worker execution code. This
-ties engine changes and proof resources to a web release cycle.
+Reusable retargeting behavior needs stable contracts, proof resources, and a
+release cadence based on domain correctness. Coupling those decisions to one
+application produces product-specific APIs, reverse dependencies, and release
+gates that do not measure library quality.
 
 ## Decision
 
-`3dretarget` is an independent package and repository. It owns reusable
-retargeting code, tests, corpus manifests, and packed Worker output.
-`3dretarget-online` remains a web product and will not install this package until
-the independent API, package, and correctness gates are stable.
+`3dretarget` is an independent, consumer-neutral library. It owns reusable
+retargeting code, public contracts, tests, corpus manifests, and packed runtime
+artifacts.
 
-The relationship is inspired by a shared-core/consumer model, but the package
-surface, release gates, resources, and integration workflow are designed for the
-retargeting domain rather than copied from another repository.
+The roadmap is driven by reusable capabilities and evidence. A downstream
+request belongs here only when it can be specified without application state,
+expressed through stable platform or serializable contracts, and verified with
+legal fixtures and independent acceptance criteria.
+
+No consumer repository, application build, deployment platform, or release
+schedule is a dependency or readiness gate for this library.
 
 ## Consequences
 
-- During stabilization, the implementations temporarily exist in both
-  repositories. New engine fixes should be applied here first and consciously
-  mirrored only when the current web product still needs them.
-- No consumer synchronization script is introduced yet.
-- A later ADR must approve the consumer cutover and deletion of the web copy.
+- Consumers pin a library version and own their adapters, integration tests,
+  product behavior, deployment, and upgrade timing.
+- The library may accept real-world fixtures from consumers, but their origin
+  does not grant a consumer privileged architectural status.
+- Public compatibility is managed through versioned contracts and library-owned
+  tests, not mirrored implementations or repository synchronization.
+- Browser and Node entries are platform surfaces, not product integrations.
+- Product UI, catalogs, analytics, hosting, and application-specific workflow
+  remain outside the package.
