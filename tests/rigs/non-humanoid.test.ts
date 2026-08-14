@@ -1,4 +1,5 @@
 import { Accessor, Document, WebIO, type Node } from "@gltf-transform/core";
+import { Quaternion, Vector3 } from "three";
 import { describe, expect, it, vi } from "vitest";
 import {
   QUADRUPED_RIG_DEFINITION,
@@ -218,6 +219,138 @@ describe("non-humanoid quadruped contract", () => {
         targetFilename: "human.glb",
       }),
     ).toThrow(/Incompatible rigs.*family-mismatch/);
+  });
+
+  it("reports required-role and topology failures at their source or target boundary", () => {
+    const motion = importRigMotionDocument(
+      createQuadrupedDocument({ animated: true }),
+      "walk.glb",
+    );
+    const target = inspectGLTFRig(createQuadrupedDocument({ scale: 1.1 }));
+
+    const sourceMissing = structuredClone(motion);
+    sourceMissing.restPose = sourceMissing.restPose.filter(
+      (transform) => transform.role !== "frontLeft.paw",
+    );
+    expect(() =>
+      solveRigMotionToTarget({
+        motion: sourceMissing,
+        target,
+        targetFilename: "target.glb",
+      }),
+    ).toThrow(/Missing required source roles: frontLeft\.paw/);
+
+    expect(() =>
+      solveRigMotionToTarget({
+        motion,
+        target: { ...target, missingRequiredRoles: ["frontRight.paw"] },
+        targetFilename: "target.glb",
+      }),
+    ).toThrow(/Missing required target roles: frontRight\.paw/);
+
+    const sourceConflict = structuredClone(motion);
+    sourceConflict.source.topologyConflicts = [{ role: "spine" }];
+    expect(() =>
+      solveRigMotionToTarget({
+        motion: sourceConflict,
+        target,
+        targetFilename: "target.glb",
+      }),
+    ).toThrow(/Source topology conflicts: spine/);
+
+    expect(() =>
+      solveRigMotionToTarget({
+        motion,
+        target: { ...target, topologyConflicts: [{ role: "neck" }] },
+        targetFilename: "target.glb",
+      }),
+    ).toThrow(/Target topology conflicts: neck/);
+  });
+
+  it("preserves optional-role and local-axis diagnostics on a successful solve", () => {
+    const motion = importRigMotionDocument(
+      createQuadrupedDocument({ animated: true }),
+      "walk.glb",
+    );
+    motion.restPose = motion.restPose.filter(
+      (transform) => transform.role !== "tail.3",
+    );
+    motion.source.axisWarnings = ["tail.3"];
+    const inspectedTarget = inspectGLTFRig(
+      createQuadrupedDocument({ omit: "tail.4", scale: 1.2 }),
+    );
+    const solved = solveRigMotionToTarget({
+      motion,
+      target: { ...inspectedTarget, axisWarnings: ["tail.4"] },
+      targetFilename: "short-tail.glb",
+    });
+
+    expect(solved.diagnostics.warnings).toEqual([
+      "Optional source roles missing: tail.3.",
+      "Optional target roles missing: tail.4, tail.5.",
+      "Source roles without a usable local primary axis: tail.3.",
+      "Target roles without a usable local primary axis: tail.4.",
+    ]);
+  });
+
+  it("handles singular twist decomposition, absent axes, and quaternion sign continuity", () => {
+    const motion = importRigMotionDocument(
+      createQuadrupedDocument({ animated: true }),
+      "walk.glb",
+    );
+    const upperRest = motion.restPose.find(
+      (transform) => transform.role === "frontLeft.upper",
+    )!;
+    const axis = new Vector3(...upperRest.primaryAxis!).normalize();
+    const perpendicular = new Vector3(1, 0, 0);
+    if (Math.abs(perpendicular.dot(axis)) > 0.9) perpendicular.set(0, 1, 0);
+    perpendicular.cross(axis).normalize();
+    const sourceRest = new Quaternion(...upperRest.rotation);
+    const singularDelta = new Quaternion().setFromAxisAngle(
+      perpendicular,
+      Math.PI,
+    );
+    const singularAnimated = sourceRest.clone().multiply(singularDelta);
+    const upperTrack = motion.tracks.find(
+      (track) =>
+        track.role === "frontLeft.upper" && track.path === "rotation",
+    )!;
+    upperTrack.times = [0, 0.33, 0.66, 1];
+    upperTrack.values = [
+      ...sourceRest.toArray(),
+      ...singularAnimated.toArray(),
+      ...sourceRest.toArray(),
+      ...sourceRest.toArray().map((value) => -value),
+    ];
+    const axislessSource = motion.restPose.find(
+      (transform) => transform.role === "head",
+    )!;
+    axislessSource.primaryAxis = [0, 0, 0];
+
+    const target = inspectGLTFRig(
+      createQuadrupedDocument({ restTwist: 0.15, scale: 1.15 }),
+    );
+    const targetRestPose = target.restPose.map((transform) =>
+      transform.role === "head"
+        ? { ...transform, primaryAxis: undefined }
+        : transform,
+    );
+    const solved = solveRigMotionToTarget({
+      motion,
+      target: { ...target, restPose: targetRestPose },
+      targetFilename: "axis-variant.glb",
+    });
+    const boundUpper = solved.tracks.find(
+      (track) =>
+        track.role === "frontLeft.upper" && track.path === "rotation",
+    )!;
+
+    expect(boundUpper.values.every(Number.isFinite)).toBe(true);
+    for (let index = 4; index < boundUpper.values.length; index += 4) {
+      const previous = new Quaternion().fromArray(boundUpper.values, index - 4);
+      const current = new Quaternion().fromArray(boundUpper.values, index);
+      expect(previous.dot(current)).toBeGreaterThanOrEqual(-1e-6);
+    }
   });
 
   it("transfers quadruped swing/twist and root scale across proportions", () => {

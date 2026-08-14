@@ -9,6 +9,7 @@ export default defineConfig({
       "tests/export/gltf-target-binding.test.ts",
       "tests/import/phase3-motion.test.ts",
       "tests/retarget/**/*.test.ts",
+      "tests/rigs/mesh2motion-acceptance.test.ts",
       "tests/rigs/non-humanoid.test.ts",
       "tests/rigs/rig-motion-validation.test.ts",
     ],
@@ -31,8 +32,8 @@ export default defineConfig({
         "src/import/rig-motion-gltf.ts": { branches: 71 },
         "src/retarget/pose-sampler.ts": { branches: 66 },
         "src/retarget/source-normalization.ts": { branches: 82 },
-        "src/retarget/target-binding.ts": { branches: 47 },
-        "src/solvers/rig-chain-swing-twist.ts": { branches: 55 }
+        "src/retarget/target-binding.ts": { branches: 85 },
+        "src/solvers/rig-chain-swing-twist.ts": { branches: 70 }
       }
     }
   },

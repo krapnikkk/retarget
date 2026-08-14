@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import { Matrix4, Quaternion, Vector3 } from "three";
 import {
   bindCanonicalHipsTranslationsToRest,
+  bindCanonicalRotationDeltasToTargetLocal,
   bindCanonicalRotationsToRest,
   bindCanonicalTracksToTargetRest,
+  bindCanonicalTranslationOffsetsToTargetLocal,
+  createCanonicalToTargetWorldCorrection,
 } from "@/retarget/target-binding";
+import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 import type { TargetBoneRestTransform } from "@/retarget/target-binding";
 
@@ -117,6 +121,93 @@ describe("generic avatar canonical motion binding", () => {
     });
 
     expect(bound[0]?.values).toEqual([0, 1, 0, 0.1, 1.2, 0.3]);
+  });
+
+  it("filters unmapped and non-hips translations while using target rest-height fallback", () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "avatar.glb" },
+      fbxFile: { name: "motion.glb" },
+    });
+    clip.metadata = { rootTranslationSpace: "offset-meters" };
+    clip.tracks = [
+      { bone: "head", path: "rotation", times: [0], values: [0, 0, 0, 1] },
+      { bone: "leftHand", path: "translation", times: [0], values: [1, 2, 3] },
+      { bone: "hips", path: "translation", times: [0], values: [1] },
+    ];
+    const hipsRest = createRestTransform({
+      worldPosition: new Vector3(0, 2, 0),
+    });
+    const bound = bindCanonicalTracksToTargetRest(clip, {
+      bones: new Map([
+        ["leftHand", createRestTransform({})],
+        ["hips", hipsRest],
+      ]),
+    });
+
+    expect(bound).toEqual([
+      {
+        bone: "hips",
+        path: "translation",
+        times: [0],
+        values: [1, 2, 0],
+      },
+    ]);
+  });
+
+  it("keeps quaternion signs continuous in rest and delta binding", () => {
+    const alternatingIdentity = [0, 0, 0, 1, 0, 0, 0, -1];
+    const boundRest = bindCanonicalRotationsToRest(
+      alternatingIdentity,
+      createRestTransform({}),
+    );
+    const boundDelta = bindCanonicalRotationDeltasToTargetLocal(
+      alternatingIdentity,
+    );
+    for (const values of [boundRest, boundDelta]) {
+      const first = new Quaternion().fromArray(values, 0);
+      const second = new Quaternion().fromArray(values, 4);
+      expect(first.dot(second)).toBeGreaterThan(0.999999);
+      expect(second.w).toBeGreaterThan(0);
+    }
+    expect(
+      bindCanonicalRotationDeltasToTargetLocal([0]).slice(0, 4),
+    ).toEqual([0, 0, 0, 1]);
+  });
+
+  it("binds partial translation offsets with default and explicit target bases", () => {
+    expect(bindCanonicalTranslationOffsetsToTargetLocal([1])).toEqual([
+      1, 0, 0,
+    ]);
+    const quarterTurn = new Quaternion().setFromAxisAngle(
+      Y_AXIS,
+      Math.PI / 2,
+    );
+    const rotated = bindCanonicalTranslationOffsetsToTargetLocal(
+      [1, 0, 0],
+      quarterTurn,
+      new Quaternion(),
+      2,
+    );
+    expect(new Vector3(...rotated as [number, number, number]).distanceTo(
+      new Vector3(0, 0, -2),
+    )).toBeLessThan(1e-6);
+  });
+
+  it("applies profile axis correction and meter offsets without source-height scaling", () => {
+    const correction = createCanonicalToTargetWorldCorrection(
+      GENERIC_GLTF_HUMANOID_PROFILE,
+    );
+    expect(correction.angleTo(new Quaternion())).toBeGreaterThan(1);
+    const bound = bindCanonicalHipsTranslationsToRest({
+      rest: createRestTransform({ worldPosition: new Vector3(0, 1, 0) }),
+      rootTranslationSpace: "offset-meters",
+      targetRestHipsHeight: 2,
+      values: [1],
+      canonicalToTargetWorld: correction,
+    });
+    expect(bound).toHaveLength(3);
+    expect(bound.every(Number.isFinite)).toBe(true);
+    expect(bound[1]).toBeCloseTo(1, 6);
   });
 });
 
