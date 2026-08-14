@@ -2,18 +2,24 @@
 
 [简体中文](zh-CN/supply-chain-security.md)
 
-The package is private and is not consumed by the web application yet.
+The package remains private in registry metadata and is distributed to
+approved downstream consumers as a locally packed, exact-version tarball. A
+consumer application is not a library readiness gate and is not modified as
+part of the library release.
 
-Before the first consumer integration, CI must require:
+Before every controlled release, the local release operator must record:
 
-- a frozen pnpm install;
-- type checking and the complete test suite;
-- correctness coverage gates;
-- dependency advisory and OSV scans;
-- a dist-only package build;
-- installation and import of every public entry from the packed tarball;
-- verification that the browser Worker is present in the tarball;
-- provenance and SHA-256 verification for committed and downloaded fixtures.
+- `pnpm install --frozen-lockfile`;
+- `pnpm verify`, including type checking, fixtures, the complete test suite,
+  correctness coverage, package-size limits, packed-entry installation, and
+  the packed browser Worker request/result smoke test;
+- `pnpm verify:ecosystem` for the pinned certified case;
+- `pnpm audit --prod` and a production dependency license inventory;
+- the tarball filename, byte length, SHA-256, package version, and verification
+  results in a committed release receipt.
 
-Publishing, registry credentials, automated consumer updates, and release SBOMs
-remain deferred until the package API is approved for consumption.
+The tarball remains ignored by Git and is transferred separately. Registry
+publication, registry credentials, automated consumer updates, CI, and release
+SBOMs remain deferred under the local maintenance profile. The MIT license
+covers the library code only; consumer assets and generated outputs retain
+their own provenance and license obligations.

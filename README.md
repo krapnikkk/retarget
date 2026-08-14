@@ -7,10 +7,11 @@ bounded format probing, source normalization, canonical motion, rig inspection,
 target solving, semantic validation, export, processing budgets, and a
 cancellable browser Worker runtime.
 
-The package is currently private and maintained locally while its public API,
-correctness evidence, and packed Worker contract stabilize. Its roadmap and
-readiness are determined by reusable retargeting capabilities rather than any
-particular application.
+Version `0.1.0` is distributed as a locally packed, controlled preview. The
+package remains private in registry metadata to prevent accidental registry
+publication; downstream consumers install and pin the exact tarball. Its
+roadmap and readiness are determined by reusable retargeting capabilities
+rather than any particular application.
 
 ## Scope
 
@@ -35,6 +36,24 @@ pnpm verify:ecosystem # requires the pinned Blender and Godot builds
 
 Large research corpora are downloaded into the ignored `references/` directory.
 Committed fixtures include provenance and hashes.
+
+## Local controlled release
+
+Install the immutable `0.1.0` tarball supplied by the maintainer:
+
+```powershell
+pnpm add C:\path\to\3dretarget-0.1.0.tgz
+```
+
+Consumers must pin the exact package version and use the documented public
+entries. Package version `0.1.0` denotes initial API development; capability
+assurance remains case-scoped as `experimental`, `beta`, or `certified`.
+Experimental paths are available for evaluation but are not supported as
+production-compatible combinations. The supported Node toolchain is the
+version declared in `package.json`.
+
+The MIT license covers this library code. It does not relicense consumer
+assets, user inputs, generated outputs, or separately installed dependencies.
 
 ## Public entries
 

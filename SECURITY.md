@@ -7,4 +7,9 @@ resource-exhaustion paths, unsafe archive handling, or package supply-chain
 issues privately to the repository owner. Do not attach confidential models to
 public issues.
 
-The package is not yet published and has no supported consumer version.
+Version `0.1.0` is distributed only as a locally packed, controlled preview.
+Security support covers the exact maintainer-supplied tarball, its documented
+public entries, and declared `beta` or `certified` combinations. Experimental
+capabilities remain evaluation-only. Fixes are issued as new immutable local
+artifacts; no registry package or automatic update channel is currently
+provided.
