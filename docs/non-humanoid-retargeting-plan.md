@@ -157,16 +157,18 @@ redistribute either user asset.
 ## Current beta scope
 
 The coarse browser operation `runRiggedGLTFPipeline` owns the complete
-rigged-glTF input pair to Animated GLB output path. Beta assurance is currently
-limited to the pinned Mesh2Motion `fox-animations.glb` Idle, Walk, Run, and Jump
-actions retargeted to the pinned `fox-base.glb`, `fox-dog.glb`, and
-`fox-horse.glb` targets. All 12 action/target pairs pass structural reload and
-an independent glTF sampler plus world-transform oracle with no missing tracks.
+rigged-glTF input pair to Animated GLB output path. Beta assurance covers five
+pinned Mesh2Motion matrices: Fox Idle/Walk/Run/Jump to Fox, Dog, and Horse (12
+pairs); Bird Flap/Glide/Idle/Walk to Eagle (4); seven Snake non-rest actions to
+a deterministically scaled Snake target; nine Spider non-rest actions to a
+scaled Spider target; and Dragon Fly Flap/Fly Glide/Idle/Walk to a scaled Dragon
+target. All 36 pairs pass structural reload and an independent glTF sampler plus
+world-transform oracle with no missing tracks.
 
-This is a fixture- and profile-scoped promotion, not a claim that arbitrary
-quadrupeds or every rigged glTF pair are beta. Avian, serpentine, arachnid, and
-creature paths retain their acceptance evidence but remain experimental until
-equivalent real action/output semantic matrices are pinned.
+These are fixture- and profile-scoped promotions, not a claim that arbitrary
+quadrupeds, birds, snakes, spiders, dragons, or every rigged glTF pair are beta.
+External Blender and Godot receipts remain scoped to the separate humanoid
+Golden artifact.
 
 ## Fixture and acceptance matrix
 
@@ -186,8 +188,9 @@ recorded with its source path and SHA-256. The quadruped fixture set covers:
 9. serializable mapping diagnostics for consumer-owned visualization.
 
 Bird, Snake, Spider, and Dragon fixtures cover all four NH3 definitions,
-including a 20-joint-to-8-joint serpentine resampling case. Unrigged reference
-meshes are rejected at the inspection boundary.
+including their promoted action matrices and a 20-joint-to-8-joint serpentine
+resampling case. Unrigged reference meshes are rejected at the inspection
+boundary.
 
 SDK acceptance requires:
 

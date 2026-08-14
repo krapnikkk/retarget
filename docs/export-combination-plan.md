@@ -38,17 +38,18 @@ x solver revision x target-binding revision
 ```
 
 Accordingly, public humanoid pipeline lookup requires the motion, avatar, and
-export format IDs. The registry admits six beta combinations: four
-`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `vrma`,
-`gltf-animation`, and `motion-json`), `vrma -> gltf-humanoid -> animated-glb`,
-and `gltf-animation -> vrm -> baked-vrm`. Their pinned cases have structural
+export format IDs. The registry admits nine beta combinations: five
+`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `fbx-animation`,
+`vrma`, `gltf-animation`, and `motion-json`),
+`vrma -> gltf-humanoid -> animated-glb`, and `gltf-animation`, `bvh`, or `vmd`
+to `vrm -> baked-vrm`. Their pinned cases have structural
 reload and independent semantic evidence. Only the first pinned Golden Motion
 case is independently certified in Blender and Godot.
 
 Non-humanoid rigged glTF uses the separate coarse browser entry
-`runRiggedGLTFPipeline`. Only the pinned Fox action matrix to the pinned Fox,
-Dog, and Horse targets with Animated GLB output is beta; this fixture-scoped
-promotion does not generalize to every rigged glTF pair.
+`runRiggedGLTFPipeline`. Five pinned family matrices are beta for Animated GLB:
+Fox quadruped, Bird/Eagle, Snake, Spider, and Dragon. Their 36 locked
+action/target pairs do not generalize to every rigged glTF pair.
 
 ## Dispatch boundaries
 
@@ -91,8 +92,10 @@ promote assurance.
 
 - Add pinned external-consumer evidence for exact humanoid cases that have only
   structural or semantic evidence.
-- Keep VMD/PMX, generic FBX, and other experimental paths gated until real,
-  provenance-locked ecosystem cases cover their claimed semantics.
+- Keep PMX delivery, generic/market FBX input, and standalone VMD output gated
+  until reproducible committed fixtures and matching semantic evidence cover
+  their claimed scope. The ignored Gene research corpus is supporting local
+  evidence, not a default beta fixture.
 - Extend non-humanoid output choices only through a versioned rig definition,
   capability entry, solver route, and generated certification result.
 

@@ -48,19 +48,21 @@ Committed fixtures include provenance and hashes.
 - `3dretarget/validation`: serializable semantic validation results.
 - `3dretarget/certification`: provenance and assurance manifests.
 
-The public humanoid pipeline registry exposes six complete beta combinations:
-`gltf-animation` to `gltf-humanoid` with `animated-glb`, `vrma`,
-`gltf-animation`, or `motion-json` output; `vrma` to `gltf-humanoid` with
-`animated-glb` output; and `gltf-animation` to `vrm` with `baked-vrm` output.
+The public humanoid pipeline registry exposes nine complete beta combinations:
+`gltf-animation` to `gltf-humanoid` with `animated-glb`, `fbx-animation`,
+`vrma`, `gltf-animation`, or `motion-json` output; `vrma` to `gltf-humanoid`
+with `animated-glb` output; and `gltf-animation`, `bvh`, or `vmd` to `vrm`
+with `baked-vrm` output.
 Lookup requires all three format IDs. Calling `pipeline.run(...)` returns the
 declared bytes together with the solved motion. The pinned Golden
 `gltf-animation -> gltf-humanoid -> animated-glb` case has stronger,
 case-scoped Blender and Godot certification.
 
 The browser entry also exposes `runRiggedGLTFPipeline` for non-humanoid rigged
-glTF pairs. Its beta scope is intentionally narrower: the pinned Mesh2Motion
-Fox Idle/Walk/Run/Jump source matrix to the pinned Fox, Dog, and Horse targets
-with Animated GLB output. Other rig families remain experimental.
+glTF pairs. Its beta scope covers five pinned Mesh2Motion family matrices with
+Animated GLB output: Fox quadruped (12 action/target pairs), Bird/Eagle (4),
+Snake (7), Spider (9), and Dragon (4). These 36 pairs are fixture- and
+profile-scoped; they do not generalize to arbitrary rigged glTF pairs.
 
 See [library stability gates](docs/stabilization-gates.md) for the current local
 readiness criteria.

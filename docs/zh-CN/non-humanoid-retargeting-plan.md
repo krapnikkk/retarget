@@ -115,9 +115,9 @@ Studio 显示检测到的 family/definition/profile，允许显式覆盖 family/
 
 ## 当前 beta 范围
 
-粗粒度浏览器操作 `runRiggedGLTFPipeline` 负责从一对 rigged glTF 输入到 Animated GLB 输出的完整路径。当前 beta 保证仅覆盖固定 Mesh2Motion `fox-animations.glb` 的 Idle、Walk、Run、Jump 动作到固定 `fox-base.glb`、`fox-dog.glb`、`fox-horse.glb` 目标。12 个动作/目标配对全部通过结构重载，以及独立 glTF 采样器与世界变换判定器，并且没有缺失轨道。
+粗粒度浏览器操作 `runRiggedGLTFPipeline` 负责从一对 rigged glTF 输入到 Animated GLB 输出的完整路径。beta 保证覆盖五个固定 Mesh2Motion 矩阵：Fox 的 Idle/Walk/Run/Jump 到 Fox、Dog、Horse（12 个配对）；Bird 的 Flap/Glide/Idle/Walk 到 Eagle（4）；七个 Snake 非静止动作到确定性缩放的 Snake 目标；九个 Spider 非静止动作到缩放的 Spider 目标；以及 Dragon 的 Fly Flap/Fly Glide/Idle/Walk 到缩放的 Dragon 目标。全部 36 个配对均通过结构重载和独立 glTF 采样器/世界变换判定器，且没有缺失轨道。
 
-这是固定资源及 profile 范围的晋升，不代表任意四足或所有 rigged glTF 配对均为 beta。鸟类、蛇形、蛛形和复合生物路径保留既有验收证据，但在固定同等级真实动作/输出语义矩阵前仍为实验性。
+这些晋升只保证固定资源和 profile，不代表任意四足、鸟类、蛇形、蛛形、龙或所有 rigged glTF 配对均为 beta。外部 Blender 与 Godot 回执仍只覆盖独立的人形 Golden 产物。
 
 ## 固定资源和验收矩阵
 
@@ -133,7 +133,7 @@ Studio 显示检测到的 family/definition/profile，允许显式覆盖 family/
 8. Fox Idle/Walk/Run/Jump 针对 Fox、Dog、Horse 比例；
 9. 可序列化映射诊断，供消费端自有可视化使用。
 
-Bird、Snake、Spider、Dragon 固定资源覆盖其余四个 NH3 definition，包括 20 关节到 8 关节的蛇形重采样。无骨架参考网格会在检查边界被拒绝。
+Bird、Snake、Spider、Dragon 固定资源覆盖其余四个 NH3 definition，包括已晋升动作矩阵及 20 关节到 8 关节的蛇形重采样。无骨架参考网格会在检查边界被拒绝。
 
 SDK 验收要求：
 

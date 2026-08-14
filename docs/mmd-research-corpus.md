@@ -68,7 +68,7 @@ not present.
   materials, texture references, and effect-oriented structure. They contain
   zero mesh vertices, so they are parser fixtures rather than avatar previews.
 
-## Current project smoke results (2026-08-13)
+## Current project smoke results (2026-08-14)
 
 The downloaded corpus was exercised through the production parsers, without
 changing conversion code:
@@ -81,6 +81,7 @@ changing conversion code:
 | `16_thinking.vmd` | Full document decoded; 50 canonical body/finger tracks, 10 seconds |
 | `22_apology.vmd` | Full document decoded; 50 canonical body/finger tracks, 10 seconds |
 | `stand.vmd` | Full document decoded; 50 canonical body/finger tracks, 4 seconds |
+| `stand.vmd` + `Gene_light.pmx` | Real target inspection and binding followed by Animated GLB structural reload and independent world-space semantic validation |
 | `00_normal.vmd` | Expected negative fixture: no currently supported body tracks |
 | babylon-mmd PMX set | All five selected files parsed; zero-vertex bone fixtures remain parser-only |
 | babylon-mmd VMD v2 | Expected negative fixture: unsupported-track-only |
@@ -92,6 +93,9 @@ native PMX/PMD viewer exercises the three-mmd runtime for morphs, IK, append
 transforms, SDEF/QDEF, toon/sphere materials, and Ammo physics. These checks do
 not claim that cross-format humanoid retargeting can reproduce MMD camera,
 light, audio, MME effects, or model-specific non-humanoid control semantics.
+The complete Gene pair remains an ignored, reproducibly downloaded research
+case; it supports PMX-path readiness but does not by itself enable a default
+beta registry entry.
 
 ## Deliberately excluded
 

@@ -42,7 +42,7 @@ pnpm test:mmd-research-corpus
 - PMX 用例：`emapp/test/fixtures/test.pmx` 与 `emapp/test/fixtures/effects/main.pmx`。
 - 价值：独立实现提供的 140 骨骼表、材质、纹理引用和效果结构。它们没有网格顶点，因此只作为解析器固定资源，不用于角色预览。
 
-## 当前项目冒烟结果（2026-08-13）
+## 当前项目冒烟结果（2026-08-14）
 
 下载语料在未改变转换代码的情况下通过生产解析器运行：
 
@@ -54,13 +54,14 @@ pnpm test:mmd-research-corpus
 | `16_thinking.vmd` | 完整解码；50 条规范身体/手指轨道、10 秒 |
 | `22_apology.vmd` | 完整解码；50 条规范身体/手指轨道、10 秒 |
 | `stand.vmd` | 完整解码；50 条规范身体/手指轨道、4 秒 |
+| `stand.vmd` + `Gene_light.pmx` | 真实目标检查与绑定后，Animated GLB 通过结构重载及独立世界空间语义验证 |
 | `00_normal.vmd` | 预期负例：当前没有受支持身体轨道 |
 | babylon-mmd PMX 集 | 所选五个文件全部解析；零顶点骨骼固定资源仍仅供解析器使用 |
 | babylon-mmd VMD v2 | 预期负例：仅含不支持轨道 |
 | babylon-mmd VMD v3 | 已导入；8 条受支持轨道，约 0.67 秒 |
 | nanoem PMX 集 | 两个文件均已解析；零顶点固定资源仍仅供解析器使用 |
 
-生产编解码器现可解析并重写所有标准 VMD 分区；原生 PMX/PMD Viewer 通过 three-mmd 运行时覆盖 morph、IK、append transform、SDEF/QDEF、toon/sphere 材质及 Ammo 物理。这些检查不声明跨格式人形重定向能复现 MMD 摄像机、灯光、音频、MME 效果或模型专用非人形控制语义。
+生产编解码器现可解析并重写所有标准 VMD 分区；原生 PMX/PMD Viewer 通过 three-mmd 运行时覆盖 morph、IK、append transform、SDEF/QDEF、toon/sphere 材质及 Ammo 物理。这些检查不声明跨格式人形重定向能复现 MMD 摄像机、灯光、音频、MME 效果或模型专用非人形控制语义。完整 Gene 配对仍是被忽略且可复现下载的研究用例；它支持 PMX 路径就绪判断，但不会单独启用默认 beta 注册项。
 
 ## 有意排除
 

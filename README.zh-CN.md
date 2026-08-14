@@ -36,8 +36,8 @@ pnpm verify:ecosystem # 需要固定版本的 Blender 与 Godot
 - `3dretarget/validation`：可序列化的语义验证结果。
 - `3dretarget/certification`：来源和保证等级清单。
 
-公开人形流水线注册表现有六个完整 beta 组合：`gltf-animation` 到 `gltf-humanoid` 可输出 `animated-glb`、`vrma`、`gltf-animation` 或 `motion-json`；`vrma` 到 `gltf-humanoid` 可输出 `animated-glb`；`gltf-animation` 到 `vrm` 可输出 `baked-vrm`。查询必须同时提供三个格式 ID，`pipeline.run(...)` 返回声明的输出字节和已求解动作。其中固定的 Golden `gltf-animation -> gltf-humanoid -> animated-glb` 用例另有仅适用于该用例的 Blender 与 Godot 认证证据。
+公开人形流水线注册表现有九个完整 beta 组合：`gltf-animation` 到 `gltf-humanoid` 可输出 `animated-glb`、`fbx-animation`、`vrma`、`gltf-animation` 或 `motion-json`；`vrma` 到 `gltf-humanoid` 可输出 `animated-glb`；`gltf-animation`、`bvh` 或 `vmd` 到 `vrm` 可输出 `baked-vrm`。查询必须同时提供三个格式 ID，`pipeline.run(...)` 返回声明的输出字节和已求解动作。其中固定的 Golden `gltf-animation -> gltf-humanoid -> animated-glb` 用例另有仅适用于该用例的 Blender 与 Godot 认证证据。
 
-浏览器入口还公开 `runRiggedGLTFPipeline`，用于非人形 rigged glTF 配对。其 beta 范围刻意收窄为：固定 Mesh2Motion Fox 的 Idle/Walk/Run/Jump 动作矩阵到固定 Fox、Dog、Horse 目标，并输出 Animated GLB。其他骨架 family 仍为实验性。
+浏览器入口还公开 `runRiggedGLTFPipeline`，用于非人形 rigged glTF 配对。其 beta 范围覆盖五个固定 Mesh2Motion family 的 Animated GLB 矩阵：Fox 四足（12 个动作/目标配对）、Bird/Eagle（4）、Snake（7）、Spider（9）和 Dragon（4）。这 36 个配对只保证固定资源和 profile，不泛化为任意 rigged glTF 配对。
 
 当前本地就绪标准见[功能库稳定性门禁](docs/zh-CN/stabilization-gates.md)。

@@ -26,7 +26,8 @@ The pipeline is `Source -> Canonical -> Target`:
 
 No React component, preview scene, or exporter may silently redo source
 normalization. Generic FBX remains an unknown-rest-pose, unknown-unit profile;
-it does not inherit Mixamo assumptions from the `.fbx` extension.
+the importer may narrow units from an explicit `UnitScaleFactor`, but it does
+not inherit Mixamo assumptions from the `.fbx` extension.
 
 ## Consequences
 

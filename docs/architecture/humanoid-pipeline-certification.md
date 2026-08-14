@@ -23,10 +23,11 @@ The machine-readable manifest is
 
 Case assurance and generalized capability assurance are intentionally
 different scopes. The pinned Golden Animated GLB case below is `certified`.
-Six broader public combinations are beta: four
-`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `vrma`,
-`gltf-animation`, and `motion-json`), `vrma -> gltf-humanoid -> animated-glb`,
-and `gltf-animation -> vrm -> baked-vrm`. One proven fixture does not certify
+Nine broader public combinations are beta: five
+`gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `fbx-animation`,
+`vrma`, `gltf-animation`, and `motion-json`),
+`vrma -> gltf-humanoid -> animated-glb`, and `gltf-animation`, `bvh`, or `vmd`
+to `vrm -> baked-vrm`. One proven fixture does not certify
 every conforming asset, so only the first exact pinned case is certified.
 
 ## Golden evidence
@@ -54,9 +55,11 @@ checks raw exported glTF world rotations, hips displacement, and hand/foot
 positions without passing the output back through the production glTF motion
 importer. Deterministic sampling includes every key time, epsilon samples around
 keys, interval midpoints, angular-velocity extrema, contact-state transitions,
-fixed random points, and 0/25/50/75/100 percent. Root motion can pass only when
-meter-normalized offsets are declared. Structural reload, semantic equivalence,
-and ecosystem compatibility remain separate result layers in export receipts.
+fixed random points, and 0/25/50/75/100 percent. Root motion can pass when
+offsets are already meter-normalized or when preserved source-rest-height
+evidence is bound to a known target rest height. Structural reload, semantic
+equivalence, and ecosystem compatibility remain separate result layers in
+export receipts.
 
 The download gate blocks structural failures. A semantic failure on a
 provenance-locked pipeline is also a hard failure. For combinations without
@@ -83,13 +86,16 @@ pose changes across fixed samples of the same artifact. Unity is explicitly
 deferred and is not a required runtime in the current local certification
 profile; no Unity compatibility is claimed.
 
-The provenance-locked market VRMA now reaches `semantic-passed`: after T-pose
-normalization and rest-hips subtraction, its full public pipeline output agrees
-with the Golden canonical samples within the same independent thresholds. The
-reverse VRMA exporter, glTF Animation exporter, Motion JSON exporter, and Baked
-VRM path also pass structural reload and independent semantic checks for their
-exact pinned triples. They remain beta rather than certified because no matching
-external ecosystem receipt is pinned. BVH, VMD, ActorCore,
-Mixamo-to-generic-FBX, FBX avatar, and PMX paths remain experimental until
-provenance-locked real assets and equivalent evidence are added. Synthetic
-fixtures may test math or failure handling but cannot promote assurance.
+The provenance-locked VRMA, regenerated BVH, and VMD inputs now reach
+`semantic-passed` on their exact public paths. BVH export reverses the canonical
+axis transform and preserves the complete finger hierarchy; FBX animation
+export declares meter units, writes the target basis once, and is independently
+reloaded through Three.js. The reverse VRMA exporter, glTF Animation exporter,
+Motion JSON exporter, FBX animation exporter, and Baked VRM paths all pass
+structural reload and semantic checks for their pinned triples. They remain beta
+rather than certified because no matching external ecosystem receipt is pinned.
+Generic/market FBX input, FBX avatar output, and PMX delivery remain
+experimental. The ignored Gene PMX/VMD corpus passes a local target-binding to
+Animated GLB semantic loop, but cannot promote a default public combination
+until its exact reproducible fixture boundary is admitted. Synthetic fixtures
+may test math or failure handling but cannot promote assurance.
