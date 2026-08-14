@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "package": "3dretarget",
+  "version": "0.2.0",
+  "channel": "local-controlled-preview",
+  "sourceCommit": "c1d2736192908345265a23dad98f2b40e5187dad",
+  "artifact": {
+    "filename": "3dretarget-0.2.0.tgz",
+    "byteLength": 1143461,
+    "sha256": "e6dfbab55b48d20c5945ffc385f2f4257e9140cd7e033509eb3ed957775e85dc",
+    "trackedByGit": false,
+    "reproducibleRepack": "passed",
+    "containsLicense": true,
+    "containsThirdPartyNotices": true
+  },
+  "toolchain": {
+    "node": "24.11.1",
+    "pnpm": "10.24.0"
+  },
+  "verification": {
+    "frozenInstall": "passed",
+    "verify": {
+      "status": "passed",
+      "testFiles": 46,
+      "tests": 273,
+      "correctnessTestFiles": 18,
+      "correctnessTests": 104,
+      "branchCoveragePercent": 73.82,
+      "packedPublicEntries": 6,
+      "packedBrowserWorkerSmoke": "passed",
+      "packedNodeToolingSmoke": "passed",
+      "packedConsumerTypecheck": "passed"
+    },
+    "ecosystem": {
+      "status": "passed",
+      "blender": "5.2.0 LTS",
+      "godot": "4.7.1-stable (official)",
+      "certifiedArtifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7"
+    },
+    "productionAudit": "no-known-vulnerabilities",
+    "productionDependencyCount": 32,
+    "productionLicenseExpressions": [
+      "Apache-2.0",
+      "MIT"
+    ]
+  }
+}
