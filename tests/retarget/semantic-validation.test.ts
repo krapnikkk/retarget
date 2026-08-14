@@ -153,7 +153,74 @@ describe("semantic motion validation", () => {
     expect(result.metrics.maxRotationErrorDegrees).toBeCloseTo(90, 4);
     expect(result.metrics.maxEndEffectorErrorMeters).toBeGreaterThan(2);
   });
+
+  it("certifies source-unit root offsets after target rest-height binding", () => {
+    const expected = createClip();
+    expected.metadata = {
+      restHipsHeight: 10,
+      rootTranslationOrigin: "root-offset",
+      rootTranslationSpace: "offset-source-units",
+      rootMotionEvidence: {
+        status: "preserved",
+        scaleSource: "mmd-standard-model-preset",
+        sourceRestHipsHeight: 10,
+        coordinateTransform: "pinned MMD body basis",
+      },
+    };
+    expected.tracks = [{
+      bone: "hips",
+      path: "translation",
+      times: [0, 1],
+      values: [0, 0, 0, 0, 0, -10],
+    }];
+    const { document, nodesByBone } = createBoundRootDocument(expected.name);
+
+    const result = validateGLTFWorldSemantics({
+      animationName: expected.name,
+      document,
+      expected,
+      nodesByBone,
+      thresholds: DEFAULT_SEMANTIC_THRESHOLDS,
+    });
+
+    expect(result).toMatchObject({ ok: true, issues: [] });
+    expect(result.metrics.maxRootDisplacementErrorMeters).toBeLessThan(1e-6);
+  });
 });
+
+function createBoundRootDocument(animationName: string) {
+  const document = new Document();
+  const scene = document.createScene("bound-root");
+  document.getRoot().setDefaultScene(scene);
+  const hips = document.createNode("hips").setTranslation([0, 1, 0]);
+  scene.addChild(hips);
+  const buffer = document.createBuffer("animation");
+  const input = document
+    .createAccessor("time")
+    .setArray(new Float32Array([0, 1]))
+    .setType(Accessor.Type.SCALAR)
+    .setBuffer(buffer);
+  const output = document
+    .createAccessor("hips.translation")
+    .setArray(new Float32Array([0, 1, 0, 0, 1, -1]))
+    .setType(Accessor.Type.VEC3)
+    .setBuffer(buffer);
+  const sampler = document
+    .createAnimationSampler("hips.translation")
+    .setInput(input)
+    .setOutput(output)
+    .setInterpolation("LINEAR");
+  const channel = document
+    .createAnimationChannel("hips.translation")
+    .setTargetNode(hips)
+    .setTargetPath("translation")
+    .setSampler(sampler);
+  document.createAnimation(animationName).addSampler(sampler).addChannel(channel);
+  return {
+    document,
+    nodesByBone: new Map([["hips", hips]]) as ReadonlyMap<"hips", Node>,
+  };
+}
 
 function createIncorrectAnimatedDocument(animationName: string) {
   const document = new Document();

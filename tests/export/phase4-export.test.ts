@@ -104,6 +104,36 @@ describe("Phase 4 export adapters", () => {
     await expect(validateMotionExportReload("bvh", bytes)).resolves.toMatchObject({
       ok: true,
     });
+    const semantic = await validateMotionExportSemantics("bvh", bytes, createClip());
+    expect(semantic.metrics.maxRotationErrorDegrees).toBeLessThan(0.01);
+    expect(semantic.metrics.maxRootDisplacementErrorMeters).toBeLessThan(0.001);
+  });
+
+  it("semantically validates BVH root motion against the bound target scale", async () => {
+    const clip = createClip();
+    clip.metadata = {
+      rootTranslationSpace: "offset-meters",
+      targetHeight: 1,
+    };
+    clip.target.restHipsHeight = 1;
+    for (const bone of ["leftToes", "rightToes"] as const) {
+      clip.tracks.push({
+        bone,
+        path: "rotation",
+        times: [0, 1, 2],
+        values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+      });
+    }
+
+    const semantic = await validateMotionExportSemantics(
+      "bvh",
+      await exportBVH(clip),
+      clip,
+    );
+
+    expect(semantic).toMatchObject({ level: "semantic", ok: true, issues: [] });
+    expect(semantic.metrics.maxRotationErrorDegrees).toBeLessThan(0.01);
+    expect(semantic.metrics.maxRootDisplacementErrorMeters).toBeLessThan(0.001);
   });
 
   it("exports VMD motion with MMD bone names that can be imported again", async () => {
@@ -571,6 +601,20 @@ describe("Phase 4 export adapters", () => {
     await expect(validateMotionExportReload("fbx-animation", bytes)).resolves.toMatchObject({
       ok: true,
     });
+  });
+
+  it("round-trips FBX animation semantics through Three.js", async () => {
+    const clip = createClip();
+    clip.metadata = { rootTranslationSpace: "offset-meters" };
+    const bytes = await exportFBXAnimation(clip);
+    const semantic = await validateMotionExportSemantics(
+      "fbx-animation",
+      bytes,
+      clip,
+    );
+    expect(semantic).toMatchObject({ level: "semantic", ok: true, issues: [] });
+    expect(semantic.metrics.maxRotationErrorDegrees).toBeLessThan(0.001);
+    expect(semantic.metrics.maxRootDisplacementErrorMeters).toBeLessThan(0.001);
   });
 
   it("requires an avatar for the active FBX avatar animation adapter", async () => {

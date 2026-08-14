@@ -8,10 +8,12 @@ import type {
   MotionExportFormatId,
 } from "@/formats";
 import { importBVH } from "@/import/bvh";
+import { importFBXHumanoidMotionBytes } from "@/import/fbx-motion";
 import { importVMD } from "@/import/vmd";
 import { importVRMA } from "@/import/vrma";
 import {
   GENERIC_GLTF_HUMANOID_PROFILE,
+  GENERIC_FBX_HUMANOID_PROFILE,
   getRigProfile,
   type RigProfileId,
 } from "@/profiles";
@@ -179,15 +181,54 @@ export async function validateMotionExportSemantics(
       }),
     };
   } else if (formatId === "bvh") {
-    actual = importBVH(bytes, "semantic.bvh");
+    actual = normalizeBoundBVHRootUnits(
+      importBVH(bytes, "semantic.bvh"),
+      expected,
+    );
   } else if (formatId === "vmd") {
     actual = importVMD(bytes, "semantic.vmd");
+  } else if (formatId === "fbx-animation") {
+    actual = importFBXHumanoidMotionBytes({
+      bytes: bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer,
+      filename: "semantic.fbx",
+      kind: "generic-fbx",
+      profile: GENERIC_FBX_HUMANOID_PROFILE,
+    });
   } else {
-    return unsupportedSemanticResult(formatId, "FBX semantic import is unavailable");
+    return unsupportedSemanticResult(formatId, "semantic import is unavailable");
   }
   return {
     formatId,
     ...validateHumanoidMotionSemantics({ actual, expected }),
+  };
+}
+
+function normalizeBoundBVHRootUnits(
+  actual: RetargetedMotionClip,
+  expected: RetargetedMotionClip,
+): RetargetedMotionClip {
+  const actualHeight = actual.metadata?.restHipsHeight;
+  const expectedHeight =
+    expected.metadata?.targetHeight ?? expected.target.restHipsHeight;
+  if (
+    actual.metadata?.rootTranslationSpace !== "offset-source-units" ||
+    actual.metadata.rootMotionEvidence?.status !== "preserved" ||
+    actual.metadata.rootMotionEvidence.scaleSource !== "bvh-hierarchy" ||
+    actualHeight === undefined ||
+    expectedHeight === undefined ||
+    Math.abs(actualHeight - expectedHeight) > 0.001
+  ) {
+    return actual;
+  }
+  return {
+    ...actual,
+    metadata: {
+      ...actual.metadata,
+      rootTranslationSpace: "offset-meters",
+    },
   };
 }
 

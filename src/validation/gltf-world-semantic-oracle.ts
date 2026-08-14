@@ -40,7 +40,8 @@ export function validateGLTFWorldSemantics({
   );
   const actualDuration = getAnimationDuration(animation);
   const restPose = createGLTFHumanoidSemanticRestPose(nodesByBone);
-  const rootScale = resolveExpectedRootScale(expected, restPose.get("hips")?.worldPosition[1]);
+  const targetRestHipsHeight = restPose.get("hips")?.worldPosition[1];
+  const rootScale = resolveExpectedRootScale(expected, targetRestHipsHeight);
   const sampleTimes = createSemanticSampleTimes({
     actual: expected,
     additionalKeyTimes: animation
@@ -57,7 +58,7 @@ export function validateGLTFWorldSemantics({
   );
   if (
     comparesRootTranslation &&
-    expected.metadata?.rootTranslationSpace !== "offset-meters"
+    !hasBoundRootScaleEvidence(expected, targetRestHipsHeight)
   ) {
     issues.push("root displacement cannot be certified without meter-normalized tracks");
   }
@@ -201,6 +202,24 @@ export function validateGLTFWorldSemantics({
       maxSymmetryErrorMeters,
     },
   };
+}
+
+function hasBoundRootScaleEvidence(
+  expected: RetargetedMotionClip,
+  targetRestHipsHeight?: number,
+) {
+  if (expected.metadata?.rootTranslationSpace === "offset-meters") return true;
+  const sourceRestHipsHeight = expected.metadata?.restHipsHeight;
+  const evidence = expected.metadata?.rootMotionEvidence;
+  return (
+    expected.metadata?.rootTranslationSpace === "offset-source-units" &&
+    evidence?.status === "preserved" &&
+    evidence.scaleSource !== "unknown" &&
+    sourceRestHipsHeight !== undefined &&
+    sourceRestHipsHeight > 0 &&
+    targetRestHipsHeight !== undefined &&
+    targetRestHipsHeight > 0
+  );
 }
 
 function selectAnimation(document: Document, name: string) {

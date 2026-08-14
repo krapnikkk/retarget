@@ -1,4 +1,4 @@
-import { Euler, Matrix4, Quaternion } from "three";
+import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
   Document,
   Node as GltfDocumentNode,
@@ -11,6 +11,11 @@ import {
   type RetargetedMotionClip,
 } from "@/retarget";
 import { validateMotionClip } from "@/retarget";
+import { GENERIC_FBX_HUMANOID_PROFILE } from "@/profiles";
+import {
+  CANONICAL_AXIS_FRAME,
+  createAxisCorrection,
+} from "@/retarget/coordinate-space";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 import {
   resolveExportBoneName,
@@ -22,6 +27,11 @@ const FBX_VERSION = 7400;
 const FBX_TIME_SECOND = 46186158000;
 const FBX_BINARY_HEADER = "Kaydara FBX Binary  \0\x1a\0";
 const FBX_NULL_RECORD_LENGTH = 13;
+const FBX_UNIT_SCALE_FACTOR_METERS = 100;
+const CANONICAL_TO_FBX = createAxisCorrection(
+  CANONICAL_AXIS_FRAME,
+  GENERIC_FBX_HUMANOID_PROFILE,
+);
 
 const FOOTER_MAGIC_A = [0xfa, 0xbc, 0xab, 0x09, 0xd0, 0xc8, 0xd4, 0x66, 0xb1, 0x76, 0xfb, 0x83, 0x1c, 0xf7, 0x26, 0x7e] as const;
 const FOOTER_MAGIC_B = [0xf8, 0x5a, 0x8c, 0x6a] as const;
@@ -54,6 +64,50 @@ type ExportCurve = {
   times: number[];
   values: number[];
 };
+
+function createFBXFingerChain(
+  bones: readonly [HumanoidBoneName, HumanoidBoneName, HumanoidBoneName],
+  rootOffset: readonly [number, number, number],
+  segmentOffset: readonly [number, number, number],
+): FBXBoneNode {
+  return {
+    bone: bones[0],
+    offset: rootOffset,
+    children: [{
+      bone: bones[1],
+      offset: segmentOffset,
+      children: [{
+        bone: bones[2],
+        offset: segmentOffset,
+        children: [],
+      }],
+    }],
+  };
+}
+
+function createFBXHandFingerNodes(side: "left" | "right"): readonly FBXBoneNode[] {
+  const prefix = side === "left" ? "left" : "right";
+  const sign = side === "left" ? -1 : 1;
+  const chain = (
+    names: readonly [string, string, string],
+    rootOffset: readonly [number, number, number],
+  ) => createFBXFingerChain(
+    names.map((name) => `${prefix}${name}`) as [
+      HumanoidBoneName,
+      HumanoidBoneName,
+      HumanoidBoneName,
+    ],
+    rootOffset,
+    [sign * 2.5, 0, 0],
+  );
+  return [
+    chain(["ThumbMetacarpal", "ThumbProximal", "ThumbDistal"], [sign * 2.5, -1, 2.5]),
+    chain(["IndexProximal", "IndexIntermediate", "IndexDistal"], [sign * 3.5, 0, 1.8]),
+    chain(["MiddleProximal", "MiddleIntermediate", "MiddleDistal"], [sign * 4, 0, 0.6]),
+    chain(["RingProximal", "RingIntermediate", "RingDistal"], [sign * 3.7, 0, -0.6]),
+    chain(["LittleProximal", "LittleIntermediate", "LittleDistal"], [sign * 3.2, 0, -1.8]),
+  ];
+}
 
 type FBXProperty =
   | { type: "C"; value: boolean }
@@ -106,7 +160,11 @@ const FBX_HUMANOID_TREE = {
                           bone: "leftLowerArm",
                           offset: [-28, 0, 0],
                           children: [
-                            { bone: "leftHand", offset: [-24, 0, 0], children: [] },
+                            {
+                              bone: "leftHand",
+                              offset: [-24, 0, 0],
+                              children: createFBXHandFingerNodes("left"),
+                            },
                           ],
                         },
                       ],
@@ -125,7 +183,11 @@ const FBX_HUMANOID_TREE = {
                           bone: "rightLowerArm",
                           offset: [28, 0, 0],
                           children: [
-                            { bone: "rightHand", offset: [24, 0, 0], children: [] },
+                            {
+                              bone: "rightHand",
+                              offset: [24, 0, 0],
+                              children: createFBXHandFingerNodes("right"),
+                            },
                           ],
                         },
                       ],
@@ -240,7 +302,7 @@ function writeFBXFile(objects: FBXNode[], connections: FBXNode[]) {
         property("FrontAxisSign", "int", [int(1)]),
         property("CoordAxis", "int", [int(0)]),
         property("CoordAxisSign", "int", [int(1)]),
-        property("UnitScaleFactor", "double", [double(1)]),
+        property("UnitScaleFactor", "double", [double(FBX_UNIT_SCALE_FACTOR_METERS)]),
       ]),
     ]),
     node("Objects", [], objects),
@@ -281,7 +343,7 @@ export async function validateFBXAnimationBytes(bytes: Uint8Array) {
 }
 
 function createModelNode(bone: ExportBone): FBXNode {
-  const [x, y, z] = bone.offset;
+  const [x, y, z] = bone.offset.map((value) => value / 100);
   return node(
     "Model",
     [long(bone.id), string(`Model::${bone.name}`), string(bone.parent ? "LimbNode" : "Root")],
@@ -291,6 +353,7 @@ function createModelNode(bone: ExportBone): FBXNode {
         property("Lcl Translation", "Lcl Translation", [double(round(x)), double(round(y)), double(round(z))]),
         property("Lcl Rotation", "Lcl Rotation", [double(0), double(0), double(0)]),
         property("Lcl Scaling", "Lcl Scaling", [double(1), double(1), double(1)]),
+        property("RotationOrder", "enum", [int(5)]),
       ]),
     ],
   );
@@ -377,6 +440,7 @@ function collectTreeBones(
 function createExportCurveNodes(
   clip: RetargetedMotionClip,
   modelIdByBone: ReadonlyMap<HumanoidBoneName, number>,
+  convertCanonicalBasis = true,
 ) {
   const tracksByBone = new Map<HumanoidBoneName, MotionTrack[]>();
   for (const track of clip.tracks) {
@@ -396,7 +460,10 @@ function createExportCurveNodes(
 
     const translation = tracks.find((track) => track.path === "translation");
     if (translation) {
-      const curves = splitVectorTrack(translation, 3).map((curve) => ({
+      const outputTrack = convertCanonicalBasis
+        ? canonicalTranslationTrackToFBX(translation)
+        : translation;
+      const curves = splitVectorTrack(outputTrack, 3).map((curve) => ({
         ...curve,
         id: curveId++,
       }));
@@ -405,7 +472,10 @@ function createExportCurveNodes(
 
     const rotation = tracks.find((track) => track.path === "rotation");
     if (rotation) {
-      const eulerTrack = quaternionTrackToEulerDegrees(rotation);
+      const eulerTrack = quaternionTrackToEulerDegrees(
+        rotation,
+        convertCanonicalBasis,
+      );
       const curves = splitVectorTrack(eulerTrack, 3).map((curve) => ({
         ...curve,
         id: curveId++,
@@ -425,8 +495,12 @@ function splitVectorTrack(track: MotionTrack, size: 3) {
   }));
 }
 
-function quaternionTrackToEulerDegrees(track: MotionTrack): MotionTrack {
+function quaternionTrackToEulerDegrees(
+  track: MotionTrack,
+  convertCanonicalBasis: boolean,
+): MotionTrack {
   const values: number[] = [];
+  let previous: [number, number, number] | undefined;
   for (let index = 0; index < track.times.length; index += 1) {
     const offset = index * 4;
     const quaternion = new Quaternion(
@@ -434,16 +508,42 @@ function quaternionTrackToEulerDegrees(track: MotionTrack): MotionTrack {
       track.values[offset + 1] ?? 0,
       track.values[offset + 2] ?? 0,
       track.values[offset + 3] ?? 1,
-    );
+    ).normalize();
+    if (convertCanonicalBasis) {
+      quaternion
+        .premultiply(CANONICAL_TO_FBX)
+        .multiply(CANONICAL_TO_FBX.clone().invert())
+        .normalize();
+    }
     const euler = new Euler().setFromQuaternion(quaternion, "XYZ");
-    values.push(
+    const current = [
       radiansToDegrees(euler.x),
       radiansToDegrees(euler.y),
       radiansToDegrees(euler.z),
-    );
+    ] as [number, number, number];
+    if (previous) {
+      for (let axis = 0; axis < current.length; axis += 1) {
+        while (current[axis]! - previous[axis]! > 180) current[axis]! -= 360;
+        while (current[axis]! - previous[axis]! < -180) current[axis]! += 360;
+      }
+    }
+    values.push(...current);
+    previous = current;
   }
 
   return { ...track, path: "rotation", values };
+}
+
+function canonicalTranslationTrackToFBX(track: MotionTrack): MotionTrack {
+  const values: number[] = [];
+  for (let index = 0; index < track.values.length; index += 3) {
+    values.push(...new Vector3(
+      track.values[index] ?? 0,
+      track.values[index + 1] ?? 0,
+      track.values[index + 2] ?? 0,
+    ).applyQuaternion(CANONICAL_TO_FBX).toArray());
+  }
+  return { ...track, values };
 }
 
 function node(name: string, properties: FBXProperty[] = [], children: FBXNode[] = []): FBXNode {
@@ -552,7 +652,7 @@ export function createFBXAvatarSceneBinary(
 
   const stackId = 2000;
   const layerId = 2001;
-  const curves = createExportCurveNodes(clip, modelIdByBone);
+  const curves = createExportCurveNodes(clip, modelIdByBone, false);
   objects.push(
     node("AnimationStack", [long(stackId), string(`AnimStack::${clip.name || "retargeted-motion"}`), string("")]),
     node("AnimationLayer", [long(layerId), string("AnimLayer::BaseLayer"), string("")]),
@@ -614,6 +714,7 @@ function createSceneModelNode(entry: SceneModelEntry): FBXNode {
           double(round(radiansToDegrees(euler.z))),
         ]),
         property("Lcl Scaling", "Lcl Scaling", [double(round(sx)), double(round(sy)), double(round(sz))]),
+        property("RotationOrder", "enum", [int(5)]),
       ]),
     ],
   );
@@ -653,6 +754,7 @@ function appendMeshObjects(
               property("Lcl Translation", "Lcl Translation", [double(0), double(0), double(0)]),
               property("Lcl Rotation", "Lcl Rotation", [double(0), double(0), double(0)]),
               property("Lcl Scaling", "Lcl Scaling", [double(1), double(1), double(1)]),
+              property("RotationOrder", "enum", [int(5)]),
             ]),
           ],
         ),

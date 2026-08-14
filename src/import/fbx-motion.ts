@@ -78,10 +78,21 @@ export function importFBXHumanoidMotionBytes({
     animationClip,
     filename,
     kind,
-    profile,
+    profile: applyFBXUnitEvidence(profile, group),
     rootName: group.name || "FBX animation",
     sourceRoot: group,
   });
+}
+
+function applyFBXUnitEvidence(profile: RigProfile, root: Object3D): RigProfile {
+  if (profile.scaleUnit !== "unknown") return profile;
+  const factor = root.userData.unitScaleFactor;
+  const scaleUnit = factor === 100
+    ? "meters"
+    : factor === 1
+      ? "centimeters"
+      : "unknown";
+  return scaleUnit === "unknown" ? profile : { ...profile, scaleUnit };
 }
 
 export function createImportedFBXMotionClipFromAnimation({
@@ -137,7 +148,7 @@ function collectSourceRestTransforms(root: Object3D, profile: RigProfile) {
   const transforms = new Map<HumanoidBoneName, SourceBoneRestTransform>();
   let restHipsHeight: number | undefined;
   root.traverse((object) => {
-    const bone = resolveProfileBoneName(profile, object.name);
+    const bone = resolveFBXBoneName(profile, object.name);
     if (!bone || transforms.has(bone)) return;
     const parentWorld = object.parent
       ? object.parent.getWorldQuaternion(new Quaternion())
@@ -192,7 +203,7 @@ function createMotionTrackFromFBXTrack(
     return null;
   }
 
-  const bone = resolveProfileBoneName(profile, parsed.nodeName);
+  const bone = resolveFBXBoneName(profile, parsed.nodeName);
   if (!bone) {
     return null;
   }
@@ -208,6 +219,15 @@ function createMotionTrackFromFBXTrack(
     times: Array.from(track.times),
     values: Array.from(track.values),
   };
+}
+
+function resolveFBXBoneName(profile: RigProfile, nodeName: string) {
+  return (
+    resolveProfileBoneName(profile, nodeName) ??
+    (/^Model.+/.test(nodeName)
+      ? resolveProfileBoneName(profile, nodeName.slice("Model".length))
+      : null)
+  );
 }
 
 function parseFBXTrackName(trackName: string) {

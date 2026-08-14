@@ -1,4 +1,5 @@
-import { Euler, Quaternion } from "three";
+import { Euler, Quaternion, Vector3 } from "three";
+import { BVH_HUMANOID_PROFILE } from "@/profiles";
 import {
   HUMANOID_BONES,
   normalizeMotionTime,
@@ -6,6 +7,10 @@ import {
   type HumanoidBoneName,
   type RetargetedMotionClip,
 } from "@/retarget";
+import {
+  CANONICAL_AXIS_FRAME,
+  createAxisCorrection,
+} from "@/retarget/coordinate-space";
 import { validateMotionClip } from "@/retarget";
 import {
   resolveExportBoneName,
@@ -25,6 +30,51 @@ type BVHChannelNode = {
   bone: HumanoidBoneName;
   channels: readonly string[];
 };
+
+function createFingerChain(
+  bones: readonly [HumanoidBoneName, HumanoidBoneName, HumanoidBoneName],
+  rootOffset: readonly [number, number, number],
+  segmentOffset: readonly [number, number, number],
+): BVHNode {
+  return {
+    bone: bones[0],
+    offset: rootOffset,
+    children: [{
+      bone: bones[1],
+      offset: segmentOffset,
+      children: [{
+        bone: bones[2],
+        offset: segmentOffset,
+        endOffset: segmentOffset,
+        children: [],
+      }],
+    }],
+  };
+}
+
+function createHandFingerNodes(side: "left" | "right"): readonly BVHNode[] {
+  const prefix = side === "left" ? "left" : "right";
+  const sign = side === "left" ? -1 : 1;
+  const chain = (
+    names: readonly [string, string, string],
+    rootOffset: readonly [number, number, number],
+  ) => createFingerChain(
+    names.map((name) => `${prefix}${name}`) as [
+      HumanoidBoneName,
+      HumanoidBoneName,
+      HumanoidBoneName,
+    ],
+    rootOffset,
+    [sign * 0.025, 0, 0],
+  );
+  return [
+    chain(["ThumbMetacarpal", "ThumbProximal", "ThumbDistal"], [sign * 0.025, -0.01, 0.025]),
+    chain(["IndexProximal", "IndexIntermediate", "IndexDistal"], [sign * 0.035, 0, 0.018]),
+    chain(["MiddleProximal", "MiddleIntermediate", "MiddleDistal"], [sign * 0.04, 0, 0.006]),
+    chain(["RingProximal", "RingIntermediate", "RingDistal"], [sign * 0.037, 0, -0.006]),
+    chain(["LittleProximal", "LittleIntermediate", "LittleDistal"], [sign * 0.032, 0, -0.018]),
+  ];
+}
 
 const BVH_HUMANOID_TREE = {
   bone: "hips",
@@ -69,8 +119,7 @@ const BVH_HUMANOID_TREE = {
                             {
                               bone: "leftHand",
                               offset: [-0.24, 0, 0],
-                              endOffset: [-0.1, 0, 0],
-                              children: [],
+                              children: createHandFingerNodes("left"),
                             },
                           ],
                         },
@@ -93,8 +142,7 @@ const BVH_HUMANOID_TREE = {
                             {
                               bone: "rightHand",
                               offset: [0.24, 0, 0],
-                              endOffset: [0.1, 0, 0],
-                              children: [],
+                              children: createHandFingerNodes("right"),
                             },
                           ],
                         },
@@ -159,6 +207,12 @@ const BVH_HUMANOID_TREE = {
   ],
 } as const satisfies BVHNode;
 
+const CANONICAL_TO_BVH = createAxisCorrection(
+  CANONICAL_AXIS_FRAME,
+  BVH_HUMANOID_PROFILE,
+);
+const BVH_TREE_REST_HIPS_HEIGHT = 0.95;
+
 export async function exportBVH(
   clip: RetargetedMotionClip,
   options: BoneNamingOptions = {},
@@ -201,7 +255,7 @@ export function createBVHText(
     for (const node of channelNodes) {
       const item = pose[node.bone];
       if (node.bone === "hips") {
-        values.push(...(item?.position ?? [0, 0, 0]));
+        values.push(...canonicalPositionToBVH(item?.position));
       }
       values.push(...quaternionToBVHEuler(item?.rotation));
     }
@@ -226,7 +280,7 @@ export function createBVHText(
     "}",
     "MOTION",
     `Frames: ${frameCount}`,
-    `Frame Time: ${round(frameTime)}`,
+    `Frame Time: ${roundTime(frameTime)}`,
     ...frameLines,
     "",
   ].join("\n");
@@ -326,13 +380,14 @@ function shouldIncludeNode(
 }
 
 function estimateBVHHeightScale(clip: RetargetedMotionClip) {
-  return Math.max(
+  const restHipsHeight = Math.max(
     clip.metadata?.targetHeight ??
       clip.metadata?.sourceHeight ??
       clip.target.restHipsHeight ??
       1.7,
     0.1,
   );
+  return restHipsHeight / BVH_TREE_REST_HIPS_HEIGHT;
 }
 
 function formatOffset(offset: readonly [number, number, number], scale: number) {
@@ -344,15 +399,29 @@ function quaternionToBVHEuler(rotation?: [number, number, number, number]) {
     return [0, 0, 0];
   }
 
-  const euler = new Euler().setFromQuaternion(
-    new Quaternion(rotation[0], rotation[1], rotation[2], rotation[3]),
-    "ZXY",
-  );
+  const quaternion = new Quaternion(
+    rotation[0],
+    rotation[1],
+    rotation[2],
+    rotation[3],
+  )
+    .premultiply(CANONICAL_TO_BVH)
+    .multiply(CANONICAL_TO_BVH.clone().invert())
+    .normalize();
+  const euler = new Euler().setFromQuaternion(quaternion, "ZXY");
   return [
     radiansToDegrees(euler.z),
     radiansToDegrees(euler.x),
     radiansToDegrees(euler.y),
   ];
+}
+
+function canonicalPositionToBVH(
+  position?: [number, number, number],
+) {
+  return new Vector3(...(position ?? [0, 0, 0]))
+    .applyQuaternion(CANONICAL_TO_BVH)
+    .toArray();
 }
 
 function radiansToDegrees(value: number) {
@@ -361,6 +430,10 @@ function radiansToDegrees(value: number) {
 
 function round(value: number) {
   return Number(value.toFixed(6));
+}
+
+function roundTime(value: number) {
+  return Number(value.toFixed(9));
 }
 
 function formatBVHNodeName(
