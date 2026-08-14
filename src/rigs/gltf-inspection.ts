@@ -12,6 +12,7 @@ import type {
   RigDefinition,
   RigFamilyId,
   RigRoleId,
+  RigTopologyConflict,
   SemanticRigProfile,
 } from "./types";
 import type { Quat, RigRestTransform, Vec3 } from "@/rig-motion/types";
@@ -34,12 +35,6 @@ export type RigInspection = {
   requiredChainCoverage: number;
   topologyConflicts: RigTopologyConflict[];
   axisWarnings: RigRoleId[];
-};
-
-export type RigTopologyConflict = {
-  role: RigRoleId;
-  expectedParentRole?: RigRoleId;
-  actualParentRole?: RigRoleId;
 };
 
 export function inspectGLTFRig(

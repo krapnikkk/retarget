@@ -1,12 +1,20 @@
 import { WebIO, type Document } from "@gltf-transform/core";
 import { getGLTFPackageResources } from "./asset-package";
+import {
+  DEFAULT_PARSE_BUDGET,
+  assertInputWithinBudget,
+} from "./parse-budget";
 
 export async function readGLTFDocument(
   bytes: Uint8Array,
   sourceFile?: File,
   providedResources?: Record<string, Uint8Array<ArrayBuffer>>,
+  io = new WebIO(),
 ): Promise<Document> {
-  const io = new WebIO();
+  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+    filename: sourceFile?.name,
+    section: "gltf",
+  });
   if (isTextGLTF(bytes)) {
     const json = JSON.parse(new TextDecoder().decode(bytes));
     return io.readJSON({
@@ -25,13 +33,18 @@ export async function readGLTFDocument(
 export async function collectTransferableGLTFResources(
   bytes: Uint8Array,
   sourceFile: File,
+  signal?: AbortSignal,
 ) {
+  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+    filename: sourceFile.name,
+    section: "gltf",
+  });
   if (!isTextGLTF(bytes)) return undefined;
   const json = JSON.parse(new TextDecoder().decode(bytes)) as Record<
     string,
     unknown
   >;
-  const resources = await getGLTFPackageResources(sourceFile, json);
+  const resources = await getGLTFPackageResources(sourceFile, json, signal);
   return Object.fromEntries(
     Object.entries(resources).map(([uri, resource]) => [
       uri,

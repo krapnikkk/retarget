@@ -21,6 +21,7 @@ import {
   HUMANOID_BONES,
   REQUIRED_VRM_BONES,
   createRetargetError,
+  createHumanoidRigSignature,
   isHumanoidBoneName,
   type HumanoidBoneName,
   type RetargetSkeletonNode,
@@ -30,13 +31,19 @@ import {
   createAssetResourceScope,
   type AssetResourceScope,
 } from "@/import/asset-package";
-import { isRangeLoadableGLB } from "@/jobs/asset-memory-policy";
+import {
+  assertAvatarFileWithinLimit,
+  getAvatarEagerInputLimit,
+  isRangeLoadableGLB,
+} from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "./read-file";
 import { readGLTFRigMetadata } from "@/import/glb-range";
 import type { TargetBoneRestTransform } from "@/retarget/target-binding";
 
 export type LoadedAvatarRig = {
   format: AvatarFormatId;
   filename: string;
+  rigSignature: string;
   profile: RigProfile;
   root: Object3D;
   bones: Map<HumanoidBoneName, Object3D>;
@@ -54,6 +61,7 @@ export type LoadedAvatarRig = {
 export type LoadCanonicalAvatarRigOptions = {
   nativeMMD?: boolean;
   physics?: boolean;
+  signal?: AbortSignal;
 };
 
 export type HumanoidBoneRestTransform = TargetBoneRestTransform;
@@ -72,6 +80,8 @@ export async function loadCanonicalAvatarRig(
   preferredFormat?: AvatarFormatId | null,
   options: LoadCanonicalAvatarRigOptions = {},
 ): Promise<LoadedAvatarRig> {
+  assertAvatarFileWithinLimit(file);
+  options.signal?.throwIfAborted();
   const adapter = await findAvatarImportAdapter(
     file,
     preferredFormat ?? undefined,
@@ -85,18 +95,18 @@ export async function loadCanonicalAvatarRig(
     VRM_HUMANOID_PROFILE;
 
   if (isRangeLoadableGLB(file)) {
-    return loadStructuralGLBRig(file, adapter.id, profile);
+    return loadStructuralGLBRig(file, adapter.id, profile, options.signal);
   }
 
   if (adapter.id === "vrm") {
-    return loadVRMRig(file, profile);
+    return loadVRMRig(file, profile, options.signal);
   }
 
   if (adapter.id === "mmd-model") {
     if (options.nativeMMD && /\.(?:pmx|pmd)$/i.test(file.name)) {
-      return loadNativeMMDRig(file, profile, options.physics ?? true);
+      return loadNativeMMDRig(file, profile, options.physics ?? true, options.signal);
     }
-    return loadMMDModelRig(file, profile);
+    return loadMMDModelRig(file, profile, options.signal);
   }
 
   if (file.name.toLowerCase().endsWith(".fbx")) {
@@ -109,7 +119,12 @@ export async function loadCanonicalAvatarRig(
         profile,
         resourceScope: resources,
         root: createMixamoFBXLoader(resources.manager).parse(
-          await file.arrayBuffer(),
+          await readFileArrayBufferWithSignal(
+            file,
+            getAvatarEagerInputLimit(file),
+            "avatar",
+            options.signal,
+          ),
           "",
         ),
       });
@@ -124,7 +139,7 @@ export async function loadCanonicalAvatarRig(
   try {
     const gltf = await parseGLTF(
       new GLTFLoader(resources.manager),
-      await readGLTFLoaderInput(file),
+      await readGLTFLoaderInput(file, options.signal),
     );
     return loadObjectRig({
       file,
@@ -141,6 +156,7 @@ async function loadNativeMMDRig(
   file: File,
   profile: RigProfile,
   physics: boolean,
+  signal?: AbortSignal,
 ) {
   const [{ MMDLoader }, physicsModule] = await Promise.all([
     import("@moeru/three-mmd"),
@@ -154,7 +170,9 @@ async function loadNativeMMDRig(
     loader.register(physicsModule.MMDAmmoPlugin);
   }
   try {
+    signal?.throwIfAborted();
     const mmd = await loader.loadAsync(file.name);
+    signal?.throwIfAborted();
     return loadObjectRig({
       file,
       format: "mmd-model",
@@ -173,8 +191,11 @@ async function loadStructuralGLBRig(
   file: File,
   format: AvatarFormatId,
   profile: RigProfile,
+  signal?: AbortSignal,
 ): Promise<LoadedAvatarRig> {
-  const { json, nodes, root } = await loadStructuralGLBScene(file);
+  signal?.throwIfAborted();
+  const { json, nodes, root } = await loadStructuralGLBScene(file, signal);
+  signal?.throwIfAborted();
   const bones = collectStructuralHumanoidBones(json, nodes, profile);
   if (bones.size === 0) {
     disposeStructuralRoot(root);
@@ -183,6 +204,7 @@ async function loadStructuralGLBRig(
   return {
     format,
     filename: file.name,
+    rigSignature: createObjectRigSignature(profile.id, bones),
     profile,
     root,
     bones,
@@ -195,8 +217,11 @@ async function loadStructuralGLBRig(
   };
 }
 
-export async function loadStructuralGLBScene(file: File) {
-  const { json, nodes: nodesJSON } = await readGLTFRigMetadata(file);
+export async function loadStructuralGLBScene(
+  file: File,
+  signal?: AbortSignal,
+) {
+  const { json, nodes: nodesJSON } = await readGLTFRigMetadata(file, signal);
   if (nodesJSON.length === 0) {
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", file.name);
   }
@@ -298,6 +323,7 @@ function disposeStructuralRoot(root: Object3D) {
 async function loadMMDModelRig(
   file: File,
   profile: RigProfile,
+  signal?: AbortSignal,
 ): Promise<LoadedAvatarRig> {
   const { WebIO } = await import("@gltf-transform/core");
   const { readAvatarAsGLBDocument } = await import(
@@ -309,6 +335,7 @@ async function loadMMDModelRig(
     avatarFile: file,
     avatarFormatId: "mmd-model",
     io,
+    signal,
   });
   const bytes = await io.writeBinary(document);
   const arrayBuffer = bytes.buffer.slice(
@@ -327,6 +354,7 @@ async function loadMMDModelRig(
 async function loadVRMRig(
   file: File,
   profile: RigProfile,
+  signal?: AbortSignal,
 ): Promise<LoadedAvatarRig> {
   const {createVRMLoader} = await import("@/browser/vrm-loader");
   let gltf: GLTF;
@@ -334,7 +362,12 @@ async function loadVRMRig(
   try {
     gltf = await parseGLTF(
       createVRMLoader(resources.manager),
-      await file.arrayBuffer(),
+      await readFileArrayBufferWithSignal(
+        file,
+        getAvatarEagerInputLimit(file),
+        "avatar",
+        signal,
+      ),
     );
   } catch (cause) {
     throw createRetargetError("VRM_PARSE_FAILED", cause);
@@ -348,16 +381,20 @@ async function loadVRMRig(
   }
 
   const bones = new Map<HumanoidBoneName, Object3D>();
+  const identityBones = new Map<HumanoidBoneName, Object3D>();
   for (const bone of HUMANOID_BONES) {
     const node = vrm.humanoid.getNormalizedBoneNode(bone as VRMHumanBoneName);
     if (node) {
       bones.set(bone, node);
     }
+    const rawNode = vrm.humanoid.getRawBoneNode(bone as VRMHumanBoneName);
+    if (rawNode) identityBones.set(bone, rawNode);
   }
 
   return {
     format: "vrm",
     filename: file.name,
+    rigSignature: createObjectRigSignature(profile.id, identityBones),
     profile,
     root: vrm.scene,
     bones,
@@ -401,6 +438,7 @@ function loadObjectRig({
   return {
     format,
     filename: file.name,
+    rigSignature: createObjectRigSignature(profile.id, bones),
     profile,
     root,
     bones,
@@ -411,6 +449,35 @@ function loadObjectRig({
     nativeMMD,
     resourceScope,
   };
+}
+
+function createObjectRigSignature(
+  profileId: string,
+  bones: ReadonlyMap<HumanoidBoneName, Object3D>,
+) {
+  const boneByObject = new Map(
+    Array.from(bones, ([bone, object]) => [object, bone] as const),
+  );
+  return createHumanoidRigSignature(
+    profileId,
+    Array.from(bones, ([bone, object]) => {
+      object.updateWorldMatrix(true, false);
+      let parent = object.parent;
+      let parentBone: HumanoidBoneName | undefined;
+      while (parent && !parentBone) {
+        parentBone = boneByObject.get(parent);
+        parent = parent.parent;
+      }
+      const position = object.getWorldPosition(new Vector3());
+      const rotation = object.getWorldQuaternion(new Quaternion());
+      return {
+        bone,
+        parentBone,
+        worldPosition: [position.x, position.y, position.z],
+        worldQuaternion: [rotation.x, rotation.y, rotation.z, rotation.w],
+      };
+    }),
+  );
 }
 
 function collectBoneRestTransforms(
@@ -435,8 +502,13 @@ function collectBoneRestTransforms(
   return transforms;
 }
 
-async function readGLTFLoaderInput(file: File) {
-  const arrayBuffer = await file.arrayBuffer();
+async function readGLTFLoaderInput(file: File, signal?: AbortSignal) {
+  const arrayBuffer = await readFileArrayBufferWithSignal(
+    file,
+    getAvatarEagerInputLimit(file),
+    "avatar",
+    signal,
+  );
   if (!file.name.toLowerCase().endsWith(".gltf")) {
     return arrayBuffer;
   }

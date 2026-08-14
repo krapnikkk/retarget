@@ -1,4 +1,4 @@
-import type { ActiveRigDefinitionId } from "@/rigs";
+import type { ActiveRigDefinitionId } from "@/rigs/types";
 import type { RigMotionSolverId } from "@/rig-motion";
 import { solveRigMotionToTarget } from "./rig-chain-swing-twist";
 

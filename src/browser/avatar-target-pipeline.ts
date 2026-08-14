@@ -1,20 +1,31 @@
-import { disposeObject } from "@/resources/dispose-three";
-import { loadCanonicalAvatarRig } from "@/browser/avatar-rig";
 import type { AvatarFormatId } from "@/formats";
 import {
   DEFAULT_RETARGET_SOLVE_OPTIONS,
   HUMANOID_BONES,
   REQUIRED_VRM_BONES,
+  createRetargetError,
+  isRetargetError,
   type CanonicalHumanoidMotionClip,
   type RetargetDiagnostics,
   type RetargetSolveOptions,
-  type SolvedHumanoidMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import {
   DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
   type CustomRigMappingConfig,
 } from "@/solvers";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
+import type { SerializedHumanoidAvatarRig } from "@/jobs/types";
+import {
+  collectTransferableAssetPackage,
+} from "@/import/asset-package";
+import {
+  assertAvatarFileWithinLimit,
+  getAvatarEagerInputLimit,
+  isRangeLoadableGLB,
+} from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "./read-file";
+import { readGLBStructuralJSONBytes } from "@/import/glb-range";
 
 export async function bindMotionClipToAvatar({
   avatarFile,
@@ -30,54 +41,88 @@ export async function bindMotionClipToAvatar({
   mappingConfig?: CustomRigMappingConfig;
   solveOptions?: RetargetSolveOptions;
   signal?: AbortSignal;
-}): Promise<SolvedHumanoidMotionClip> {
-  const rig = await loadCanonicalAvatarRig(avatarFile, avatarFormatId);
-
+}): Promise<TargetBoundSolvedHumanoidMotionClip> {
+  assertAvatarFileWithinLimit(avatarFile);
+  signal?.throwIfAborted();
+  const rangeLoadable = isRangeLoadableGLB(avatarFile);
+  let structuralJSONBytes: ArrayBuffer | undefined;
   try {
-    signal?.throwIfAborted();
-    const solvedClip = await runRetargetJob<SolvedHumanoidMotionClip>(
-      {
-        type: "solve-humanoid",
-        motion: clip,
-        mapping: mappingConfig,
-        options: solveOptions,
-        targetRig: {
-          profile: rig.profile,
-          bones: [...rig.bones.keys()],
-          skeleton: rig.skeleton,
-          restHipsHeight: rig.restHipsHeight,
-        },
-      },
-      { signal },
-    );
-    signal?.throwIfAborted();
-
-    return {
-      ...solvedClip,
-      target: {
-        kind: rig.format,
-        filename: avatarFile.name,
-        restHipsHeight: rig.restHipsHeight,
-        profile: rig.profile.id,
-        pending: false,
-      },
-      diagnostics: solvedClip.diagnostics
-        ? bindDiagnosticsToAvatar(solvedClip.diagnostics, rig)
-        : solvedClip.diagnostics,
-      metadata: {
-        ...solvedClip.metadata,
-        targetHeight: rig.restHipsHeight,
-      },
-    };
-  } finally {
-    rig.resourceScope?.dispose();
-    disposeObject(rig.root);
+    structuralJSONBytes = rangeLoadable
+      ? await readGLBStructuralJSONBytes(avatarFile, signal)
+      : undefined;
+  } catch (cause) {
+    if (isRetargetError(cause) || isAbortError(cause)) throw cause;
+    throw createRetargetError("TARGET_RIG_INVALID", cause);
   }
+  signal?.throwIfAborted();
+  const avatarBytes = rangeLoadable
+    ? new ArrayBuffer(0)
+    : await readFileArrayBufferWithSignal(
+        avatarFile,
+        getAvatarEagerInputLimit(avatarFile),
+        "avatar",
+        signal,
+      );
+  const assetPackage = avatarFormatId === "mmd-model" || /\.gltf$/i.test(avatarFile.name)
+    ? await collectTransferableAssetPackage(avatarFile, signal)
+    : undefined;
+  signal?.throwIfAborted();
+  const rig = await runRetargetJob(
+    {
+      type: "inspect-humanoid-avatar",
+      bytes: avatarBytes,
+      filename: avatarFile.name,
+      formatId: avatarFormatId,
+      structuralJSONBytes,
+      assetPackage,
+    },
+    { signal },
+  );
+  signal?.throwIfAborted();
+  const solvedClip = await runRetargetJob(
+    {
+      type: "solve-humanoid",
+      motion: clip,
+      mapping: mappingConfig,
+      options: solveOptions,
+      targetRig: {
+        profile: rig.profile,
+        bones: rig.bones,
+        skeleton: rig.skeleton,
+        restHipsHeight: rig.restHipsHeight,
+      },
+    },
+    { signal },
+  );
+  signal?.throwIfAborted();
+
+  return {
+    ...solvedClip,
+    target: {
+      kind: rig.format,
+      filename: avatarFile.name,
+      rigSignature: rig.rigSignature,
+      restHipsHeight: rig.restHipsHeight,
+      profile: rig.profile.id,
+      pending: false,
+    },
+    diagnostics: solvedClip.diagnostics
+      ? bindDiagnosticsToAvatar(solvedClip.diagnostics, rig)
+      : solvedClip.diagnostics,
+    metadata: {
+      ...solvedClip.metadata,
+      targetHeight: rig.restHipsHeight,
+    },
+  };
+}
+
+function isAbortError(value: unknown) {
+  return value instanceof DOMException && value.name === "AbortError";
 }
 
 function bindDiagnosticsToAvatar(
   diagnostics: RetargetDiagnostics,
-  rig: Awaited<ReturnType<typeof loadCanonicalAvatarRig>>,
+  rig: SerializedHumanoidAvatarRig,
 ): RetargetDiagnostics {
   return {
     ...diagnostics,
@@ -100,10 +145,10 @@ function bindDiagnosticsToAvatar(
     },
     mapping: {
       ...diagnostics.mapping,
-      missingRequiredTargetBones: REQUIRED_VRM_BONES.filter(
-        (bone) => !rig.bones.has(bone),
+      missingRequiredTargetBones: rig.missingRequiredBones,
+      unmappedTargetBones: HUMANOID_BONES.filter(
+        (bone) => !rig.bones.includes(bone),
       ),
-      unmappedTargetBones: HUMANOID_BONES.filter((bone) => !rig.bones.has(bone)),
     },
     assumptions: {
       ...diagnostics.assumptions,

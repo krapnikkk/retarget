@@ -22,10 +22,10 @@ import {
 } from "@/retarget/coordinate-space";
 import {
   DEFAULT_SEMANTIC_THRESHOLDS,
-  validateGLTFWorldSemantics,
   validateHumanoidMotionSemantics,
   type SemanticMotionValidationResult,
 } from "@/validation";
+import { validateGLTFWorldSemantics } from "@/validation/gltf-world-semantic-oracle";
 import { collectHumanoidNodes } from "./avatar-glb";
 import { validateFBXAnimationBytes } from "./fbx";
 import { validateAnimatedPMXBytes } from "./pmx";

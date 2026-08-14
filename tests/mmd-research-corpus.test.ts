@@ -11,6 +11,9 @@ import {
   readAnimatedPMXMotionSummary,
   writeAnimatedPMX,
 } from "@/export/pmx";
+import { collectHumanoidNodes } from "@/export/avatar-glb";
+import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
+import { MMD_BODY_PROFILE } from "@/profiles";
 import { importVMD } from "@/import/vmd";
 import { createRetargetedMotionClipStub } from "./fixtures/retarget-stub";
 
@@ -41,13 +44,33 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
       await readFile(path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx")),
     );
     const before = readAnimatedPMXMotionSummary(bytes);
+    const canonical = createRetargetedMotionClipStub({
+      fbxFile: { name: "idle.fbx" },
+      vrmFile: { name: "Gene_light.pmx" },
+    });
+    const document = convertMMDModelToGLBDocument(bytes, "Gene_light.pmx");
+    const clip = {
+      ...canonical,
+      target: {
+        ...canonical.target,
+        profile: MMD_BODY_PROFILE.id,
+        rigSignature: createGLTFHumanoidRigSignature(
+          collectHumanoidNodes(document),
+          MMD_BODY_PROFILE.id,
+        ),
+      },
+      processing: {
+        stage: "solved" as const,
+        sourceCanonicalId: canonical.processing.sourceCanonicalId,
+        solverId: "humanoid-custom-v4" as const,
+        solverRevision: 4 as const,
+        solvePass: 1 as const,
+      },
+    };
     const after = readAnimatedPMXMotionSummary(
       writeAnimatedPMX(
         bytes,
-        createRetargetedMotionClipStub({
-          fbxFile: { name: "idle.fbx" },
-          vrmFile: { name: "Gene_light.pmx" },
-        }),
+        clip,
       ),
     );
 

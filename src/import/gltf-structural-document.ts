@@ -1,8 +1,11 @@
 import { Document } from "@gltf-transform/core";
 import { readGLTFRigMetadata } from "./glb-range";
 
-export async function readGLTFStructuralDocument(file: Blob) {
-  const metadata = await readGLTFRigMetadata(file);
+export async function readGLTFStructuralDocument(
+  file: Blob,
+  signal?: AbortSignal,
+) {
+  const metadata = await readGLTFRigMetadata(file, signal);
   const document = new Document();
   const nodes = metadata.nodes.map((definition, index) => {
     const node = document.createNode(

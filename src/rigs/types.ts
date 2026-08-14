@@ -90,3 +90,9 @@ export type RigRecipe = {
   sourceRoleOverrides: Record<RigRoleId, string>;
   targetRoleOverrides: Record<RigRoleId, string>;
 };
+
+export type RigTopologyConflict = {
+  role: RigRoleId;
+  expectedParentRole?: RigRoleId;
+  actualParentRole?: RigRoleId;
+};

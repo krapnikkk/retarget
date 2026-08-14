@@ -199,6 +199,7 @@ export type CanonicalMotion = {
 export type RetargetTargetBinding = {
   kind: RetargetTargetKind;
   filename: string;
+  rigSignature?: string;
   restHipsHeight?: number;
   profile?: string;
   pending?: boolean;
@@ -222,6 +223,7 @@ type HumanoidMotionClipBase = CanonicalMotion & {
   target: {
     kind: RetargetTargetKind;
     filename: string;
+    rigSignature?: string;
     restHipsHeight?: number;
     profile?: string;
     pending?: boolean;
@@ -234,6 +236,12 @@ export type CanonicalHumanoidMotionClip = HumanoidMotionClipBase & {
 
 export type SolvedHumanoidMotionClip = HumanoidMotionClipBase & {
   processing: SolvedMotionProcessing;
+};
+
+export type TargetBoundSolvedHumanoidMotionClip = SolvedHumanoidMotionClip & {
+  target: SolvedHumanoidMotionClip["target"] & {
+    rigSignature: string;
+  };
 };
 
 export type RetargetedMotionClip =

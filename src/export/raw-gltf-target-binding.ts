@@ -1,11 +1,15 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
-  bindCanonicalTracksToTargetRest,
+  assertHumanoidTargetIdentity,
+  createHumanoidRigSignature,
   type HumanoidBoneName,
   type RetargetedMotionClip,
-  type TargetBoneRestTransform,
 } from "@/retarget";
+import {
+  bindCanonicalTracksToTargetRest,
+  type TargetBoneRestTransform,
+} from "@/retarget/target-binding";
 
 type RawGLTFNode = Record<string, unknown>;
 
@@ -57,6 +61,16 @@ export function bindCanonicalClipToRawGLTFTarget(
     });
   }
 
+  assertHumanoidTargetIdentity(
+    clip,
+    createRawGLTFHumanoidRigSignature({
+      nodesByBone,
+      parents,
+      profileId: profile?.id ?? "unknown",
+      getWorldMatrix,
+    }),
+  );
+
   const hipsHeight = bones.get("hips")?.worldPosition.y;
   return {
     ...clip,
@@ -66,6 +80,72 @@ export function bindCanonicalClipToRawGLTFTarget(
       restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
     }),
   };
+}
+
+function createRawGLTFHumanoidRigSignature({
+  nodesByBone,
+  parents,
+  profileId,
+  getWorldMatrix,
+}: {
+  nodesByBone: ReadonlyMap<HumanoidBoneName, number>;
+  parents: ReadonlyMap<number, number>;
+  profileId: string;
+  getWorldMatrix: (index: number) => Matrix4;
+}) {
+  const boneByIndex = new Map(
+    Array.from(nodesByBone, ([bone, index]) => [index, bone] as const),
+  );
+  return createHumanoidRigSignature(
+    profileId,
+    Array.from(nodesByBone, ([bone, index]) => {
+      let parentIndex = parents.get(index);
+      let parentBone: HumanoidBoneName | undefined;
+      while (parentIndex !== undefined && !parentBone) {
+        parentBone = boneByIndex.get(parentIndex);
+        parentIndex = parents.get(parentIndex);
+      }
+      const position = new Vector3();
+      const rotation = new Quaternion();
+      getWorldMatrix(index).decompose(position, rotation, new Vector3());
+      return {
+        bone,
+        parentBone,
+        worldPosition: [position.x, position.y, position.z],
+        worldQuaternion: [rotation.x, rotation.y, rotation.z, rotation.w],
+      };
+    }),
+  );
+}
+
+export function inspectRawGLTFHumanoidRigSignature(
+  nodes: readonly RawGLTFNode[],
+  nodesByBone: ReadonlyMap<HumanoidBoneName, number>,
+  profileId: string,
+) {
+  const parents = collectParents(nodes);
+  const worldMatrices = new Map<number, Matrix4>();
+  const visiting = new Set<number>();
+  const getWorldMatrix = (index: number): Matrix4 => {
+    const cached = worldMatrices.get(index);
+    if (cached) return cached;
+    if (visiting.has(index)) throw new Error("glTF node hierarchy contains a cycle.");
+    visiting.add(index);
+    const parent = parents.get(index);
+    const local = readLocalMatrix(nodes[index]!, index);
+    const world = parent === undefined
+      ? local
+      : getWorldMatrix(parent).clone().multiply(local);
+    visiting.delete(index);
+    worldMatrices.set(index, world);
+    return world;
+  };
+  return createRawGLTFHumanoidRigSignature({
+    nodesByBone,
+    parents,
+    profileId,
+    getWorldMatrix,
+  });
 }
 
 function collectParents(nodes: readonly RawGLTFNode[]) {

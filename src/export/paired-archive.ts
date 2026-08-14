@@ -1,6 +1,14 @@
 import type { MotionExportFormatId } from "@/formats";
 import { listAssetPackageEntries } from "@/import/asset-package";
-import type { RetargetedMotionClip } from "@/retarget";
+import {
+  assertHumanoidTargetIdentity,
+  type RetargetedMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
+} from "@/retarget";
+import { WebIO } from "@gltf-transform/core";
+import { readAvatarAsGLBDocument } from "./avatar-conversion";
+import { collectHumanoidNodes } from "./avatar-glb";
+import { createGLTFHumanoidRigSignature } from "./gltf-target-binding";
 import type { BoneNamingOptions } from "./bone-naming";
 import { exportBVH } from "./bvh";
 import { exportFBXAnimation } from "./fbx";
@@ -9,6 +17,15 @@ import { validateMotionExportReload } from "./reload-validation";
 import { exportVMD } from "./vmd";
 import { exportVRMA } from "./vrma";
 import { createZipArchive, createZipArchiveBlob } from "./zip";
+import {
+  getAvatarEagerInputLimit,
+  MAX_MOTION_FILE_BYTES,
+  assertInputByteLength,
+} from "@/jobs/asset-memory-policy";
+import {
+  readBlobArrayBufferWithSignal,
+  readFileArrayBufferWithSignal,
+} from "@/browser/read-file";
 
 export type PairedMotionExportFormatId = Extract<
   MotionExportFormatId,
@@ -17,7 +34,7 @@ export type PairedMotionExportFormatId = Extract<
 
 export type PairedAvatarMotionZipInput = BoneNamingOptions & {
   avatarFile: File;
-  clip: RetargetedMotionClip;
+  clip: TargetBoundSolvedHumanoidMotionClip;
   motionFormat: PairedMotionExportFormatId;
 };
 
@@ -27,6 +44,7 @@ export async function exportPairedAvatarMotionZip({
   clip,
   motionFormat,
 }: PairedAvatarMotionZipInput) {
+  await assertPairedAvatarIdentity(avatarFile, clip);
   const options: BoneNamingOptions = { boneNamingProfile };
   const motionBytes = await exportPairedMotion(clip, motionFormat, options);
   const validation = await validateMotionExportReload(motionFormat, motionBytes);
@@ -36,7 +54,13 @@ export async function exportPairedAvatarMotionZip({
     );
   }
 
-  const avatarBytes = new Uint8Array(await avatarFile.arrayBuffer());
+  const avatarBytes = new Uint8Array(
+    await readFileArrayBufferWithSignal(
+      avatarFile,
+      getAvatarEagerInputLimit(avatarFile),
+      "avatar",
+    ),
+  );
   const baseName = sanitizeFilename(clip.name || "retargeted-motion");
   const packageEntries = listAssetPackageEntries(avatarFile);
   if (!packageEntries) {
@@ -57,10 +81,25 @@ export async function exportPairedAvatarMotionZip({
     baseName,
     getMotionExtension(motionFormat),
   );
+  const packageByteLength = packageEntries.reduce(
+    (total, entry) => total + entry.blob.size,
+    0,
+  );
+  assertInputByteLength(
+    packageByteLength,
+    MAX_MOTION_FILE_BYTES,
+    `resources:${avatarFile.name}`,
+  );
   const sourceEntries = await Promise.all(
     packageEntries.map(async (entry) => ({
       name: entry.name,
-      bytes: new Uint8Array(await entry.blob.arrayBuffer()),
+      bytes: new Uint8Array(
+        await readBlobArrayBufferWithSignal(
+          entry.blob,
+          MAX_MOTION_FILE_BYTES,
+          `resource:${entry.name}`,
+        ),
+      ),
     })),
   );
   return createZipArchive([
@@ -75,6 +114,7 @@ export async function exportPairedAvatarMotionZipBlob({
   clip,
   motionFormat,
 }: PairedAvatarMotionZipInput) {
+  await assertPairedAvatarIdentity(avatarFile, clip);
   const options: BoneNamingOptions = { boneNamingProfile };
   const motionBytes = await exportPairedMotion(clip, motionFormat, options);
   const validation = await validateMotionExportReload(motionFormat, motionBytes);
@@ -112,6 +152,24 @@ export async function exportPairedAvatarMotionZipBlob({
       blob: new Blob([motionBytes.slice().buffer as ArrayBuffer]),
     },
   ]);
+}
+
+async function assertPairedAvatarIdentity(
+  avatarFile: File,
+  clip: TargetBoundSolvedHumanoidMotionClip,
+) {
+  const document = await readAvatarAsGLBDocument({
+    avatarFile,
+    io: new WebIO(),
+  });
+  const nodes = collectHumanoidNodes(document);
+  assertHumanoidTargetIdentity(
+    clip,
+    createGLTFHumanoidRigSignature(
+      nodes,
+      clip.target.profile ?? "unknown",
+    ),
+  );
 }
 
 function exportPairedMotion(

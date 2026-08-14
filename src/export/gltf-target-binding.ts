@@ -1,7 +1,12 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 import type { Node } from "@gltf-transform/core";
 import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
-import type { HumanoidBoneName, RetargetedMotionClip } from "@/retarget";
+import {
+  assertHumanoidTargetIdentity,
+  createHumanoidRigSignature,
+  type HumanoidBoneName,
+  type RetargetedMotionClip,
+} from "@/retarget";
 import {
   bindCanonicalTracksToTargetRest,
   type TargetBoneRestTransform,
@@ -14,6 +19,10 @@ export function bindCanonicalClipToGLTFTarget(
     ? getRigProfile(clip.target.profile as RigProfileId)
     : null,
 ): RetargetedMotionClip {
+  assertHumanoidTargetIdentity(
+    clip,
+    createGLTFHumanoidRigSignature(nodesByBone, profile?.id ?? "unknown"),
+  );
   const bones = new Map<HumanoidBoneName, TargetBoneRestTransform>();
   for (const [bone, node] of nodesByBone) {
     const parent = node.getParentNode();
@@ -38,4 +47,30 @@ export function bindCanonicalClipToGLTFTarget(
       restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
     }),
   };
+}
+
+export function createGLTFHumanoidRigSignature(
+  nodesByBone: ReadonlyMap<HumanoidBoneName, Node>,
+  profileId: string,
+) {
+  const boneByNode = new Map(
+    Array.from(nodesByBone, ([bone, node]) => [node, bone] as const),
+  );
+  return createHumanoidRigSignature(
+    profileId,
+    Array.from(nodesByBone, ([bone, node]) => {
+      let parent = node.getParentNode();
+      let parentBone: HumanoidBoneName | undefined;
+      while (parent && !parentBone) {
+        parentBone = boneByNode.get(parent);
+        parent = parent.getParentNode();
+      }
+      return {
+        bone,
+        parentBone,
+        worldPosition: node.getWorldTranslation(),
+        worldQuaternion: node.getWorldRotation(),
+      };
+    }),
+  );
 }

@@ -3,7 +3,7 @@ import type {
   RigFamilyId,
   RigRoleId,
   RigTopologyConflict,
-} from "@/rigs";
+} from "@/rigs/types";
 
 export const RIG_MOTION_SCHEMA_VERSION = 2 as const;
 

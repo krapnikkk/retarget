@@ -1,6 +1,7 @@
 import type { MotionImportAdapter } from "@/adapters/types";
 import { probeImportAdapter } from "@/adapters/probe";
 import { importVMD } from "@/import/vmd";
+import { assertMotionFileWithinLimit } from "@/jobs/asset-memory-policy";
 
 export const vmdMotionAdapter = {
   id: "vmd",
@@ -15,6 +16,7 @@ export const vmdMotionAdapter = {
       role: "motion",
     }),
   async importMotion(file) {
+    assertMotionFileWithinLimit(file);
     return importVMD(new Uint8Array(await file.arrayBuffer()), file.name);
   },
 } satisfies MotionImportAdapter;

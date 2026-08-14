@@ -6,6 +6,7 @@ import type {
   RetargetJobRequest,
   RetargetJobResponse,
 } from "@/jobs/types";
+import { isRetargetError } from "@/retarget";
 
 const workerScope = self as DedicatedWorkerGlobalScope;
 
@@ -64,10 +65,7 @@ function serializeError(cause: unknown): RetargetJobFailure["error"] {
         : undefined;
   return {
     name: cause.name,
-    code:
-      "code" in cause && typeof cause.code === "string"
-        ? cause.code
-        : "RETARGET_JOB_FAILED",
+    code: isRetargetError(cause) ? cause.code : "RETARGET_JOB_FAILED",
     message: cause.message,
     details,
   };

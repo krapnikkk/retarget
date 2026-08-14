@@ -18,6 +18,11 @@ import {
   type HumanoidBoneName,
 } from "@/retarget";
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
+import { assertMotionFileWithinLimit } from "@/jobs/asset-memory-policy";
+import {
+  DEFAULT_PARSE_BUDGET,
+  assertInputWithinBudget,
+} from "./parse-budget";
 import {
   createImportedHumanoidMotionClip,
   normalizeImportedTracks,
@@ -36,6 +41,7 @@ export async function importFBXHumanoidMotion({
   >;
   profile: RigProfile;
 }) {
+  assertMotionFileWithinLimit(file);
   return importFBXHumanoidMotionBytes({
     bytes: await file.arrayBuffer(),
     filename: file.name,
@@ -58,6 +64,10 @@ export function importFBXHumanoidMotionBytes({
   >;
   profile: RigProfile;
 }) {
+  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+    filename,
+    section: kind,
+  });
   const group = parseFBX(bytes);
   const animationClip = group.animations[0];
   if (!animationClip || animationClip.duration <= 0) {

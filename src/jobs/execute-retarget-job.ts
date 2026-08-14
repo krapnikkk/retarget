@@ -8,12 +8,13 @@ import {
 } from "@/import/rig-motion-gltf";
 import { readGLTFDocument } from "@/import/gltf-document";
 import { importFBXHumanoidMotionBytes } from "@/import/fbx-motion";
+import { MAX_GLB_STRUCTURAL_JSON_BYTES } from "@/import/glb-range";
 import {
   ACTORCORE_PROFILE,
   GENERIC_FBX_HUMANOID_PROFILE,
   MIXAMO_RIG_PROFILE,
 } from "@/profiles";
-import { serializeMotionClip } from "@/retarget";
+import { createRetargetError, serializeMotionClip } from "@/retarget";
 import { validateHumanoidMotionSemantics } from "@/validation";
 import { solveHumanoidCustomRigMotion } from "@/solvers";
 import { getRigSolver } from "@/solvers";
@@ -31,6 +32,11 @@ import type {
   RetargetJobTask,
 } from "./types";
 import { serializeRigInspection } from "./serialize-rig-inspection";
+import {
+  MAX_MOTION_FILE_BYTES,
+  assertInputByteLength,
+  getAvatarEagerInputLimit,
+} from "./asset-memory-policy";
 
 export type RetargetJobReporter = (
   phase: RetargetJobPhase,
@@ -56,6 +62,17 @@ async function executeTask(
   report: RetargetJobReporter,
   deadline: ReturnType<typeof createProcessingDeadline>,
 ) {
+  assertTaskInputBudgets(task);
+  if (task.type === "inspect-humanoid-avatar") {
+    report("parse", 0.08);
+    const { inspectHumanoidAvatarBytes } = await import(
+      "./inspect-humanoid-avatar"
+    );
+    const inspection = await inspectHumanoidAvatarBytes(task);
+    deadline.checkpoint("inspect-humanoid-avatar");
+    report("normalize", 0.88);
+    return inspection;
+  }
   if (task.type === "convert-mmd-avatar") {
     report("parse", 0.08);
     const [{ WebIO }, { convertMMDModelToGLBDocument }] = await Promise.all([
@@ -267,6 +284,93 @@ async function executeTask(
     expected: task.expected,
     restPose: task.restPose ? new Map(task.restPose) : undefined,
   });
+}
+
+function assertTaskInputBudgets(task: RetargetJobTask) {
+  if (task.type === "import-motion") {
+    assertInputByteLength(
+      task.bytes.byteLength,
+      MAX_MOTION_FILE_BYTES,
+      `motion:${task.filename}`,
+    );
+    return;
+  }
+  if (
+    task.type === "convert-mmd-avatar" ||
+    task.type === "inspect-rigged-gltf" ||
+    task.type === "inspect-humanoid-avatar"
+  ) {
+    assertInputByteLength(
+      task.bytes.byteLength,
+      getAvatarEagerInputLimit({ name: task.filename, size: task.bytes.byteLength }),
+      `avatar:${task.filename}`,
+    );
+    if (task.type === "inspect-humanoid-avatar" && task.structuralJSONBytes) {
+      if (task.bytes.byteLength !== 0) {
+        throw createRetargetError("TARGET_RIG_INVALID");
+      }
+      assertInputByteLength(
+        task.structuralJSONBytes.byteLength,
+        MAX_GLB_STRUCTURAL_JSON_BYTES,
+        `avatar-structure:${task.filename}`,
+      );
+    }
+    assertResourceBudgets(
+      task.type === "convert-mmd-avatar" || task.type === "inspect-humanoid-avatar"
+        ? task.assetPackage?.resources
+        : task.resources,
+      task.filename,
+    );
+    return;
+  }
+  if (task.type === "retarget-rigged-gltf") {
+    assertInputByteLength(
+      task.motionBytes.byteLength,
+      MAX_MOTION_FILE_BYTES,
+      `motion:${task.motionFilename}`,
+    );
+    if (task.targetBytes) {
+      assertInputByteLength(
+        task.targetBytes.byteLength,
+        getAvatarEagerInputLimit({
+          name: task.targetFilename,
+          size: task.targetBytes.byteLength,
+        }),
+        `avatar:${task.targetFilename}`,
+      );
+    }
+    assertResourceBudgets(task.motionResources, task.motionFilename);
+    assertResourceBudgets(task.targetResources, task.targetFilename);
+    return;
+  }
+  if (task.type === "validate-motion-export") {
+    assertInputByteLength(
+      task.bytes.byteLength,
+      MAX_MOTION_FILE_BYTES,
+      `motion-export:${task.formatId}`,
+    );
+  }
+}
+
+function assertResourceBudgets(
+  resources: Readonly<Record<string, ArrayBuffer>> | undefined,
+  owner: string,
+) {
+  if (!resources) return;
+  let total = 0;
+  for (const [name, bytes] of Object.entries(resources)) {
+    assertInputByteLength(
+      bytes.byteLength,
+      MAX_MOTION_FILE_BYTES,
+      `resource:${owner}:${name}`,
+    );
+    total += bytes.byteLength;
+    assertInputByteLength(
+      total,
+      MAX_MOTION_FILE_BYTES,
+      `resources:${owner}`,
+    );
+  }
 }
 
 function restoreGLTFResources(

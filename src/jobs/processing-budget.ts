@@ -5,6 +5,10 @@ import {
   type RetargetedMotionClip,
 } from "@/retarget";
 import { validateRigMotion, type RigMotionV2 } from "@/rig-motion";
+import {
+  RetargetError,
+  type RetargetErrorCode,
+} from "@/retarget/errors";
 
 export type ProcessingBudget = {
   maxDurationSeconds: number;
@@ -28,8 +32,7 @@ export const DEFAULT_PROCESSING_BUDGET = {
   softDeadlineMs: 45_000,
 } as const satisfies ProcessingBudget;
 
-export class ProcessingBudgetError extends Error {
-  readonly code: string;
+export class ProcessingBudgetError extends RetargetError {
   readonly declared?: number;
   readonly limit?: number;
   readonly phase?: string;
@@ -41,24 +44,25 @@ export class ProcessingBudgetError extends Error {
     message,
     phase,
   }: {
-    code: string;
+    code: RetargetErrorCode;
     message: string;
     declared?: number;
     limit?: number;
     phase?: string;
   }) {
-    super(
-      [
-        message,
-        phase ? `phase=${phase}` : null,
-        declared === undefined ? null : `declared=${declared}`,
-        limit === undefined ? null : `limit=${limit}`,
-      ]
-        .filter(Boolean)
-        .join("; "),
-    );
+    const formattedMessage = [
+      message,
+      phase ? `phase=${phase}` : null,
+      declared === undefined ? null : `declared=${declared}`,
+      limit === undefined ? null : `limit=${limit}`,
+    ]
+      .filter(Boolean)
+      .join("; ");
+    super(code, {
+      details: { declared, limit, phase },
+      message: formattedMessage,
+    });
     this.name = "ProcessingBudgetError";
-    this.code = code;
     this.declared = declared;
     this.limit = limit;
     this.phase = phase;
@@ -221,7 +225,7 @@ function assertFiniteRange(
   value: number,
   min: number,
   max: number,
-  details: { code: string; label: string; phase: string },
+  details: { code: RetargetErrorCode; label: string; phase: string },
 ) {
   if (!Number.isFinite(value) || value < min || value > max) {
     throw new ProcessingBudgetError({

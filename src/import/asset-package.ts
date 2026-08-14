@@ -13,7 +13,12 @@ import {
   storeAssetPackageContext,
   type StoredAssetPackageEntry,
 } from "./asset-package-memory";
-import { MAX_RANGE_LOADABLE_AVATAR_BYTES } from "@/jobs/asset-memory-policy";
+import {
+  MAX_MOTION_FILE_BYTES,
+  MAX_RANGE_LOADABLE_AVATAR_BYTES,
+  assertInputByteLength,
+} from "@/jobs/asset-memory-policy";
+import { readBlobArrayBufferWithSignal } from "@/browser/read-file";
 import { DEFAULT_PARSE_BUDGET } from "./parse-budget";
 
 export { releaseAssetPackage } from "./asset-package-memory";
@@ -250,7 +255,13 @@ export function resolveAssetPackageResource(file: File, uri: string) {
 export async function readAssetPackageResource(file: File, uri: string) {
   const resource = resolveAssetPackageResource(file, uri);
   return resource
-    ? new Uint8Array(await resource.arrayBuffer())
+    ? new Uint8Array(
+        await readBlobArrayBufferWithSignal(
+          resource,
+          getMaxPackageBytes("avatar"),
+          `resource:${uri}`,
+        ),
+      )
     : null;
 }
 
@@ -264,10 +275,13 @@ export function listAssetPackageEntries(file: File) {
 
 export async function collectTransferableAssetPackage(
   file: File,
+  signal?: AbortSignal,
 ): Promise<TransferableAssetPackage | undefined> {
   const context = getAssetPackageContext<AssetPackageReport>(file);
   if (!context) return undefined;
   const resources: Record<string, ArrayBuffer> = {};
+  let transferredBytes = 0;
+  const maxTransferredBytes = MAX_MOTION_FILE_BYTES;
   for (const entry of context.entries.values()) {
     if (
       normalizeResourcePath(entry.name).toLowerCase() ===
@@ -275,7 +289,19 @@ export async function collectTransferableAssetPackage(
     ) {
       continue;
     }
-    resources[entry.name] = await entry.blob.arrayBuffer();
+    signal?.throwIfAborted();
+    transferredBytes += entry.blob.size;
+    assertInputByteLength(
+      transferredBytes,
+      maxTransferredBytes,
+      `resources:${context.report.sourceName}`,
+    );
+    resources[entry.name] = await readBlobArrayBufferWithSignal(
+      entry.blob,
+      maxTransferredBytes,
+      `resource:${entry.name}`,
+      signal,
+    );
   }
   return {
     primaryPath: context.report.primaryPath,
@@ -325,12 +351,29 @@ export function collectMMDPackageResourceUris(
 export async function getGLTFPackageResources(
   file: File,
   json: Record<string, unknown>,
+  signal?: AbortSignal,
 ) {
   const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
+  let transferredBytes = 0;
+  const maxTransferredBytes = MAX_MOTION_FILE_BYTES;
   for (const uri of collectGLTFExternalUris(json)) {
     const resource = resolveAssetPackageResource(file, uri);
     if (resource) {
-      resources[uri] = new Uint8Array(await resource.arrayBuffer());
+      signal?.throwIfAborted();
+      transferredBytes += resource.size;
+      assertInputByteLength(
+        transferredBytes,
+        maxTransferredBytes,
+        `resources:${file.name}`,
+      );
+      resources[uri] = new Uint8Array(
+        await readBlobArrayBufferWithSignal(
+          resource,
+          maxTransferredBytes,
+          `resource:${uri}`,
+          signal,
+        ),
+      );
     }
   }
   return resources;

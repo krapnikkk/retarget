@@ -1,9 +1,15 @@
 import { Document, WebIO } from "@gltf-transform/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { createImportedHumanoidMotionClip } from "@/import/humanoid-motion";
 import { BVH_HUMANOID_PROFILE } from "@/profiles";
+import { LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES } from "@/jobs/asset-memory-policy";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+
+vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
+  return { ...actual, runRetargetJob: actual.runRetargetJobInline };
+});
 
 describe("avatar target binding", () => {
   it("binds an imported motion clip to a glTF humanoid avatar rig", async () => {
@@ -27,6 +33,7 @@ describe("avatar target binding", () => {
       profile: "generic-gltf-humanoid",
       pending: false,
     });
+    expect(boundClip.target.rigSignature).toMatch(/^humanoid-rest-v1:/);
   });
 
   it("bakes imported motion tracks through the custom rig solver when binding a target", async () => {
@@ -63,7 +70,76 @@ describe("avatar target binding", () => {
       "Solver v4 custom mapping",
     );
   });
+
+  it("range-reads large GLB structure without eagerly reading the whole avatar", async () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "pending.vrm" },
+      fbxFile: { name: "idle.fbx" },
+    });
+    const avatarFile = new VirtualLargeGLB(await createMinimalHumanoidGLB());
+
+    const boundClip = await bindMotionClipToAvatar({
+      avatarFile,
+      avatarFormatId: "gltf-humanoid",
+      clip,
+    });
+
+    expect(avatarFile.fullReadAttempts).toBe(0);
+    expect(boundClip.target).toMatchObject({
+      filename: "large-avatar.glb",
+      profile: "generic-gltf-humanoid",
+      pending: false,
+    });
+    expect(boundClip.target.rigSignature).toMatch(/^humanoid-rest-v1:/);
+  });
+
+  it("returns a structured target error for invalid large GLB structure", async () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "pending.vrm" },
+      fbxFile: { name: "idle.fbx" },
+    });
+
+    await expect(bindMotionClipToAvatar({
+      avatarFile: new VirtualLargeInvalidGLB(),
+      avatarFormatId: "gltf-humanoid",
+      clip,
+    })).rejects.toMatchObject({ code: "TARGET_RIG_INVALID" });
+  });
 });
+
+class VirtualLargeGLB extends File {
+  readonly virtualSize = LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES;
+  fullReadAttempts = 0;
+
+  constructor(source: Uint8Array) {
+    const bytes = source.slice();
+    new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(
+      8,
+      LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES,
+      true,
+    );
+    super([bytes], "large-avatar.glb", { type: "model/gltf-binary" });
+  }
+
+  override get size() {
+    return this.virtualSize;
+  }
+
+  override async arrayBuffer(): Promise<ArrayBuffer> {
+    this.fullReadAttempts += 1;
+    throw new Error("large avatar must not be read eagerly");
+  }
+}
+
+class VirtualLargeInvalidGLB extends File {
+  constructor() {
+    super([new Uint8Array(20)], "invalid-large.glb");
+  }
+
+  override get size() {
+    return LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES;
+  }
+}
 
 async function createMinimalHumanoidGLB() {
   const document = new Document();

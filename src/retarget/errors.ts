@@ -14,15 +14,39 @@ export const RETARGET_ERROR_CODES = [
   "PACKAGE_INVALID",
   "RETARGET_FAILED",
   "EXPORT_FAILED",
+  "PARSE_INVALID_COUNT",
+  "PARSE_BUDGET_EXCEEDED",
+  "PARSE_INVALID_LENGTH",
+  "PARSE_INVALID_NUMBER",
+  "PARSE_TRUNCATED",
+  "BVH_INVALID_CHANNEL_VALUE",
+  "BVH_FRAME_SIZE_MISMATCH",
+  "BVH_INVALID_FRAME_TIME",
+  "BVH_MISSING_CHANNELS",
+  "GLTF_INVALID_OUTPUT",
+  "GLTF_INVALID_TIME",
+  "GLTF_INPUT_TYPE_MISMATCH",
+  "GLTF_INTERPOLATION_UNSUPPORTED",
+  "GLTF_OUTPUT_COUNT_MISMATCH",
+  "GLTF_OUTPUT_TYPE_MISMATCH",
+  "VRMA_DUPLICATE_TRACK",
+  "PROCESSING_BUDGET_EXCEEDED",
+  "PROCESSING_CLIP_INVALID",
+  "PROCESSING_DEADLINE_EXCEEDED",
+  "PROCESSING_DURATION_LIMIT",
+  "PROCESSING_FPS_LIMIT",
+  "PROCESSING_OPTION_INVALID",
+  "PROCESSING_RIG_MOTION_INVALID",
+  "RETARGET_JOB_FAILED",
+  "WORKER_UNAVAILABLE",
+  "TARGET_RIG_IDENTITY_MISSING",
+  "TARGET_RIG_INVALID",
+  "TARGET_RIG_MISMATCH",
 ] as const;
 
 export type RetargetErrorCode = (typeof RETARGET_ERROR_CODES)[number];
 
-export type RetargetError = {
-  code: RetargetErrorCode;
-  message: string;
-  cause?: unknown;
-};
+export type RetargetErrorDetails = Record<string, unknown>;
 
 export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   VRM_PARSE_FAILED: "The VRM file could not be parsed.",
@@ -40,17 +64,63 @@ export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   PACKAGE_INVALID: "The asset package could not be prepared.",
   RETARGET_FAILED: "The retargeting pipeline failed.",
   EXPORT_FAILED: "The export failed.",
+  PARSE_INVALID_COUNT: "The file declares an invalid item count.",
+  PARSE_BUDGET_EXCEEDED: "The file exceeds a parsing safety limit.",
+  PARSE_INVALID_LENGTH: "The file declares an invalid section length.",
+  PARSE_INVALID_NUMBER: "The file contains an invalid numeric value.",
+  PARSE_TRUNCATED: "The file is truncated.",
+  BVH_INVALID_CHANNEL_VALUE: "The BVH contains an invalid channel value.",
+  BVH_FRAME_SIZE_MISMATCH: "The BVH frame size does not match its hierarchy.",
+  BVH_INVALID_FRAME_TIME: "The BVH frame time is invalid.",
+  BVH_MISSING_CHANNELS: "The BVH hierarchy does not declare usable channels.",
+  GLTF_INVALID_OUTPUT: "The glTF animation contains invalid output samples.",
+  GLTF_INVALID_TIME: "The glTF animation contains invalid key times.",
+  GLTF_INPUT_TYPE_MISMATCH: "The glTF animation input accessor type is invalid.",
+  GLTF_INTERPOLATION_UNSUPPORTED: "The glTF interpolation mode is unsupported.",
+  GLTF_OUTPUT_COUNT_MISMATCH: "The glTF animation output count is invalid.",
+  GLTF_OUTPUT_TYPE_MISMATCH: "The glTF animation output accessor type is invalid.",
+  VRMA_DUPLICATE_TRACK: "The VRMA contains duplicate humanoid tracks.",
+  PROCESSING_BUDGET_EXCEEDED: "The job exceeds a processing safety limit.",
+  PROCESSING_CLIP_INVALID: "The humanoid motion clip is invalid.",
+  PROCESSING_DEADLINE_EXCEEDED: "The job exceeded its processing deadline.",
+  PROCESSING_DURATION_LIMIT: "The motion duration exceeds the processing limit.",
+  PROCESSING_FPS_LIMIT: "The motion frame rate exceeds the processing limit.",
+  PROCESSING_OPTION_INVALID: "A retargeting option is invalid.",
+  PROCESSING_RIG_MOTION_INVALID: "The rig motion is invalid.",
+  RETARGET_JOB_FAILED: "The retargeting job failed.",
+  WORKER_UNAVAILABLE: "The isolated browser Worker is unavailable.",
+  TARGET_RIG_IDENTITY_MISSING: "The solved motion does not identify its target rig.",
+  TARGET_RIG_INVALID: "The target rig contains invalid rest-pose evidence.",
+  TARGET_RIG_MISMATCH: "The export target differs from the solved motion target.",
 };
+
+export class RetargetError extends Error {
+  readonly code: RetargetErrorCode;
+  readonly details?: RetargetErrorDetails;
+
+  constructor(
+    code: RetargetErrorCode,
+    options: {
+      cause?: unknown;
+      details?: RetargetErrorDetails;
+      message?: string;
+    } = {},
+  ) {
+    super(
+      options.message ?? RETARGET_ERROR_MESSAGES[code],
+      options.cause === undefined ? undefined : { cause: options.cause },
+    );
+    this.name = "RetargetError";
+    this.code = code;
+    this.details = options.details;
+  }
+}
 
 export function createRetargetError(
   code: RetargetErrorCode,
   cause?: unknown,
 ): RetargetError {
-  return {
-    code,
-    message: RETARGET_ERROR_MESSAGES[code],
-    cause,
-  };
+  return new RetargetError(code, { cause });
 }
 
 export function isRetargetError(value: unknown): value is RetargetError {

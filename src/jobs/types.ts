@@ -1,4 +1,5 @@
 import type {
+  AvatarFormatId,
   AvatarExportFormatId,
   MotionExportFormatId,
   MotionFormatId,
@@ -9,16 +10,32 @@ import type {
   HumanoidBoneName,
   RetargetSolveOptions,
   RetargetedMotionClip,
+  SolvedHumanoidMotionClip,
 } from "@/retarget";
-import type { RetargetedRigMotionV2, RigMotionV2 } from "@/rig-motion";
+import type {
+  RetargetedRigMotionV2,
+  RigMotionV2,
+  RigRestTransform,
+} from "@/rig-motion";
 import type { RigMotionAction } from "@/import/rig-motion-gltf";
-import type { RigInspection, RigRecipe } from "@/rigs";
+import type {
+  RigDefinition,
+  RigRecipe,
+  RigTopologyConflict,
+  SemanticRigProfile,
+} from "@/rigs/types";
 import type { TransferableAssetPackage } from "@/import/asset-package";
 import type { SemanticRestBone } from "@/validation";
 import type {
   CustomRigMappingConfig,
   HumanoidSolverTargetRig,
-} from "@/solvers";
+} from "@/solvers/humanoid-custom-v4";
+import type { RetargetErrorCode } from "@/retarget";
+import type {
+  ExportReloadValidationResult,
+  ExportSemanticValidationResult,
+} from "@/export/reload-validation";
+import type { SemanticMotionValidationResult } from "@/validation";
 
 export type RetargetJobPhase =
   | "validate"
@@ -37,10 +54,17 @@ type SerializedTargetRig = Omit<HumanoidSolverTargetRig, "bones"> & {
   bones: HumanoidBoneName[];
 };
 
-export type SerializedRigInspection = Omit<
-  RigInspection,
-  "nodesByRole" | "rolesByNode"
->;
+export type SerializedRigInspection = {
+  definition: RigDefinition;
+  profile: SemanticRigProfile;
+  restPose: RigRestTransform[];
+  signature: string;
+  missingRequiredRoles: string[];
+  unmappedNodes: string[];
+  requiredChainCoverage: number;
+  topologyConflicts: RigTopologyConflict[];
+  axisWarnings: string[];
+};
 
 export type SerializedGLTFResources = Record<string, ArrayBuffer>;
 
@@ -57,7 +81,27 @@ export type RiggedGLTFInspectionJobResult = {
   actions: RigMotionAction[];
 };
 
+export type SerializedHumanoidAvatarRig = {
+  format: AvatarFormatId;
+  filename: string;
+  profile: import("@/profiles").RigProfile;
+  bones: HumanoidBoneName[];
+  skeleton: import("@/retarget").RetargetSkeletonNode;
+  missingRequiredBones: HumanoidBoneName[];
+  restHipsHeight?: number;
+  rigSignature: string;
+};
+
 export type RetargetJobTask =
+  | {
+      type: "inspect-humanoid-avatar";
+      bytes: ArrayBuffer;
+      filename: string;
+      formatId: AvatarFormatId;
+      structuralJSONBytes?: ArrayBuffer;
+      resources?: SerializedGLTFResources;
+      assetPackage?: TransferableAssetPackage;
+    }
   | {
       type: "convert-mmd-avatar";
       bytes: ArrayBuffer;
@@ -121,6 +165,32 @@ export type RetargetJobTask =
       restPose?: [HumanoidBoneName, SemanticRestBone][];
     };
 
+export type RetargetJobResult<TTask extends RetargetJobTask> =
+  TTask extends { type: "inspect-humanoid-avatar" }
+    ? SerializedHumanoidAvatarRig
+    : TTask extends { type: "convert-mmd-avatar" }
+      ? Uint8Array
+      : TTask extends { type: "inspect-rigged-gltf" }
+        ? RiggedGLTFInspectionJobResult
+        : TTask extends { type: "import-motion" }
+          ? CanonicalHumanoidMotionClip
+          : TTask extends { type: "solve-humanoid" }
+            ? SolvedHumanoidMotionClip
+            : TTask extends { type: "retarget-rigged-gltf" }
+              ? RiggedGLTFRetargetJobResult
+              : TTask extends { type: "export-motion" }
+                ? Uint8Array
+                : TTask extends {
+                      type: "validate-motion-export" | "validate-avatar-export";
+                    }
+                  ? {
+                      structural: ExportReloadValidationResult;
+                      semantic: ExportSemanticValidationResult | null;
+                    }
+                  : TTask extends { type: "semantic-validate" }
+                    ? SemanticMotionValidationResult
+                    : never;
+
 export type RetargetJobRequest = {
   jobId: string;
   deadlineMs?: number;
@@ -145,7 +215,7 @@ export type RetargetJobFailure = {
   type: "failure";
   error: {
     name: string;
-    code: string;
+    code: RetargetErrorCode;
     message: string;
     details?: Record<string, unknown>;
   };

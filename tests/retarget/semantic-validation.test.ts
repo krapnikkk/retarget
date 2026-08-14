@@ -4,11 +4,11 @@ import { describe, expect, it } from "vitest";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 import {
   DEFAULT_SEMANTIC_THRESHOLDS,
-  solveSemanticWorldPose,
-  validateGLTFWorldSemantics,
   validateHumanoidMotionSemantics,
   type HumanoidSemanticRestPose,
 } from "@/validation";
+import { validateGLTFWorldSemantics } from "@/validation/gltf-world-semantic-oracle";
+import { solveSemanticWorldPose } from "@/validation/semantic-fk-oracle";
 
 describe("semantic motion validation", () => {
   it("compares rotations, root displacement, hands, and feet at fixed samples", () => {

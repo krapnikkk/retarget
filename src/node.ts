@@ -1,10 +1,10 @@
-export {
-  DEFAULT_ASSET_RIG_CONTRACT,
-  formatAssetValidationReport,
-  validateAssetFile,
-} from "./asset-validation";
+export * from "./io";
+export { runRetargetJobInline } from "./jobs/browser-retarget-job";
+export type { RunRetargetJobOptions } from "./jobs/browser-retarget-job";
 export type {
-  AssetRigContract,
-  AssetValidationKind,
-  AssetValidationResult,
-} from "./asset-validation";
+  RetargetJobProgress,
+  RetargetJobRequest,
+  RetargetJobResult,
+  RetargetJobResponse,
+  RetargetJobTask,
+} from "./jobs/types";

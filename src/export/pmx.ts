@@ -6,9 +6,12 @@ import {
   bindCanonicalRotationDeltasToTargetLocal,
   bindCanonicalTranslationOffsetsToTargetLocal,
   createCanonicalToTargetWorldCorrection,
+} from "@/retarget/target-binding";
+import {
   normalizeMotionTime,
   sampleMotionClipPose,
   type HumanoidBoneName,
+  assertHumanoidTargetIdentity,
 } from "@/retarget";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 import {
@@ -18,6 +21,11 @@ import {
   type PMXEncoding,
 } from "@/parsers/pmx-binary";
 import { resolveExportBoneName } from "./bone-naming";
+import { convertMMDModelToGLBDocument } from "./avatar-conversion";
+import { collectHumanoidNodes } from "./avatar-glb";
+import { createGLTFHumanoidRigSignature } from "./gltf-target-binding";
+import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 type PMXLayout = {
   version: number;
@@ -66,7 +74,13 @@ export async function exportAnimatedPMX({ avatarFile, clip }: AvatarExportInput)
     throw new Error("Animated PMX export currently requires a .pmx avatar file.");
   }
 
-  const pmxBytes = new Uint8Array(await avatarFile.arrayBuffer());
+  const pmxBytes = new Uint8Array(
+    await readFileArrayBufferWithSignal(
+      avatarFile,
+      getAvatarEagerInputLimit(avatarFile),
+      "avatar",
+    ),
+  );
   return writeAnimatedPMX(pmxBytes, clip);
 }
 
@@ -74,6 +88,14 @@ export function writeAnimatedPMX(
   pmxBytes: Uint8Array,
   clip: AvatarExportInput["clip"],
 ) {
+  const targetDocument = convertMMDModelToGLBDocument(pmxBytes, "avatar.pmx");
+  assertHumanoidTargetIdentity(
+    clip,
+    createGLTFHumanoidRigSignature(
+      collectHumanoidNodes(targetDocument),
+      clip.target.profile ?? MMD_BODY_PROFILE.id,
+    ),
+  );
   const layout = parsePMXLayout(pmxBytes);
   const frames = collectFrameOffsets(layout, clip);
   if (frames.length === 0) {

@@ -5,14 +5,31 @@ import {
   validateAnimatedGLBStream,
 } from "@/export/streamed-avatar-glb";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
+import { VRM_HUMANOID_PROFILE } from "@/profiles";
 
 describe("streamed animated GLB export", () => {
   it("appends animation through Blob parts without reading the whole avatar", async () => {
     const avatarFile = createRangeOnlyAvatarFile();
-    const clip = createRetargetedMotionClipStub({
+    const canonical = createRetargetedMotionClipStub({
       vrmFile: avatarFile,
       fbxFile: { name: "walk.fbx" },
     });
+    const clip = {
+      ...canonical,
+      target: {
+        ...canonical.target,
+        profile: VRM_HUMANOID_PROFILE.id,
+        rigSignature: avatarFile.rigSignature,
+      },
+      processing: {
+        stage: "solved" as const,
+        sourceCanonicalId: canonical.processing.sourceCanonicalId,
+        solverId: "humanoid-custom-v4" as const,
+        solverRevision: 4 as const,
+        solvePass: 1 as const,
+      },
+    };
     clip.metadata = {
       ...clip.metadata,
       rootTranslationSpace: "offset-meters",
@@ -113,9 +130,16 @@ function createRangeOnlyAvatarFile() {
   const binaryView = new DataView(binaryHeader.buffer);
   binaryView.setUint32(0, 16, true);
   binaryView.setUint32(4, 0x004e4942, true);
-  return new RangeOnlyFile(
+  const file = new RangeOnlyFile(
     [header.buffer, jsonBytes.buffer, binaryHeader.buffer, new ArrayBuffer(16)],
     "avatar.vrm",
     { type: "model/gltf-binary" },
   );
+  return Object.assign(file, {
+    rigSignature: inspectRawGLTFHumanoidRigSignature(
+      json.nodes,
+      new Map([["hips", 0], ["leftUpperArm", 1], ["rightUpperArm", 2]]),
+      VRM_HUMANOID_PROFILE.id,
+    ),
+  });
 }

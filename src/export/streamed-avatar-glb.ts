@@ -1,5 +1,8 @@
 import { Quaternion } from "three";
-import type { RetargetedMotionClip } from "@/retarget";
+import type {
+  RetargetedMotionClip,
+  TargetBoundSolvedHumanoidMotionClip,
+} from "@/retarget";
 import type { RetargetedRigMotionV2 } from "@/rig-motion";
 import { HUMANOID_BONES, isHumanoidBoneName } from "@/retarget";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
@@ -13,7 +16,7 @@ import {
   CANONICAL_AXIS_FRAME,
   createAxisCorrection,
 } from "@/retarget/coordinate-space";
-import { validateRigMotionDocumentSemantics } from "@/validation";
+import { validateRigMotionDocumentSemantics } from "@/validation/rig-motion-world-semantic-oracle";
 import {
   createStreamedAnimationValidationDocument,
   validateStreamedGLTFWorldSemantics,
@@ -29,7 +32,7 @@ export async function exportAnimatedGLBStream({
   clip,
 }: {
   avatarFile: File;
-  clip: RetargetedMotionClip;
+  clip: TargetBoundSolvedHumanoidMotionClip;
 }) {
   const info = await readGLBRangeInfo(avatarFile);
   const json = structuredClone(info.json);

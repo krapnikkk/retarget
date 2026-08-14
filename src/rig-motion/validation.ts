@@ -3,7 +3,7 @@ import {
   type ParseBudget,
   resolveParseBudget,
 } from "@/import/parse-budget";
-import { getRigDefinition } from "@/rigs";
+import { getRigDefinition } from "@/rigs/definitions";
 import {
   validateFiniteTimeSeries,
   validateQuaternionSamples,

@@ -1,5 +1,5 @@
 import { Accessor, Document, WebIO, type Node } from "@gltf-transform/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   QUADRUPED_RIG_DEFINITION,
   HUMANOID_RIG_DEFINITION,
@@ -30,6 +30,11 @@ import {
   validateAnimatedRigGLBStream,
 } from "@/export/streamed-avatar-glb";
 import { retargetRiggedGLTF } from "@/pipelines/rigged-gltf";
+
+vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
+  return { ...actual, runRetargetJob: actual.runRetargetJobInline };
+});
 
 describe("non-humanoid quadruped contract", () => {
   it("keeps rig family, definition, and recipe compatibility explicit", () => {

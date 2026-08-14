@@ -8,7 +8,7 @@ import {
   VectorKeyframeTrack,
 } from "three";
 import { Document, WebIO, type Animation } from "@gltf-transform/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { exportAnimatedRigGLB } from "@/export/rig-motion-gltf";
 import { importRigMotionDocument } from "@/import/rig-motion-gltf";
 import { retargetRiggedGLTF } from "@/pipelines/rigged-gltf";
@@ -16,6 +16,11 @@ import {
   inspectGLTFRig,
 } from "@/rigs";
 import { solveRigMotionToTarget } from "@/solvers";
+
+vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
+  return { ...actual, runRetargetJob: actual.runRetargetJobInline };
+});
 
 const FIXTURE_ROOT = path.resolve(
   "tests/fixtures/non-humanoid/mesh2motion",

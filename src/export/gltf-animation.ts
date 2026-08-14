@@ -6,8 +6,8 @@ import {
   bindCanonicalRotationDeltasToTargetLocal,
   bindCanonicalTranslationOffsetsToTargetLocal,
   createCanonicalToTargetWorldCorrection,
-  validateMotionClip,
-} from "@/retarget";
+} from "@/retarget/target-binding";
+import { validateMotionClip } from "@/retarget";
 import {
   resolveExportBoneName,
   type BoneNamingOptions,

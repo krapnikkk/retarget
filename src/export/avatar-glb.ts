@@ -13,13 +13,15 @@ import {
   HUMANOID_BONES,
   isHumanoidBoneName,
   type HumanoidBoneName,
-  type RetargetedMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
 import { HUMANOID_RIG_PROFILES } from "@/profiles";
+import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export type AvatarExportInput = {
-  clip: RetargetedMotionClip;
+  clip: TargetBoundSolvedHumanoidMotionClip;
   avatarFile?: File | null;
   avatarFormatId?: AvatarFormatId | null;
 };
@@ -60,7 +62,15 @@ export async function exportBakedVRM(
   }
 
   const io = createVRMWebIO();
-  const document = await io.readBinary(new Uint8Array(await avatarFile.arrayBuffer()));
+  const document = await io.readBinary(
+    new Uint8Array(
+      await readFileArrayBufferWithSignal(
+        avatarFile,
+        getAvatarEagerInputLimit(avatarFile),
+        "avatar",
+      ),
+    ),
+  );
   assertVRMDocument(document);
 
   const buffer =

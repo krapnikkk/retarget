@@ -19,11 +19,22 @@ the stable code for support and telemetry.
 | `GLTF_ANIMATION_PARSE_FAILED` | import | glTF animation channels or accessors are invalid. |
 | `UNSUPPORTED_FORMAT` | probe/routing | No evidence-backed adapter supports the selected input/workflow. |
 | `WEBGL_UNAVAILABLE` | preview | Browser cannot create the required WebGL context; processing may still be possible. |
-| `FILE_TOO_LARGE` | budget | Input, samples, frames, deadline, or output exceeds a shared processing limit. |
+| `FILE_TOO_LARGE` | byte budget | An input or transferable resource exceeds its pre-read byte limit. |
 | `PACKAGE_INVALID` | package | ZIP/package paths, expansion, dependencies, or entrypoint are unsafe/invalid. |
 | `RETARGET_FAILED` | solve/bind | Source-to-target solve or target-local binding failed. |
 | `EXPORT_FAILED` | export/validate | Serialization or post-export validation failed. |
+| `PARSE_*` | parser | Counts, lengths, numbers, or truncation violate the bounded parser contract. |
+| `BVH_*`, `GLTF_*`, `VRMA_DUPLICATE_TRACK` | parser domain | Bounded parsing succeeded far enough to identify a stable format-specific violation. |
+| `PROCESSING_*` | processing budget | Clip shape, duration, FPS, options, deadline, or output work exceeds a processing limit. |
+| `WORKER_UNAVAILABLE` | browser isolation | The browser Worker is unavailable; the public browser path does not run the job inline. |
+| `RETARGET_JOB_FAILED` | Worker | An unexpected failure crossed the Worker boundary without a more specific registered code. |
+| `TARGET_RIG_IDENTITY_MISSING` | target bind/export | Avatar export received an unsolved or legacy clip without target-rig identity. |
+| `TARGET_RIG_INVALID` | target bind/export | Target rest-pose evidence is invalid or non-finite. |
+| `TARGET_RIG_MISMATCH` | target bind/export | The supplied avatar is not the rig recorded by the solved motion. |
 
 Additions require a typed entry, localized presentation, a boundary-specific
 throw site, and at least one regression test. Never expose raw parser stacks,
 local paths, uploaded bytes, or secrets in the public message.
+Parser and processing errors extend the same public `RetargetError` class.
+Worker serialization preserves only codes present in this registry; arbitrary
+strings are reduced to `RETARGET_JOB_FAILED`.

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   HUMANOID_PIPELINE_CERTIFICATION,
   getPipelineExportAssurance,
@@ -12,6 +12,11 @@ import { exportAnimatedGLB, validateAvatarExportReload, validateAvatarExportSema
 import { importGLTFAnimation } from "@/import/gltf-animation";
 import { importVRMA } from "@/import/vrma";
 import { sampleSemanticMotionPose } from "@/validation";
+
+vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
+  return { ...actual, runRetargetJob: actual.runRetargetJobInline };
+});
 
 describe("Golden Motion certification", () => {
   it("locks every candidate asset to the SDK-owned fixture corpus", async () => {

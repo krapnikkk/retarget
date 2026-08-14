@@ -1,7 +1,10 @@
 import { Document } from "@gltf-transform/core";
 import { Matrix4, Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
-import { bindCanonicalClipToGLTFTarget } from "@/export/gltf-target-binding";
+import {
+  bindCanonicalClipToGLTFTarget,
+  createGLTFHumanoidRigSignature,
+} from "@/export/gltf-target-binding";
 import { bindCanonicalClipToRawGLTFTarget } from "@/export/raw-gltf-target-binding";
 import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
@@ -29,7 +32,7 @@ describe("glTF target binding", () => {
     scene.addChild(parent);
     parent.addChild(hips);
 
-    const clip = createRetargetedMotionClipStub({
+    const canonical = createRetargetedMotionClipStub({
       vrmFile: { name: "avatar.glb" },
       fbxFile: { name: "motion.fbx" },
     });
@@ -37,7 +40,25 @@ describe("glTF target binding", () => {
       new Vector3(1, 0, 0),
       0.35,
     );
-    clip.target.profile = GENERIC_GLTF_HUMANOID_PROFILE.id;
+    const nodesByBone = new Map([["hips" as const, hips]]);
+    const clip = {
+      ...canonical,
+      target: {
+        ...canonical.target,
+        profile: GENERIC_GLTF_HUMANOID_PROFILE.id,
+        rigSignature: createGLTFHumanoidRigSignature(
+          nodesByBone,
+          GENERIC_GLTF_HUMANOID_PROFILE.id,
+        ),
+      },
+      processing: {
+        stage: "solved" as const,
+        sourceCanonicalId: canonical.processing.sourceCanonicalId,
+        solverId: "humanoid-custom-v4" as const,
+        solverRevision: 4 as const,
+        solvePass: 1 as const,
+      },
+    };
     clip.metadata = {
       normalizationVersion: 1,
       canonicalProfile: "vrm-humanoid",
@@ -61,7 +82,7 @@ describe("glTF target binding", () => {
 
     const bound = bindCanonicalClipToGLTFTarget(
       clip,
-      new Map([["hips", hips]]),
+      nodesByBone,
       GENERIC_GLTF_HUMANOID_PROFILE,
     );
     const translation = bound.tracks.find((track) => track.path === "translation")!;

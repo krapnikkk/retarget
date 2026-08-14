@@ -1,9 +1,11 @@
+import { readBlobArrayBufferWithSignal } from "@/browser/read-file";
+
 const GLB_HEADER_BYTES = 12;
 const CHUNK_HEADER_BYTES = 8;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
 const GLB_MAGIC = 0x46546c67;
-const MAX_JSON_CHUNK_BYTES = 64 * 1024 * 1024;
+export const MAX_GLB_STRUCTURAL_JSON_BYTES = 64 * 1024 * 1024;
 
 export type GLBRangeInfo = {
   json: Record<string, unknown>;
@@ -18,34 +20,12 @@ export type GLTFRigMetadata = {
   animations: Array<Record<string, unknown>>;
 };
 
-export async function readGLBRangeInfo(blob: Blob): Promise<GLBRangeInfo> {
-  const header = await readBlobRange(blob, 0, GLB_HEADER_BYTES + CHUNK_HEADER_BYTES);
-  if (header.byteLength < GLB_HEADER_BYTES + CHUNK_HEADER_BYTES) {
-    throw new Error("GLB header is truncated.");
-  }
-  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
-  if (view.getUint32(0, true) !== GLB_MAGIC || view.getUint32(4, true) !== 2) {
-    throw new Error("GLB header is invalid.");
-  }
-  const declaredByteLength = view.getUint32(8, true);
-  if (declaredByteLength > blob.size || declaredByteLength < header.byteLength) {
-    throw new Error("GLB declared byte length is invalid.");
-  }
-  const jsonByteLength = view.getUint32(GLB_HEADER_BYTES, true);
-  const jsonType = view.getUint32(GLB_HEADER_BYTES + 4, true);
-  if (
-    jsonType !== JSON_CHUNK_TYPE ||
-    jsonByteLength <= 0 ||
-    jsonByteLength > MAX_JSON_CHUNK_BYTES ||
-    GLB_HEADER_BYTES + CHUNK_HEADER_BYTES + jsonByteLength > declaredByteLength
-  ) {
-    throw new Error("GLB JSON chunk is invalid or exceeds the range-read limit.");
-  }
-  const jsonBytes = await readBlobRange(
-    blob,
-    GLB_HEADER_BYTES + CHUNK_HEADER_BYTES,
-    jsonByteLength,
-  );
+export async function readGLBRangeInfo(
+  blob: Blob,
+  signal?: AbortSignal,
+): Promise<GLBRangeInfo> {
+  const { declaredByteLength, jsonBytes, nextChunkOffset } =
+    await readGLBJSONChunk(blob, signal);
   let json: Record<string, unknown>;
   try {
     json = JSON.parse(new TextDecoder().decode(jsonBytes)) as Record<
@@ -56,10 +36,14 @@ export async function readGLBRangeInfo(blob: Blob): Promise<GLBRangeInfo> {
     throw new Error("GLB JSON chunk could not be parsed.", { cause });
   }
 
-  const nextChunkOffset = GLB_HEADER_BYTES + CHUNK_HEADER_BYTES + jsonByteLength;
   let binaryChunk: GLBRangeInfo["binaryChunk"] = null;
   if (nextChunkOffset + CHUNK_HEADER_BYTES <= declaredByteLength) {
-    const chunkHeader = await readBlobRange(blob, nextChunkOffset, CHUNK_HEADER_BYTES);
+    const chunkHeader = await readBlobRange(
+      blob,
+      nextChunkOffset,
+      CHUNK_HEADER_BYTES,
+      signal,
+    );
     const chunkView = new DataView(
       chunkHeader.buffer,
       chunkHeader.byteOffset,
@@ -78,10 +62,57 @@ export async function readGLBRangeInfo(blob: Blob): Promise<GLBRangeInfo> {
   return { json, declaredByteLength, binaryChunk };
 }
 
+export async function readGLBStructuralJSONBytes(
+  blob: Blob,
+  signal?: AbortSignal,
+) {
+  const { jsonBytes } = await readGLBJSONChunk(blob, signal);
+  return jsonBytes.slice().buffer;
+}
+
+async function readGLBJSONChunk(blob: Blob, signal?: AbortSignal) {
+  const header = await readBlobRange(
+    blob,
+    0,
+    GLB_HEADER_BYTES + CHUNK_HEADER_BYTES,
+    signal,
+  );
+  if (header.byteLength < GLB_HEADER_BYTES + CHUNK_HEADER_BYTES) {
+    throw new Error("GLB header is truncated.");
+  }
+  const view = new DataView(header.buffer, header.byteOffset, header.byteLength);
+  if (view.getUint32(0, true) !== GLB_MAGIC || view.getUint32(4, true) !== 2) {
+    throw new Error("GLB header is invalid.");
+  }
+  const declaredByteLength = view.getUint32(8, true);
+  if (declaredByteLength > blob.size || declaredByteLength < header.byteLength) {
+    throw new Error("GLB declared byte length is invalid.");
+  }
+  const jsonByteLength = view.getUint32(GLB_HEADER_BYTES, true);
+  const jsonType = view.getUint32(GLB_HEADER_BYTES + 4, true);
+  if (
+    jsonType !== JSON_CHUNK_TYPE ||
+    jsonByteLength <= 0 ||
+    jsonByteLength > MAX_GLB_STRUCTURAL_JSON_BYTES ||
+    GLB_HEADER_BYTES + CHUNK_HEADER_BYTES + jsonByteLength > declaredByteLength
+  ) {
+    throw new Error("GLB JSON chunk is invalid or exceeds the range-read limit.");
+  }
+  const jsonBytes = await readBlobRange(
+    blob,
+    GLB_HEADER_BYTES + CHUNK_HEADER_BYTES,
+    jsonByteLength,
+    signal,
+  );
+  const nextChunkOffset = GLB_HEADER_BYTES + CHUNK_HEADER_BYTES + jsonByteLength;
+  return { declaredByteLength, jsonBytes, nextChunkOffset };
+}
+
 export async function readBlobRange(
   blob: Blob,
   offset: number,
   byteLength: number,
+  signal?: AbortSignal,
 ) {
   if (
     !Number.isSafeInteger(offset) ||
@@ -92,11 +123,21 @@ export async function readBlobRange(
   ) {
     throw new RangeError("Blob byte range is outside the source.");
   }
-  return new Uint8Array(await blob.slice(offset, offset + byteLength).arrayBuffer());
+  return new Uint8Array(
+    await readBlobArrayBufferWithSignal(
+      blob.slice(offset, offset + byteLength),
+      byteLength,
+      `glb-range:${offset}+${byteLength}`,
+      signal,
+    ),
+  );
 }
 
-export async function readGLTFRigMetadata(blob: Blob): Promise<GLTFRigMetadata> {
-  const { json } = await readGLBRangeInfo(blob);
+export async function readGLTFRigMetadata(
+  blob: Blob,
+  signal?: AbortSignal,
+): Promise<GLTFRigMetadata> {
+  const { json } = await readGLBRangeInfo(blob, signal);
   return {
     json,
     nodes: Array.isArray(json.nodes)

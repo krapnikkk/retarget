@@ -1,6 +1,7 @@
 import type { MotionImportAdapter } from "@/adapters/types";
 import { probeImportAdapter } from "@/adapters/probe";
 import { importVRMA } from "@/import/vrma";
+import { assertMotionFileWithinLimit } from "@/jobs/asset-memory-policy";
 
 export const vrmaMotionAdapter = {
   id: "vrma",
@@ -16,6 +17,7 @@ export const vrmaMotionAdapter = {
       role: "motion",
     }),
   async importMotion(file) {
+    assertMotionFileWithinLimit(file);
     return importVRMA(new Uint8Array(await file.arrayBuffer()), file.name);
   },
 } satisfies MotionImportAdapter;

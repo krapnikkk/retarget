@@ -10,6 +10,7 @@ import { mmdModelAvatarAdapter } from "./mmd-model";
 import { readyPlayerMeAvatarAdapter } from "./ready-player-me";
 import { reallusionAvatarAdapter } from "./reallusion";
 import { vrmAvatarAdapter } from "./vrm";
+import { MIN_IMPORT_PROBE_CONFIDENCE } from "@/adapters/probe";
 
 export const AVATAR_IMPORT_ADAPTERS = [
   vrmAvatarAdapter,
@@ -39,20 +40,18 @@ export async function probeAvatarImportAdapter(
   if (preferredId) {
     const preferred = candidates.find(
       (candidate) =>
-        candidate.adapter.id === preferredId && candidate.probe.confidence > 0,
+        candidate.adapter.id === preferredId &&
+        candidate.probe.confidence >= MIN_IMPORT_PROBE_CONFIDENCE,
     );
     if (preferred) return preferred;
   }
 
   const evidenceMatches = candidates
-    .filter((candidate) => candidate.probe.confidence >= 0.35)
+    .filter(
+      (candidate) => candidate.probe.confidence >= MIN_IMPORT_PROBE_CONFIDENCE,
+    )
     .sort((left, right) => right.probe.confidence - left.probe.confidence);
-  if (evidenceMatches[0]) return evidenceMatches[0];
-
-  const extensionOnlyMatches = candidates.filter(
-    (candidate) => candidate.probe.confidence > 0,
-  );
-  return extensionOnlyMatches.length === 1 ? extensionOnlyMatches[0] : null;
+  return evidenceMatches[0] ?? null;
 }
 
 export async function findAvatarImportAdapter(

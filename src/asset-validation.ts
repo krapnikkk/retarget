@@ -19,6 +19,8 @@ import {
   importRigMotionDocument,
   listRigMotionActions,
 } from "@/import/rig-motion-gltf";
+import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export type AssetValidationKind = "character" | "motion";
 
@@ -413,7 +415,15 @@ function getInspectionContractIssues(
 }
 
 async function readGLBDocument(file: File) {
-  return new WebIO().readBinary(new Uint8Array(await file.arrayBuffer()));
+  return new WebIO().readBinary(
+    new Uint8Array(
+      await readFileArrayBufferWithSignal(
+        file,
+        getAvatarEagerInputLimit(file),
+        "avatar",
+      ),
+    ),
+  );
 }
 
 async function createTexturelessRigCheckFile(document: Document, filename: string) {

@@ -2,7 +2,12 @@ import { Object3D, type Group } from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { createAssetResourceScope } from "@/import/asset-package";
 import { readGLTFDocument } from "@/import/gltf-document";
-import { isRangeLoadableGLB } from "@/jobs/asset-memory-policy";
+import {
+  assertAvatarFileWithinLimit,
+  getAvatarEagerInputLimit,
+  isRangeLoadableGLB,
+} from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 import { loadStructuralGLBScene } from "@/browser/avatar-rig";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
 import {
@@ -35,6 +40,7 @@ export async function loadSemanticAvatarRig(
   file: File,
   options: RigInspectionOptions = {},
 ): Promise<LoadedSemanticRig> {
+  assertAvatarFileWithinLimit(file);
   if (isRangeLoadableGLB(file)) {
     const [{ document }, scene] = await Promise.all([
       readGLTFStructuralDocument(file),
@@ -54,7 +60,13 @@ export async function loadSemanticAvatarRig(
       throw error;
     }
   }
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const bytes = new Uint8Array(
+    await readFileArrayBufferWithSignal(
+      file,
+      getAvatarEagerInputLimit(file),
+      "avatar",
+    ),
+  );
   const document = await readGLTFDocument(bytes, file);
   const inspection = inspectGLTFRig(document, options);
   if (inspection.missingRequiredRoles.length > 0) {

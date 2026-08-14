@@ -1,12 +1,18 @@
 import type { RigRecipe } from "@/rigs";
-import { isRangeLoadableGLB } from "@/jobs/asset-memory-policy";
+import {
+  assertAvatarFileWithinLimit,
+  assertMotionFileWithinLimit,
+  getAvatarEagerInputLimit,
+  isRangeLoadableGLB,
+  MAX_MOTION_FILE_BYTES,
+} from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
 import { inspectGLTFRig } from "@/rigs";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
 import { collectTransferableGLTFResources } from "@/import/gltf-document";
 import { serializeRigInspection } from "@/jobs/serialize-rig-inspection";
 import type {
-  RiggedGLTFRetargetJobResult,
   SerializedRigInspection,
 } from "@/jobs/types";
 
@@ -25,6 +31,8 @@ export async function retargetRiggedGLTF({
   animationName?: string;
   signal?: AbortSignal;
 }) {
+  assertMotionFileWithinLimit(motionFile);
+  assertAvatarFileWithinLimit(avatarFile);
   signal?.throwIfAborted();
   const targetOptions = {
     familyOverride: recipe?.family ?? "auto",
@@ -36,25 +44,37 @@ export async function retargetRiggedGLTF({
   let targetResources: Record<string, ArrayBuffer> | undefined;
   if (isRangeLoadableGLB(avatarFile)) {
     const inspection = inspectGLTFRig(
-      (await readGLTFStructuralDocument(avatarFile)).document,
+      (await readGLTFStructuralDocument(avatarFile, signal)).document,
       targetOptions,
     );
     targetInspection = serializeRigInspection(inspection);
   } else {
-    targetBytes = await avatarFile.arrayBuffer();
+    targetBytes = await readFileArrayBufferWithSignal(
+      avatarFile,
+      getAvatarEagerInputLimit(avatarFile),
+      "avatar",
+      signal,
+    );
     targetResources = await collectTransferableGLTFResources(
       new Uint8Array(targetBytes),
       avatarFile,
+      signal,
     );
   }
   signal?.throwIfAborted();
-  const motionBytes = await motionFile.arrayBuffer();
+  const motionBytes = await readFileArrayBufferWithSignal(
+    motionFile,
+    MAX_MOTION_FILE_BYTES,
+    "motion",
+    signal,
+  );
   const motionResources = await collectTransferableGLTFResources(
     new Uint8Array(motionBytes),
     motionFile,
+    signal,
   );
   signal?.throwIfAborted();
-  return runRetargetJob<RiggedGLTFRetargetJobResult>(
+  return runRetargetJob(
     {
       type: "retarget-rigged-gltf",
       motionBytes,

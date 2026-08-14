@@ -6,8 +6,10 @@ import type {
   RetargetJobProgress,
   RetargetJobRequest,
   RetargetJobResponse,
+  RetargetJobResult,
   RetargetJobTask,
 } from "./types";
+import { RetargetError } from "@/retarget/errors";
 
 export type RunRetargetJobOptions = {
   signal?: AbortSignal;
@@ -15,14 +17,14 @@ export type RunRetargetJobOptions = {
   onProgress?: (progress: RetargetJobProgress) => void;
 };
 
-export async function runRetargetJob<TResult = unknown>(
-  task: RetargetJobTask,
+export async function runRetargetJob<TTask extends RetargetJobTask>(
+  task: TTask,
   {
     deadlineMs = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
     onProgress,
     signal,
   }: RunRetargetJobOptions = {},
-): Promise<TResult> {
+): Promise<RetargetJobResult<TTask>> {
   const request: RetargetJobRequest = {
     jobId: crypto.randomUUID(),
     deadlineMs,
@@ -31,20 +33,10 @@ export async function runRetargetJob<TResult = unknown>(
   if (signal?.aborted) throw createAbortError();
 
   if (typeof Worker === "undefined") {
-    const { executeRetargetJob } = await import("./execute-retarget-job");
-    const result = await executeRetargetJob(request, (phase, progress) =>
-      onProgress?.({
-        jobId: request.jobId,
-        type: "progress",
-        phase,
-        progress,
-      }),
-    );
-    if (signal?.aborted) throw createAbortError();
-    return result as TResult;
+    throw new RetargetError("WORKER_UNAVAILABLE");
   }
 
-  return new Promise<TResult>((resolve, reject) => {
+  return new Promise<RetargetJobResult<TTask>>((resolve, reject) => {
     const worker = new Worker(
       new URL("../workers/retarget.worker.js", import.meta.url),
       { name: `retarget-${request.jobId}`, type: "module" },
@@ -72,7 +64,9 @@ export async function runRetargetJob<TResult = unknown>(
     signal?.addEventListener("abort", abort, { once: true });
     worker.addEventListener("error", (event) => {
       cleanup();
-      reject(new Error(event.message || "Retarget worker failed."));
+      reject(new RetargetError("RETARGET_JOB_FAILED", {
+        message: event.message || "Retarget worker failed.",
+      }));
     });
     worker.addEventListener("message", (event: MessageEvent<RetargetJobResponse>) => {
       const response = event.data;
@@ -83,29 +77,66 @@ export async function runRetargetJob<TResult = unknown>(
       }
       cleanup();
       if (response.type === "failure") {
-        const error = new Error(response.error.message);
-        error.name = response.error.name;
-        Object.assign(error, {
-          code: response.error.code,
+        const error = new RetargetError(response.error.code, {
           details: response.error.details,
+          message: response.error.message,
         });
+        error.name = response.error.name;
         reject(error);
         return;
       }
-      resolve(response.result as TResult);
+      resolve(response.result as RetargetJobResult<TTask>);
     });
     worker.postMessage(request, collectTaskTransfers(task));
   });
 }
 
+// Explicit non-isolated execution exists for local tooling and unit tests. It
+// is deliberately not re-exported from the browser package entry.
+export async function runRetargetJobInline<TTask extends RetargetJobTask>(
+  task: TTask,
+  {
+    deadlineMs = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
+    onProgress,
+    signal,
+  }: RunRetargetJobOptions = {},
+): Promise<RetargetJobResult<TTask>> {
+  if (signal?.aborted) throw createAbortError();
+  const request: RetargetJobRequest = {
+    jobId: crypto.randomUUID(),
+    deadlineMs,
+    task,
+  };
+  const { executeRetargetJob } = await import("./execute-retarget-job");
+  const result = await executeRetargetJob(request, (phase, progress) =>
+    onProgress?.({
+      jobId: request.jobId,
+      type: "progress",
+      phase,
+      progress,
+    }),
+  );
+  if (signal?.aborted) throw createAbortError();
+  return result as RetargetJobResult<TTask>;
+}
+
 function collectTaskTransfers(task: RetargetJobTask): Transferable[] {
   if (
     task.type === "import-motion" ||
+    task.type === "inspect-humanoid-avatar" ||
     task.type === "convert-mmd-avatar" ||
     task.type === "inspect-rigged-gltf" ||
     task.type === "validate-motion-export" ||
     task.type === "validate-avatar-export"
   ) {
+    if (task.type === "inspect-humanoid-avatar") {
+      return [
+        task.bytes,
+        ...(task.structuralJSONBytes ? [task.structuralJSONBytes] : []),
+        ...collectResourceTransfers(task.resources),
+        ...collectResourceTransfers(task.assetPackage?.resources),
+      ];
+    }
     if (task.type === "inspect-rigged-gltf") {
       return [task.bytes, ...collectResourceTransfers(task.resources)];
     }

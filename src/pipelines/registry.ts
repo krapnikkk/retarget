@@ -1,11 +1,15 @@
 import type {
   AvatarFormatId,
   MotionFormatId,
-  RetargetPipeline,
 } from "@/formats";
+import type { RetargetPipeline } from "./types";
 import { importedMotionToAvatarPipelines } from "./imported-motion-to-avatar";
 
-export const RETARGET_PIPELINES = importedMotionToAvatarPipelines satisfies readonly RetargetPipeline[];
+export const RETARGET_PIPELINES: readonly RetargetPipeline[] = Object.freeze(
+  importedMotionToAvatarPipelines.filter(
+    (pipeline) => pipeline.availability === "available",
+  ),
+);
 
 export function getRetargetPipeline(
   motionFormat: MotionFormatId,

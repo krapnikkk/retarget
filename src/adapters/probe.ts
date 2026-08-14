@@ -2,6 +2,7 @@ import type { ImportAdapterProbe } from "@/adapters/types";
 import { getRigProfile, type RigProfileId } from "@/profiles";
 
 const MAX_PROBE_BYTES = 4 * 1024 * 1024;
+export const MIN_IMPORT_PROBE_CONFIDENCE = 0.35;
 const GLB_MAGIC = 0x46546c67;
 const GLB_JSON_CHUNK = 0x4e4f534a;
 const inspectionCache = new WeakMap<File, Promise<FileInspection>>();
@@ -40,25 +41,26 @@ export async function probeImportAdapter(
   const evidence: string[] = [];
   let maximumConfidence = 1;
   const lowercaseName = file.name.toLowerCase();
-  if (!config.extensions.some((extension) => lowercaseName.endsWith(extension))) {
-    return {
-      confidence: 0,
-      profile: config.profile,
-      evidence,
-      warnings: [`extension does not match ${config.extensions.join(", ")}`],
-    };
-  }
+  const extensionMatches = config.extensions.some((extension) =>
+    lowercaseName.endsWith(extension),
+  );
 
   const inspection = await inspectFile(file);
   warnings.push(...inspection.warnings);
-  evidence.push(`extension matches ${config.extensions.join(", ")}`);
-  let confidence = 0.15;
+  let confidence = 0;
+  if (extensionMatches) {
+    confidence += 0.05;
+    evidence.push(`extension hint matches ${config.extensions.join(", ")}`);
+  } else {
+    warnings.push(`extension hint does not match ${config.extensions.join(", ")}`);
+  }
 
   const signature = detectContainerSignature(config.container, inspection);
   if (signature) {
     confidence += signature.confidence;
     evidence.push(signature.evidence);
   } else {
+    maximumConfidence = Math.min(maximumConfidence, MIN_IMPORT_PROBE_CONFIDENCE - 0.01);
     warnings.push(`${config.container} content signature was not found`);
   }
 

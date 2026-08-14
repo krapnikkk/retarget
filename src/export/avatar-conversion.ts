@@ -21,32 +21,51 @@ import {
 } from "@/import/asset-package";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
 import { disposeObject } from "@/resources/dispose-three";
+import {
+  assertAvatarFileWithinLimit,
+  getAvatarEagerInputLimit,
+} from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export async function readAvatarAsGLBDocument({
   avatarFile,
   avatarFormatId,
   io,
+  signal,
 }: {
   avatarFile: File;
   avatarFormatId?: AvatarFormatId | null;
   io: WebIO;
+  signal?: AbortSignal;
 }): Promise<Document> {
+  assertAvatarFileWithinLimit(avatarFile);
   if (shouldReadAsGLB(avatarFile, avatarFormatId)) {
     return readGLTFDocument(
       io,
-      new Uint8Array(await avatarFile.arrayBuffer()),
+      new Uint8Array(await readFileArrayBufferWithSignal(
+        avatarFile,
+        getAvatarEagerInputLimit(avatarFile),
+        "avatar",
+        signal,
+      )),
       avatarFile,
     );
   }
 
   if (avatarFormatId === "mmd-model" || /\.(pmx|pmd)$/i.test(avatarFile.name)) {
-    const bytes = await runRetargetJob<Uint8Array>(
+    const bytes = await runRetargetJob(
       {
         type: "convert-mmd-avatar",
-        bytes: await avatarFile.arrayBuffer(),
+        bytes: await readFileArrayBufferWithSignal(
+          avatarFile,
+          getAvatarEagerInputLimit(avatarFile),
+          "avatar",
+          signal,
+        ),
         filename: avatarFile.name,
         assetPackage: await collectTransferableAssetPackage(avatarFile),
       },
+      { signal },
     );
     return io.readBinary(bytes);
   }
@@ -54,6 +73,7 @@ export async function readAvatarAsGLBDocument({
   const { resourceScope, root } = await parseFBXAvatarObject(
     avatarFile,
     avatarFormatId,
+    signal,
   );
   try {
     const glbBytes = await exportObjectAsGLB(root);
@@ -95,11 +115,17 @@ function isTextGLTF(bytes: Uint8Array) {
 async function parseFBXAvatarObject(
   file: File,
   avatarFormatId?: AvatarFormatId | null,
+  signal?: AbortSignal,
 ): Promise<{
   root: Object3D;
   resourceScope: ReturnType<typeof createAssetResourceScope>;
 }> {
-  const bytes = await file.arrayBuffer();
+  const bytes = await readFileArrayBufferWithSignal(
+    file,
+    getAvatarEagerInputLimit(file),
+    "avatar",
+    signal,
+  );
   if (
     avatarFormatId === "mixamo-rigged" ||
     avatarFormatId === "reallusion" ||

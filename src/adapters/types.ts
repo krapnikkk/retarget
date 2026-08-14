@@ -7,6 +7,7 @@ import type {
 import type {
   CanonicalHumanoidMotionClip,
   RetargetedMotionClip,
+  TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import type { RigProfileId } from "@/profiles";
 import type { BoneNamingOptions } from "@/export/bone-naming";
@@ -52,7 +53,7 @@ export type MotionExportAdapter = {
 };
 
 export type AvatarExportInput = {
-  clip: RetargetedMotionClip;
+  clip: TargetBoundSolvedHumanoidMotionClip;
   avatarFile?: File | null;
   avatarFormatId?: AvatarFormatId | null;
 };

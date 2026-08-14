@@ -84,6 +84,20 @@ describe("bounded adapter probes", () => {
     ).resolves.toBeNull();
   });
 
+  it("treats extensions as hints and requires bounded content evidence", async () => {
+    await expect(
+      findMotionImportAdapter(file("garbage.bvh", "not motion data")),
+    ).resolves.toBeNull();
+    await expect(
+      findMotionImportAdapter(
+        file(
+          "renamed.txt",
+          "HIERARCHY\nROOT Hips\n{\n  CHANNELS 6 Xposition Yposition Zposition Zrotation Xrotation Yrotation\n}\nMOTION\nFrames: 1\nFrame Time: 0.033333\n0 0 0 0 0 0",
+        ),
+      ),
+    ).resolves.toMatchObject({ id: "bvh" });
+  });
+
   it("recognizes avatar ecosystems from node evidence", async () => {
     const avatar = glb(
       "renamed.glb",

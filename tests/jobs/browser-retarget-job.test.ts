@@ -27,6 +27,18 @@ describe("browser retarget worker boundary", () => {
     vi.unstubAllGlobals();
   });
 
+  it("fails closed when an isolated Worker is unavailable", async () => {
+    vi.stubGlobal("Worker", undefined);
+
+    await expect(
+      runRetargetJob({
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      }),
+    ).rejects.toMatchObject({ code: "WORKER_UNAVAILABLE" });
+  });
+
   it("terminates an active worker when the caller aborts", async () => {
     vi.stubGlobal("window", globalThis);
     vi.stubGlobal("Worker", PendingWorker);
@@ -90,6 +102,40 @@ describe("browser retarget worker boundary", () => {
     const worker = PendingWorker.instances[0]!;
 
     expect(worker.transfers[0]).toEqual([primary, texture]);
+    controller.abort();
+    await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+  });
+
+  it("transfers humanoid avatar inspection inputs without copying them", async () => {
+    vi.stubGlobal("window", globalThis);
+    vi.stubGlobal("Worker", PendingWorker);
+    const controller = new AbortController();
+    const primary = new ArrayBuffer(8);
+    const structuralJSONBytes = new ArrayBuffer(10);
+    const sidecar = new ArrayBuffer(12);
+    const texture = new ArrayBuffer(16);
+    const promise = runRetargetJob(
+      {
+        type: "inspect-humanoid-avatar",
+        bytes: primary,
+        filename: "avatar.gltf",
+        formatId: "gltf-humanoid",
+        structuralJSONBytes,
+        resources: { "avatar.bin": sidecar },
+        assetPackage: {
+          primaryPath: "avatar.gltf",
+          resources: { "textures/base.png": texture },
+        },
+      },
+      { signal: controller.signal },
+    );
+
+    expect(PendingWorker.instances[0]!.transfers[0]).toEqual([
+      primary,
+      structuralJSONBytes,
+      sidecar,
+      texture,
+    ]);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });

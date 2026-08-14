@@ -5,7 +5,7 @@ import {
   getMotionExportAdapter,
 } from "@/adapters/export";
 import { findMotionImportAdapter } from "@/adapters/motion";
-import { getRetargetPipeline } from "@/pipelines";
+import { getRetargetPipeline, RETARGET_PIPELINES } from "@/pipelines";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 
 describe("adapter registries", () => {
@@ -49,28 +49,22 @@ describe("adapter registries", () => {
     return bytes;
   }
 
-  it("registers the active Mixamo FBX to VRM pipeline", () => {
-    expect(getRetargetPipeline("mixamo-fbx", "vrm")).toMatchObject({
-      id: "mixamo-fbx-to-vrm",
-      outputFormats: ["vrma", "motion-json", "vmd", "gltf-animation", "bvh"],
-    });
+  it("keeps the legacy Mixamo FBX to VRM pipeline hidden while stabilizing", () => {
+    expect(getRetargetPipeline("mixamo-fbx", "vrm")).toBeNull();
   });
 
   it("registers Phase 3 imported motion to avatar pipelines", () => {
-    expect(getRetargetPipeline("bvh", "gltf-humanoid")).toMatchObject({
-      id: "bvh-to-gltf-humanoid",
-      outputFormats: ["vrma", "motion-json", "vmd", "gltf-animation", "bvh"],
-    });
-    expect(getRetargetPipeline("actorcore-fbx", "reallusion")).toMatchObject({
-      id: "actorcore-fbx-to-reallusion",
+    expect(RETARGET_PIPELINES.map((pipeline) => pipeline.id)).toEqual([
+      "gltf-animation-to-gltf-humanoid",
+    ]);
+    expect(getRetargetPipeline("gltf-animation", "gltf-humanoid")).toMatchObject({
       availability: "available",
-      assurance: "experimental",
+      assurance: "beta",
+      outputFormats: ["gltf-animation"],
     });
-    expect(getRetargetPipeline("vmd", "mmd-model")).toMatchObject({
-      id: "vmd-to-mmd-model",
-      availability: "available",
-      assurance: "experimental",
-    });
+    expect(getRetargetPipeline("bvh", "gltf-humanoid")).toBeNull();
+    expect(getRetargetPipeline("actorcore-fbx", "reallusion")).toBeNull();
+    expect(getRetargetPipeline("vmd", "mmd-model")).toBeNull();
   });
 
   it("resolves motion import adapters by bounded file evidence", async () => {

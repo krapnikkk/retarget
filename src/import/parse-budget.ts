@@ -1,3 +1,8 @@
+import {
+  RetargetError,
+  type RetargetErrorCode,
+} from "@/retarget/errors";
+
 export type ParseBudget = {
   maxInputBytes: number;
   maxTracks: number;
@@ -36,14 +41,19 @@ export type ParseErrorDetails = {
   limit?: number;
 };
 
-export class ParseDomainError extends Error {
-  readonly code: string;
+export class ParseDomainError extends RetargetError {
   readonly details: ParseErrorDetails;
 
-  constructor(code: string, message: string, details: ParseErrorDetails = {}) {
-    super(formatParseError(message, details));
+  constructor(
+    code: RetargetErrorCode,
+    message: string,
+    details: ParseErrorDetails = {},
+  ) {
+    super(code, {
+      details,
+      message: formatParseError(message, details),
+    });
     this.name = "ParseDomainError";
-    this.code = code;
     this.details = details;
   }
 }

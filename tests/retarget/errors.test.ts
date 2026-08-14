@@ -14,6 +14,7 @@ describe("retarget error codes", () => {
         code,
         message: RETARGET_ERROR_MESSAGES[code],
       });
+      expect(createRetargetError(code)).toBeInstanceOf(Error);
     }
   });
 

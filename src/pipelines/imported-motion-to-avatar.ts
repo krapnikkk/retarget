@@ -1,9 +1,8 @@
 import type {
   AvatarFormatId,
   MotionFormatId,
-  RetargetPipeline,
-  RetargetPipelineId,
 } from "@/formats";
+import type { RetargetPipeline, RetargetPipelineId } from "./types";
 import {
   findAvatarImportAdapter,
   vrmAvatarAdapter,
@@ -13,6 +12,9 @@ import {
   mixamoFbxMotionAdapter,
 } from "@/adapters/motion";
 import { createRetargetError } from "@/retarget";
+import { runRetargetJob } from "@/jobs/browser-retarget-job";
+import { MAX_MOTION_FILE_BYTES } from "@/jobs/asset-memory-policy";
+import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 const MOTION_FORMATS = [
   "mixamo-fbx",
@@ -46,15 +48,19 @@ function createImportedMotionToAvatarPipeline(
   avatarFormat: AvatarFormatId,
 ): RetargetPipeline {
   const isMixamoToVrm = motionFormat === "mixamo-fbx" && avatarFormat === "vrm";
+  const isGoldenHumanoidPath =
+    motionFormat === "gltf-animation" && avatarFormat === "gltf-humanoid";
 
   return {
     id: `${motionFormat}-to-${avatarFormat}` as RetargetPipelineId,
     label: `${motionFormat} to ${avatarFormat}`,
     motionFormat,
     avatarFormat,
-    outputFormats: ["vrma", "motion-json", "vmd", "gltf-animation", "bvh"],
-    availability: "available",
-    assurance: isMixamoToVrm ? "beta" : "experimental",
+    outputFormats: isGoldenHumanoidPath
+      ? ["gltf-animation"]
+      : ["vrma", "motion-json", "vmd", "gltf-animation", "bvh"],
+    availability: isGoldenHumanoidPath ? "available" : "hidden",
+    assurance: isGoldenHumanoidPath ? "beta" : "experimental",
     async retarget({
       motionFile,
       avatarFile,
@@ -66,7 +72,7 @@ function createImportedMotionToAvatarPipeline(
       const motionAdapter = isMixamoToVrm
         ? mixamoFbxMotionAdapter
         : await findMotionImportAdapter(motionFile, motionFormat);
-      if (!motionAdapter?.importMotion) {
+      if (!motionAdapter) {
         throw createRetargetError("UNSUPPORTED_FORMAT", motionFile.name);
       }
       if (isMixamoToVrm) {
@@ -91,7 +97,20 @@ function createImportedMotionToAvatarPipeline(
         "@/browser/avatar-target-pipeline"
       );
 
-      const sourceClip = await motionAdapter.importMotion(motionFile);
+      const sourceClip = await runRetargetJob(
+        {
+          type: "import-motion",
+          formatId: motionFormat,
+          filename: motionFile.name,
+          bytes: await readFileArrayBufferWithSignal(
+            motionFile,
+            MAX_MOTION_FILE_BYTES,
+            "motion",
+            signal,
+          ),
+        },
+        { signal },
+      );
       signal?.throwIfAborted();
       const solvedClip = await bindMotionClipToAvatar({
         avatarFile,

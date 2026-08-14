@@ -10,6 +10,7 @@ import { gltfAnimationMotionAdapter } from "./gltf-animation";
 import { mixamoFbxMotionAdapter } from "./mixamo-fbx";
 import { vmdMotionAdapter } from "./vmd";
 import { vrmaMotionAdapter } from "./vrma";
+import { MIN_IMPORT_PROBE_CONFIDENCE } from "@/adapters/probe";
 
 export const MOTION_IMPORT_ADAPTERS = [
   bvhMotionAdapter,
@@ -39,20 +40,18 @@ export async function probeMotionImportAdapter(
   if (preferredId) {
     const preferred = candidates.find(
       (candidate) =>
-        candidate.adapter.id === preferredId && candidate.probe.confidence > 0,
+        candidate.adapter.id === preferredId &&
+        candidate.probe.confidence >= MIN_IMPORT_PROBE_CONFIDENCE,
     );
     if (preferred) return preferred;
   }
 
   const evidenceMatches = candidates
-    .filter((candidate) => candidate.probe.confidence >= 0.35)
+    .filter(
+      (candidate) => candidate.probe.confidence >= MIN_IMPORT_PROBE_CONFIDENCE,
+    )
     .sort((left, right) => right.probe.confidence - left.probe.confidence);
-  if (evidenceMatches[0]) return evidenceMatches[0];
-
-  const extensionOnlyMatches = candidates.filter(
-    (candidate) => candidate.probe.confidence > 0,
-  );
-  return extensionOnlyMatches.length === 1 ? extensionOnlyMatches[0] : null;
+  return evidenceMatches[0] ?? null;
 }
 
 export async function findMotionImportAdapter(

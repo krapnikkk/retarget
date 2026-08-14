@@ -14,6 +14,7 @@ import {
   DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
   solveHumanoidCustomRigMotion,
 } from "@/solvers";
+import { runRetargetJob } from "@/jobs/browser-retarget-job";
 
 vi.mock("@/adapters/avatar", () => ({
   findAvatarImportAdapter: vi.fn(),
@@ -26,6 +27,9 @@ vi.mock("@/adapters/motion", () => ({
 vi.mock("@/browser/avatar-target-pipeline", () => ({
   bindMotionClipToAvatar: vi.fn(),
 }));
+vi.mock("@/jobs/browser-retarget-job", () => ({
+  runRetargetJob: vi.fn(),
+}));
 
 describe("generic humanoid pipeline options", () => {
   beforeEach(() => vi.clearAllMocks());
@@ -35,7 +39,11 @@ describe("generic humanoid pipeline options", () => {
       fbxFile: { name: "walk.bvh" },
       vrmFile: { name: "pending.vrm" },
     });
-    const solvedClip = solveHumanoidCustomRigMotion(sourceClip);
+    const solved = solveHumanoidCustomRigMotion(sourceClip);
+    const solvedClip = {
+      ...solved,
+      target: { ...solved.target, rigSignature: "humanoid-rest-v1:test" },
+    };
     vi.mocked(findMotionImportAdapter).mockResolvedValue({
       id: "bvh",
       label: "BVH",
@@ -52,6 +60,7 @@ describe("generic humanoid pipeline options", () => {
       probe: vi.fn(),
     });
     vi.mocked(bindMotionClipToAvatar).mockResolvedValue(solvedClip);
+    vi.mocked(runRetargetJob).mockResolvedValue(sourceClip);
     const pipeline = importedMotionToAvatarPipelines.find(
       (candidate) => candidate.id === "bvh-to-gltf-humanoid",
     )!;
@@ -83,9 +92,17 @@ describe("generic humanoid pipeline options", () => {
         solveOptions,
       }),
     );
+    expect(runRetargetJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "import-motion",
+        formatId: "bvh",
+        filename: "walk.bvh",
+      }),
+      { signal: controller.signal },
+    );
   });
 
-  it("keeps the Mixamo-to-VRM beta probe and public error contract", async () => {
+  it("keeps the Mixamo-to-VRM probe experimental and preserves public errors", async () => {
     const pipeline = importedMotionToAvatarPipelines.find(
       (candidate) => candidate.id === "mixamo-fbx-to-vrm",
     )!;
@@ -100,7 +117,7 @@ describe("generic humanoid pipeline options", () => {
       mapping: DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
     };
 
-    expect(pipeline.assurance).toBe("beta");
+    expect(pipeline).toMatchObject({ assurance: "experimental", availability: "hidden" });
     vi.mocked(mixamoFbxMotionAdapter.probe).mockResolvedValue({
       confidence: 0.34,
       evidence: [],
