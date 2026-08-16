@@ -1,21 +1,10 @@
 import type { MotionImportAdapter } from "@/adapters/types";
-import { probeImportAdapter } from "@/adapters/probe";
+import { mixamoFbxMotionImportProbe } from "@/adapters/import-probe-registry";
 import { importFBXHumanoidMotion } from "@/import/fbx-motion";
 import { MIXAMO_RIG_PROFILE } from "@/profiles";
 
 export const mixamoFbxMotionAdapter = {
-  id: "mixamo-fbx",
-  label: "Mixamo FBX Motion",
-  profileId: "mixamo",
-  maturity: "active",
-  probe: (file, options) =>
-    probeImportAdapter(file, {
-      container: "fbx",
-      ecosystemMarkers: ["mixamorigHips", "mixamorig:LeftArm"],
-      extensions: [".fbx"],
-      profile: "mixamo",
-      role: "motion",
-    }, options),
+  ...mixamoFbxMotionImportProbe,
   importMotion: (file, options) =>
     importFBXHumanoidMotion({
       file,

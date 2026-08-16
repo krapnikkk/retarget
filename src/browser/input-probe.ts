@@ -1,5 +1,7 @@
-import { probeAvatarImportAdapter } from "@/adapters/avatar";
-import { probeMotionImportAdapter } from "@/adapters/motion";
+import {
+  probeAvatarImportFormat,
+  probeMotionImportFormat,
+} from "@/adapters/import-probe-registry";
 import {
   inspectImportContent,
   type ImportProbeContainer,
@@ -20,8 +22,8 @@ export async function classifyBrowserInput(
   const options = { maxBytes: maxProbeBytes };
   const inspection = await inspectImportContent(file, options);
   const match = role === "avatar"
-    ? await probeAvatarImportAdapter(file, undefined, options)
-    : await probeMotionImportAdapter(file, undefined, options);
+    ? await probeAvatarImportFormat(file, undefined, options)
+    : await probeMotionImportFormat(file, undefined, options);
   const unsupported = Boolean(
     inspection.container && !SUPPORTED_CONTAINERS[role].has(inspection.container),
   );

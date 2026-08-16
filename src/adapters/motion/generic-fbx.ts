@@ -1,20 +1,10 @@
 import type { MotionImportAdapter } from "@/adapters/types";
-import { probeImportAdapter } from "@/adapters/probe";
+import { genericFbxMotionImportProbe } from "@/adapters/import-probe-registry";
 import { importFBXHumanoidMotion } from "@/import/fbx-motion";
 import { GENERIC_FBX_HUMANOID_PROFILE } from "@/profiles";
 
 export const genericFbxMotionAdapter = {
-  id: "generic-fbx",
-  label: "Generic Humanoid FBX Motion",
-  profileId: "generic-fbx-humanoid",
-  maturity: "active",
-  probe: (file, options) =>
-    probeImportAdapter(file, {
-      container: "fbx",
-      extensions: [".fbx"],
-      profile: "generic-fbx-humanoid",
-      role: "motion",
-    }, options),
+  ...genericFbxMotionImportProbe,
   importMotion: (file, options) =>
     importFBXHumanoidMotion({
       file,

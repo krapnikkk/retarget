@@ -1,16 +1,6 @@
 import type { AvatarImportAdapter } from "@/adapters/types";
-import { probeImportAdapter } from "@/adapters/probe";
+import { mmdModelAvatarImportProbe } from "@/adapters/import-probe-registry";
 
 export const mmdModelAvatarAdapter = {
-  id: "mmd-model",
-  label: "MMD PMX / PMD Avatar",
-  profileId: "mmd-body",
-  maturity: "active",
-  probe: (file, options) =>
-    probeImportAdapter(file, {
-      container: "mmd-model",
-      extensions: [".pmx", ".pmd"],
-      profile: "mmd-body",
-      role: "avatar",
-    }, options),
+  ...mmdModelAvatarImportProbe,
 } satisfies AvatarImportAdapter;

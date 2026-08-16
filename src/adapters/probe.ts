@@ -29,7 +29,7 @@ export type ImportContentInspection = {
   warnings: string[];
 };
 
-type ProbeConfig = {
+export type ImportProbeConfig = {
   container: ImportProbeContainer;
   extensions: readonly string[];
   profile: RigProfileId;
@@ -55,7 +55,7 @@ type FileInspection = {
 
 export async function probeImportAdapter(
   file: File,
-  config: ProbeConfig,
+  config: ImportProbeConfig,
   options: ImportAdapterProbeOptions = {},
 ): Promise<ImportAdapterProbe> {
   const warnings: string[] = [];

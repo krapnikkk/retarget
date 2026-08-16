@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  AVATAR_IMPORT_ADAPTERS,
   findAvatarImportAdapter,
   probeAvatarImportAdapter,
 } from "@/adapters/avatar";
 import {
+  AVATAR_IMPORT_PROBES,
+  MOTION_IMPORT_PROBES,
+  probeAvatarImportFormat,
+  probeMotionImportFormat,
+} from "@/adapters/import-probe-registry";
+import {
+  MOTION_IMPORT_ADAPTERS,
   findMotionImportAdapter,
   probeMotionImportAdapter,
 } from "@/adapters/motion";
@@ -35,6 +43,45 @@ function glb(name: string, document: object) {
 }
 
 describe("bounded adapter probes", () => {
+  it("keeps lightweight probe metadata aligned with runtime adapters", () => {
+    const metadata = (entry: {
+      id: string;
+      label: string;
+      profileId: string;
+      maturity: string;
+    }) => ({
+      id: entry.id,
+      label: entry.label,
+      profileId: entry.profileId,
+      maturity: entry.maturity,
+    });
+
+    expect(AVATAR_IMPORT_PROBES.map(metadata)).toEqual(
+      AVATAR_IMPORT_ADAPTERS.map(metadata),
+    );
+    expect(MOTION_IMPORT_PROBES.map(metadata)).toEqual(
+      MOTION_IMPORT_ADAPTERS.map(metadata),
+    );
+  });
+
+  it("selects formats through the probe-only registry", async () => {
+    const avatar = glb("avatar.glb", {
+      nodes: [{ name: "Wolf3D_Head" }, { name: "Wolf3D_Body" }],
+      skins: [{}],
+    });
+    const motion = fbx(
+      "walk.fbx",
+      "CC_Base_Hip CC_Base_L_Upperarm",
+    );
+
+    await expect(probeAvatarImportFormat(avatar)).resolves.toMatchObject({
+      adapter: { id: "ready-player-me" },
+    });
+    await expect(probeMotionImportFormat(motion)).resolves.toMatchObject({
+      adapter: { id: "actorcore-fbx" },
+    });
+  });
+
   it("uses content evidence instead of an ecosystem-looking filename", async () => {
     const match = await probeMotionImportAdapter(
       fbx("actorcore-dance.fbx", "mixamorigHips mixamorig:LeftArm"),
