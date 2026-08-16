@@ -6,6 +6,7 @@ export default defineConfig({
     io: "src/io.ts",
     node: "src/node.ts",
     "browser/index": "src/browser/index.ts",
+    "browser/input": "src/browser/input.ts",
     "validation/index": "src/validation/index.ts",
     "certification/index": "src/certification/index.ts",
     "workers/input-preparation.worker": "src/workers/input-preparation.worker.ts",

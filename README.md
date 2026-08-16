@@ -68,6 +68,9 @@ assets, user inputs, generated outputs, or separately installed dependencies.
   contracts.
 - `3dretarget/browser`: content-first bounded `File`/package preparation,
   explicit resource disposal, and fail-closed Worker execution.
+- `3dretarget/browser/input`: the input-preparation-only browser surface. Use
+  this entry when a consumer does not need retarget pipelines or format parser
+  runtimes in its main bundle.
 - `3dretarget/io`: byte-oriented motion import/export without DOM or scene
   objects.
 - `3dretarget/node`: byte-oriented IO, isolated deterministic VRM/PMX and Rig

@@ -46,6 +46,7 @@ MIT 许可证覆盖本库代码，但不会重新许可消费端资源、用户�
 
 - `3dretarget`：可序列化的格式、Profile、动作、骨架、流水线和错误契约。
 - `3dretarget/browser`：内容优先的有界 `File`/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。
+- `3dretarget/browser/input`：仅包含输入准备的浏览器入口。当消费端主包不需要重定向流水线或格式解析器运行时时使用该入口。
 - `3dretarget/io`：不暴露 DOM 或场景对象的字节级动作导入导出。
 - `3dretarget/node`：字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式 inline retarget job；不公开文件系统遍历或通用 ZIP API。
 - `3dretarget/validation`：可序列化的语义验证结果。

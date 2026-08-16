@@ -20,6 +20,11 @@ registry publication promise.
   rigged glTF uses the separate coarse `runRiggedGLTFPipeline` operation, which
   preserves the same complete input-to-Animated-GLB boundary without exposing
   glTF-Transform or Three.js objects.
+- `3dretarget/browser/input` is the stable input-preparation-only subset. It
+  preserves the same `prepareBrowserAssetInput()` contract and dedicated
+  Worker URL without including retarget pipelines or format parser runtimes in
+  the entry module graph. The full browser entry re-exports it for
+  compatibility.
 - `3dretarget/io` accepts and returns bytes and serializable data only.
 - `3dretarget/node` exposes the byte IO surface, an isolated
   `runNodeToolJob` contract for deterministic artifact authoring/validation,
@@ -42,5 +47,7 @@ case must first earn a coarse contract rather than exporting an internal file.
 
 `scripts/verify-package.mjs` enforces declaration boundaries, size baselines,
 tarball installation and imports, a strict TypeScript consumer compile, the
-relative browser Worker URL, and request/result execution through both packed
-browser and Node tooling Workers. See [Node artifact tooling](node-artifact-tooling.md).
+relative browser Worker URLs, a production bundle of the packed browser-input
+entry with runtime/module deny lists, and request/result execution through the
+packed retarget and Node tooling Workers. See
+[Node artifact tooling](node-artifact-tooling.md).

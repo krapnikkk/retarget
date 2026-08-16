@@ -21,6 +21,10 @@
       "types": "./dist/browser/index.d.ts",
       "import": "./dist/browser/index.js"
     },
+    "./browser/input": {
+      "types": "./dist/browser/input.d.ts",
+      "import": "./dist/browser/input.js"
+    },
     "./io": {
       "types": "./dist/io.d.ts",
       "import": "./dist/io.js"

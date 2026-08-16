@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { build as viteBuild } from "vite";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
@@ -54,6 +55,7 @@ const contractBoundaries = {
   "dist/io.d.ts": [/\bFile\b/, /AbortSignal/, /(?:three|gltf-transform)/],
   "dist/node.d.ts": [/\bFile\b/, /(?:three|gltf-transform)/],
   "dist/browser/index.d.ts": [/(?:three|gltf-transform)/, /Object3D/],
+  "dist/browser/input.d.ts": [/(?:three|gltf-transform)/, /Object3D/],
   "dist/validation/index.d.ts": [/\bFile\b/, /(?:three|gltf-transform)/, /Object3D/],
   "dist/certification/index.d.ts": [/\bFile\b/, /(?:three|gltf-transform)/, /Object3D/],
 };
@@ -76,6 +78,9 @@ for (const declarationPath of walkDeclarations(path.join(root, "dist"))) {
 if (!existsSync(path.join(root, "dist/workers/retarget.worker.js"))) {
   throw new Error("Missing bundled browser worker");
 }
+if (!existsSync(path.join(root, "dist/workers/input-preparation.worker.js"))) {
+  throw new Error("Missing bundled input-preparation worker");
+}
 if (!existsSync(path.join(root, "dist/workers/node-tooling.worker.js"))) {
   throw new Error("Missing bundled Node tooling worker");
 }
@@ -84,6 +89,27 @@ const workerReference = 'new URL("../workers/retarget.worker.js", import.meta.ur
 if (!browserEntry.includes(workerReference)) {
   throw new Error("Browser entry does not contain the packed relative Worker URL");
 }
+const browserInputEntryPath = path.join(root, "dist/browser/input.js");
+const browserInputEntry = readFileSync(browserInputEntryPath, "utf8");
+const inputWorkerReference =
+  'new URL("../workers/input-preparation.worker.js", import.meta.url)';
+if (!browserEntry.includes(inputWorkerReference)) {
+  throw new Error("Browser compatibility entry does not contain the input Worker URL");
+}
+if (!browserInputEntry.includes(inputWorkerReference)) {
+  throw new Error("Browser input entry does not contain the packed relative Worker URL");
+}
+verifyInputIsolation(
+  "dist/browser/input.js",
+  browserInputEntry,
+  JSON.parse(readFileSync(`${browserInputEntryPath}.map`, "utf8")).sources,
+);
+const inputWorkerPath = path.join(root, "dist/workers/input-preparation.worker.js");
+verifyInputIsolation(
+  "dist/workers/input-preparation.worker.js",
+  readFileSync(inputWorkerPath, "utf8"),
+  JSON.parse(readFileSync(`${inputWorkerPath}.map`, "utf8")).sources,
+);
 
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), "3dretarget-package-"));
 try {
@@ -114,6 +140,61 @@ try {
     cwd: temporaryRoot,
     stdio: "inherit",
   });
+  writeFileSync(path.join(temporaryRoot, "browser-input-bundle.ts"), [
+    'import { prepareBrowserAssetInput } from "3dretarget/browser/input";',
+    'export const prepare = prepareBrowserAssetInput;',
+    '',
+  ].join("\n"));
+  const packedInputBundle = await viteBuild({
+    root: temporaryRoot,
+    configFile: false,
+    logLevel: "silent",
+    build: {
+      write: false,
+      minify: false,
+      target: "es2022",
+      rollupOptions: {
+        input: path.join(temporaryRoot, "browser-input-bundle.ts"),
+      },
+    },
+  });
+  const packedInputOutputs = (Array.isArray(packedInputBundle)
+    ? packedInputBundle.flatMap((result) => result.output)
+    : packedInputBundle.output);
+  const packedInputCode = packedInputOutputs.map((output) =>
+    output.type === "chunk"
+      ? output.code
+      : typeof output.source === "string"
+        ? output.source
+        : Buffer.from(output.source).toString("utf8")
+  ).join("\n");
+  const packedInputModules = packedInputOutputs.flatMap((output) =>
+    output.type === "chunk" ? Object.keys(output.modules) : []
+  );
+  const packedInputBytes = packedInputOutputs.reduce(
+    (total, output) => total + (output.type === "chunk"
+      ? Buffer.byteLength(output.code)
+      : typeof output.source === "string"
+        ? Buffer.byteLength(output.source)
+        : output.source.byteLength),
+    0,
+  );
+  verifyInputIsolation(
+    "packed browser-input production bundle",
+    packedInputCode,
+    packedInputModules,
+  );
+  if (!packedInputCode.includes("input-preparation.worker")) {
+    throw new Error("Packed browser-input production bundle lost its Worker URL");
+  }
+  if (packedInputBytes > sizeBaseline.packedBrowserInputBundleMaxBytes) {
+    throw new Error(
+      `Packed browser-input production bundle is ${packedInputBytes} bytes; local baseline allows ${sizeBaseline.packedBrowserInputBundleMaxBytes}`,
+    );
+  }
+  console.log(
+    `[ok] production-bundled packed browser input (${packedInputBytes} bytes) without unrelated format runtimes`,
+  );
   writeFileSync(path.join(temporaryRoot, "node-tooling-smoke.mjs"), [
     'import { runNodeToolJob } from "3dretarget/node";',
     'const motion = {',
@@ -211,11 +292,12 @@ try {
     'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "3dretarget";',
     'import { importBVH, importGLTFAnimationBytes } from "3dretarget/io";',
     'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "3dretarget/node";',
-    'import { getRetargetPipeline, prepareBrowserAssetInput, runRetargetJob, runRiggedGLTFPipeline, type BrowserInputSelection } from "3dretarget/browser";',
+    'import { getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline } from "3dretarget/browser";',
+    'import { prepareBrowserAssetInput, type BrowserInputSelection } from "3dretarget/browser/input";',
     'import { validateHumanoidMotionSemantics } from "3dretarget/validation";',
     'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "3dretarget/certification";',
     'void [createRetargetError, formats, importBVH, importGLTFAnimationBytes];',
-    'void [runNodeToolJob, runRetargetJobInline, runRetargetJob];',
+    'void [runNodeToolJob, runRetargetJobInline, runRetargetJob, prepareBrowserAssetInputCompat];',
     'const nodeToolTask: NodeToolTask = { type: "validate-artifact", artifactName: "typing.vrm", bytes: new ArrayBuffer(0), format: "vrm" };',
     'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("3dretarget").RetargetError["code"] = result.error.code; void code; } });',
     'type RiggedPipelineOutput = Awaited<ReturnType<typeof runRiggedGLTFPipeline>>["output"];',
@@ -255,4 +337,35 @@ function walkDeclarations(directory) {
     if (entry.isDirectory()) return walkDeclarations(absolute);
     return entry.isFile() && entry.name.endsWith(".d.ts") ? [absolute] : [];
   });
+}
+
+function verifyInputIsolation(label, code, sources = []) {
+  const forbiddenCode = [
+    /@moeru\/three-mmd/,
+    /\bVmdObject\b/,
+    /\bFBXLoader\b/,
+    /AmmoFactory|ammo\.wasm/i,
+    /executeRetargetJob/,
+  ];
+  for (const pattern of forbiddenCode) {
+    if (pattern.test(code)) {
+      throw new Error(`${label} contains unrelated runtime marker ${pattern}`);
+    }
+  }
+  const forbiddenSource = [
+    /@moeru\/three-mmd/,
+    /src[\\/]import[\\/]vmd/,
+    /src[\\/]import[\\/]fbx-motion/,
+    /FBXLoader/,
+    /execute-retarget-job/,
+    /dist[\\/]browser[\\/]index\.js/,
+    /retarget\.worker/,
+  ];
+  for (const source of sources) {
+    for (const pattern of forbiddenSource) {
+      if (pattern.test(source)) {
+        throw new Error(`${label} includes unrelated module ${source}`);
+      }
+    }
+  }
 }

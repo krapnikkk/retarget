@@ -2,9 +2,13 @@
 
 [简体中文](../zh-CN/architecture/browser-input-preparation.md)
 
-`3dretarget/browser` exposes `prepareBrowserAssetInput()` as the coarse boundary
-between host-owned file acquisition and library-owned, untrusted input
-preparation. This API does not own picker UI or persist browser permissions.
+`3dretarget/browser/input` exposes `prepareBrowserAssetInput()` as the coarse
+boundary between host-owned file acquisition and library-owned, untrusted
+input preparation. `3dretarget/browser` re-exports the same API for
+compatibility. The input-only entry exists because production bundle evidence
+shows that the full browser entry also carries retarget pipelines and
+format-specific runtimes. Neither entry owns picker UI or persists browser
+permissions.
 
 ## Ownership boundary
 
@@ -71,6 +75,12 @@ error codes, and success-result structure. Malformed messages fail closed with
 untrusted preparation never silently falls back to the main thread.
 `AbortSignal`, deadlines, `messageerror`, clone errors, and progress-callback
 failures all terminate the active Worker through the same cleanup path.
+
+The package gate installs the packed tarball into a temporary consumer, builds
+`3dretarget/browser/input` with a production bundler, and checks the emitted
+code plus source-module evidence. The entry and its Worker must exclude MMD,
+VMD, Ammo, FBX loader, and full retarget-job markers, while independent size
+baselines cover the input surface, Worker, and consumer bundle.
 
 Progress uses the dedicated phase union:
 
