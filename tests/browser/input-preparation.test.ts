@@ -7,6 +7,11 @@ import {
   resolveBrowserInputPreparationBudget,
 } from "@/browser/input-preparation-budget";
 import { executeBrowserInputPreparation } from "@/browser/input-preparation-worker";
+import { assertBrowserInputPreparationRequest } from "@/browser/input-preparation-request-protocol";
+import {
+  assertBrowserInputPreparationResponse,
+  BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
+} from "@/browser/input-preparation-protocol";
 import type {
   BrowserInputPreparationRequest,
   BrowserInputPreparationResponse,
@@ -135,6 +140,7 @@ describe("browser input preparation worker", () => {
     ]);
     const result = await executeBrowserInputPreparation(
       {
+        schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
         jobId: "directory-input-test",
         deadlineMs: budget.maxElapsedMs,
         task: {
@@ -186,6 +192,7 @@ describe("browser input preparation worker", () => {
 describe("public browser input preparation client", () => {
   afterEach(() => {
     PendingPreparationWorker.instances = [];
+    SuccessfulPreparationWorker.urls = [];
     vi.unstubAllGlobals();
   });
 
@@ -225,6 +232,13 @@ describe("public browser input preparation client", () => {
       },
     );
 
+    expect(SuccessfulPreparationWorker.urls).toHaveLength(1);
+    expect(String(SuccessfulPreparationWorker.urls[0])).toMatch(
+      /\/workers\/input-preparation\.worker\.js$/,
+    );
+    expect(String(SuccessfulPreparationWorker.urls[0])).not.toContain(
+      "retarget.worker",
+    );
     const transferable = await prepared.collectTransferable();
     expect(progress).toEqual(["discover", "complete"]);
     expect(transferable?.primaryPath).toBe("motion/walk.bvh");
@@ -238,9 +252,74 @@ describe("public browser input preparation client", () => {
       code: "PACKAGE_INVALID",
     });
   });
+
+  it("fails closed on malformed Worker responses", async () => {
+    vi.stubGlobal("Worker", InvalidPreparationWorker);
+
+    await expect(
+      prepareBrowserAssetInput(new File([BVH], "walk.bvh"), {
+        role: "motion",
+      }),
+    ).rejects.toMatchObject({ code: "WORKER_PROTOCOL_INVALID" });
+  });
+
+  it("terminates the Worker when a progress callback fails", async () => {
+    vi.stubGlobal("Worker", SuccessfulPreparationWorker);
+
+    await expect(
+      prepareBrowserAssetInput(new File([BVH], "walk.bvh"), {
+        role: "motion",
+        onProgress() {
+          throw new Error("consumer callback failed");
+        },
+      }),
+    ).rejects.toMatchObject({ code: "RETARGET_JOB_FAILED" });
+  });
+});
+
+describe("browser input preparation runtime protocol", () => {
+  it("validates bounded requests and matching responses", () => {
+    const preparedRequest = request(new File([BVH], "walk.bvh"), "motion");
+    expect(() => assertBrowserInputPreparationRequest(preparedRequest)).not.toThrow();
+    expect(() => assertBrowserInputPreparationResponse({
+      schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
+      jobId: preparedRequest.jobId,
+      type: "progress",
+      phase: "probe",
+      progress: 0.5,
+    }, preparedRequest)).not.toThrow();
+  });
+
+  it("rejects unsupported versions, inconsistent budgets, and malformed responses", () => {
+    const preparedRequest = request(new File([BVH], "walk.bvh"), "motion");
+    expect(() => assertBrowserInputPreparationRequest({
+      ...preparedRequest,
+      schemaVersion: 99,
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+    expect(() => assertBrowserInputPreparationRequest({
+      ...preparedRequest,
+      deadlineMs: preparedRequest.deadlineMs + 1,
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+    expect(() => assertBrowserInputPreparationResponse({
+      schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
+      jobId: "another-job",
+      type: "progress",
+      phase: "probe",
+      progress: 2,
+    }, preparedRequest)).toThrow(
+      expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }),
+    );
+  });
 });
 
 class SuccessfulPreparationWorker extends EventTarget {
+  static urls: Array<string | URL> = [];
+
+  constructor(url: string | URL) {
+    super();
+    SuccessfulPreparationWorker.urls.push(url);
+  }
+
   postMessage(message: BrowserInputPreparationRequest) {
     const primary = new File([BVH], "walk.bvh");
     const license = new Blob(["CC0"]);
@@ -249,6 +328,7 @@ class SuccessfulPreparationWorker extends EventTarget {
         "message",
         {
           data: {
+            schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
             jobId: message.jobId,
             type: "progress",
             phase: "discover",
@@ -260,6 +340,7 @@ class SuccessfulPreparationWorker extends EventTarget {
         "message",
         {
           data: {
+            schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
             jobId: message.jobId,
             type: "progress",
             phase: "complete",
@@ -271,6 +352,7 @@ class SuccessfulPreparationWorker extends EventTarget {
         "message",
         {
           data: {
+            schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
             jobId: message.jobId,
             type: "success",
             result: {
@@ -333,9 +415,28 @@ class PendingPreparationWorker extends EventTarget {
   }
 }
 
+class InvalidPreparationWorker extends EventTarget {
+  postMessage(message: BrowserInputPreparationRequest) {
+    queueMicrotask(() => {
+      this.dispatchEvent(new MessageEvent("message", {
+        data: {
+          schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
+          jobId: message.jobId,
+          type: "progress",
+          phase: "probe",
+          progress: 2,
+        },
+      }));
+    });
+  }
+
+  terminate() {}
+}
+
 function request(file: File, role: "avatar" | "motion") {
   const budget = resolveBrowserInputPreparationBudget(role);
   return {
+    schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
     jobId: "input-test",
     deadlineMs: budget.maxElapsedMs,
     task: {

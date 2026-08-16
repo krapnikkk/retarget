@@ -8,6 +8,7 @@ export default defineConfig({
     "browser/index": "src/browser/index.ts",
     "validation/index": "src/validation/index.ts",
     "certification/index": "src/certification/index.ts",
+    "workers/input-preparation.worker": "src/workers/input-preparation.worker.ts",
     "workers/retarget.worker": "src/workers/retarget.worker.ts",
     "workers/node-tooling.worker": "src/workers/node-tooling.worker.ts",
   },

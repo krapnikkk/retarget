@@ -14,6 +14,11 @@ work instead of merely suppressing a stale callback. Requests and
 results use structured messages with a job id, progress phase, error code, and
 transferable `ArrayBuffer` payloads.
 
+Bounded browser input preparation uses the separate
+`src/workers/input-preparation.worker.ts` entry. The retarget Worker accepts
+only retarget protocol tasks and cannot route input-preparation requests into
+the solver/importer graph.
+
 `runRetargetJob()` uses `bufferOwnership: "copy"` by default: it clones the
 task first, transfers only the worker-owned clone, and leaves caller buffers
 attached. Trusted high-throughput callers may explicitly select `"transfer"`;

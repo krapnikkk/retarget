@@ -40,7 +40,9 @@ ZIP 与目录中的主文件选择遵循相同规则。存在零个或多个内�
 
 ## Worker 与进度
 
-浏览器输入准备复用打包后的 `dist/workers/retarget.worker.js`。无法创建隔离 Worker 时以 `WORKER_UNAVAILABLE` 失败，绝不静默退回主线程处理不可信输入。`AbortSignal` 会终止活动 Worker。
+浏览器输入准备运行在打包后的专用 `dist/workers/input-preparation.worker.js` 中。该 Worker 只包含有界发现、探测、归档/资源包处理与 transferable 构造，不与重定向求解器或格式解析器运行时图共享边界；重定向 Worker 仍是独立的操作边界。
+
+输入准备消息使用 schema version `1`。双方都会校验请求/响应判别字段、任务 ID、角色、预算、进度、已注册错误码与成功结果结构。畸形消息以 `WORKER_PROTOCOL_INVALID` fail-closed；创建失败使用 `WORKER_UNAVAILABLE`，不可信输入准备绝不静默退回主线程。`AbortSignal`、截止时间、`messageerror`、克隆异常与进度回调异常统一终止活动 Worker，并进入同一清理路径。
 
 进度使用专用阶段联合：
 

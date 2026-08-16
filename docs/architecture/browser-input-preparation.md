@@ -58,10 +58,19 @@ large reads or decompression.
 
 ## Worker and progress
 
-Browser preparation reuses the packed package Worker at
-`dist/workers/retarget.worker.js`. It fails with `WORKER_UNAVAILABLE` when an
-isolated Worker cannot be created and never silently runs untrusted preparation
-on the main thread. `AbortSignal` terminates the active Worker.
+Browser preparation runs in the dedicated packed Worker at
+`dist/workers/input-preparation.worker.js`. That Worker contains bounded
+discovery, probing, archive/package handling, and transferable construction;
+it does not share the retarget solver or format parser runtime graph. The
+retarget Worker remains a separate operation boundary.
+
+Preparation messages use schema version `1`. Both sides validate request and
+response discriminators, job identity, role, budgets, progress, registered
+error codes, and success-result structure. Malformed messages fail closed with
+`WORKER_PROTOCOL_INVALID`. Creation failures use `WORKER_UNAVAILABLE`, and
+untrusted preparation never silently falls back to the main thread.
+`AbortSignal`, deadlines, `messageerror`, clone errors, and progress-callback
+failures all terminate the active Worker through the same cleanup path.
 
 Progress uses the dedicated phase union:
 

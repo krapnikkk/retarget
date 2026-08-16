@@ -3,12 +3,14 @@ import {
   releaseAssetPackage,
   restoreAssetPackageContext,
 } from "@/import/asset-package";
-import { createRetargetWorker } from "@/jobs/browser-retarget-job";
 import { RetargetError } from "@/retarget/errors";
 import { resolveBrowserInputPreparationBudget } from "./input-preparation-budget";
+import {
+  assertBrowserInputPreparationResponse,
+  BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
+} from "./input-preparation-protocol";
 import type {
   BrowserInputPreparationRequest,
-  BrowserInputPreparationResponse,
   BrowserInputPreparationSource,
 } from "./input-preparation-protocol";
 import type {
@@ -29,6 +31,7 @@ export async function prepareBrowserAssetInput(
   signal?.throwIfAborted();
   const budget = resolveBrowserInputPreparationBudget(role, budgetOverrides);
   const request: BrowserInputPreparationRequest = {
+    schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),
     deadlineMs: budget.maxElapsedMs,
     task: {
@@ -42,74 +45,111 @@ export async function prepareBrowserAssetInput(
   return new Promise<PreparedBrowserAssetInput>((resolve, reject) => {
     let worker: Worker;
     try {
-      worker = createRetargetWorker(`input-${request.jobId}`);
+      worker = createInputPreparationWorker(request.jobId);
     } catch (cause) {
       reject(cause);
       return;
     }
-    const timeout = globalThis.setTimeout(() => {
-      cleanup();
-      reject(new RetargetError("PROCESSING_DEADLINE_EXCEEDED", {
-        details: { limit: budget.maxElapsedMs, phase: "input-worker" },
-        message: "Browser input preparation exceeded its processing deadline.",
-      }));
-    }, budget.maxElapsedMs);
+    let settled = false;
+    let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
     const cleanup = () => {
-      globalThis.clearTimeout(timeout);
+      if (timeout !== undefined) globalThis.clearTimeout(timeout);
       signal?.removeEventListener("abort", abort);
+      worker.removeEventListener("error", onError);
+      worker.removeEventListener("message", onMessage);
+      worker.removeEventListener("messageerror", onMessageError);
       worker.terminate();
     };
-    const abort = () => {
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
       cleanup();
-      reject(createAbortError());
+      reject(error);
     };
-    signal?.addEventListener("abort", abort, { once: true });
-    worker.addEventListener("error", (event) => {
+    const succeed = (result: PreparedBrowserAssetInput) => {
+      if (settled) return;
+      settled = true;
       cleanup();
-      reject(new RetargetError("RETARGET_JOB_FAILED", {
+      resolve(result);
+    };
+    const abort = () => fail(createAbortError());
+    const onError = (event: ErrorEvent) => {
+      fail(new RetargetError("RETARGET_JOB_FAILED", {
         message: event.message || "Browser input preparation Worker failed.",
       }));
-    });
-    worker.addEventListener(
-      "message",
-      (event: MessageEvent<BrowserInputPreparationResponse>) => {
-        const response = event.data;
-        if (!response || response.jobId !== request.jobId) return;
-        if (response.type === "progress") {
+    };
+    const onMessageError = () => {
+      fail(new RetargetError("WORKER_PROTOCOL_INVALID", {
+        message: "Browser input preparation Worker returned an unreadable message.",
+      }));
+    };
+    const onMessage = (event: MessageEvent<unknown>) => {
+      const response = event.data;
+      try {
+        assertBrowserInputPreparationResponse(response, request);
+      } catch (cause) {
+        fail(cause);
+        return;
+      }
+      if (response.type === "progress") {
+        try {
           onProgress?.({
             phase: response.phase,
             progress: response.progress,
           });
-          return;
+        } catch (cause) {
+          fail(new RetargetError("RETARGET_JOB_FAILED", {
+            cause,
+            message: "Browser input preparation progress callback failed.",
+          }));
         }
-        cleanup();
-        if (response.type === "failure") {
-          const error = new RetargetError(response.error.code, {
-            details: response.error.details,
-            message: response.error.message,
-          });
-          error.name = response.error.name;
-          reject(error);
-          return;
-        }
+        return;
+      }
+      if (response.type === "failure") {
+        const error = new RetargetError(response.error.code, {
+          details: response.error.details,
+          message: response.error.message,
+        });
+        error.name = response.error.name;
+        fail(error);
+        return;
+      }
 
-        const { entries, file, report, selection } = response.result;
-        if (report && entries) {
-          restoreAssetPackageContext(file, report, entries);
-        }
-        resolve(createPreparedResult(file, report, selection));
-      },
-    );
+      const { entries, file, report, selection } = response.result;
+      if (report && entries) {
+        restoreAssetPackageContext(file, report, entries);
+      }
+      succeed(createPreparedResult(file, report, selection));
+    };
+    timeout = globalThis.setTimeout(() => {
+      fail(new RetargetError("PROCESSING_DEADLINE_EXCEEDED", {
+        details: { limit: budget.maxElapsedMs, phase: "input-worker" },
+        message: "Browser input preparation exceeded its processing deadline.",
+      }));
+    }, budget.maxElapsedMs);
+    signal?.addEventListener("abort", abort, { once: true });
+    worker.addEventListener("error", onError);
+    worker.addEventListener("message", onMessage);
+    worker.addEventListener("messageerror", onMessageError);
     try {
       worker.postMessage(request);
     } catch (cause) {
-      cleanup();
-      reject(new RetargetError("PACKAGE_INVALID", {
+      fail(new RetargetError("PACKAGE_INVALID", {
         cause,
         message: "The browser input could not be cloned into the isolated Worker.",
       }));
     }
   });
+}
+
+function createInputPreparationWorker(jobId: string) {
+  if (typeof Worker === "undefined") {
+    throw new RetargetError("WORKER_UNAVAILABLE");
+  }
+  return new Worker(
+    new URL("../workers/input-preparation.worker.js", import.meta.url),
+    { name: `input-${jobId}`, type: "module" },
+  );
 }
 
 function createPreparedResult(

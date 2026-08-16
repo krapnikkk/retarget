@@ -8,6 +8,8 @@
 
 `src/workers/retarget.worker.ts` 每个 Worker 运行一个隔离任务。浏览器客户端在取消或超时时终止该 Worker，因此取消会真正停止 CPU 工作，而不只是忽略过期回调。请求和结果使用结构化消息，包含任务 ID、进度阶段、错误码及可转移的 `ArrayBuffer` 负载。
 
+有界浏览器输入准备使用独立的 `src/workers/input-preparation.worker.ts` 入口。重定向 Worker 只接受重定向协议任务，不能再把输入准备请求路由进求解器/importer 图。
+
 `runRetargetJob()` 默认使用 `bufferOwnership: "copy"`：先克隆任务，只转移
 Worker 拥有的副本，调用方缓冲区不会 detached。受信任且追求吞吐的调用方可显式选择
 `"transfer"`，并接受其输入缓冲区立即失效。transfer list 会递归收集并按缓冲区身份
