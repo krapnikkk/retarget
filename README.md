@@ -7,7 +7,7 @@ bounded format probing, source normalization, canonical motion, rig inspection,
 target solving, semantic validation, export, format-safety validation, and a
 cancellable browser Worker runtime plus isolated Node artifact tooling.
 
-Version `0.5.0` is distributed as a locally packed, controlled preview. The
+Version `0.6.0` is distributed as a locally packed, controlled preview. The
 package remains private in registry metadata to prevent accidental registry
 publication; downstream consumers install and pin the exact tarball. Its
 roadmap and readiness are determined by reusable retargeting capabilities
@@ -46,14 +46,14 @@ Committed fixtures include provenance and hashes.
 
 ## Local controlled release
 
-Install the immutable `0.5.0` tarball supplied by the maintainer:
+Install the immutable `0.6.0` tarball supplied by the maintainer:
 
 ```powershell
-pnpm add C:\path\to\3dretarget-0.5.0.tgz
+pnpm add C:\path\to\3dretarget-0.6.0.tgz
 ```
 
 Consumers must pin the exact package version and use the documented public
-entries. Package version `0.5.0` denotes initial API development; capability
+entries. Package version `0.6.0` denotes initial API development; capability
 assurance remains case-scoped as `experimental`, `beta`, or `certified`.
 Experimental paths are available for evaluation but are not supported as
 production-compatible combinations. The supported Node toolchain is the
