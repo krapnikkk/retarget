@@ -45,7 +45,7 @@ describe("browser input preparation worker", () => {
       container: "bvh",
     });
     expect(result.selection.bytesInspected).toBeLessThanOrEqual(
-      resolveBrowserInputPreparationBudget("motion").maxProbeBytes,
+      resolveBrowserInputPreparationBudget().maxProbeBytes,
     );
     expect(result.selection.evidence).toContainEqual({
       code: "container-signature",
@@ -133,7 +133,7 @@ describe("browser input preparation worker", () => {
   });
 
   it("owns directory traversal after the host supplies a handle", async () => {
-    const budget = resolveBrowserInputPreparationBudget("motion");
+    const budget = resolveBrowserInputPreparationBudget();
     const handle = directory("motion-project", [
       fileHandle("walk.data", BVH),
       fileHandle("LICENSE.txt", "CC0"),
@@ -179,16 +179,16 @@ describe("browser input preparation worker", () => {
 
   it("rejects invalid limits while allowing callers to choose larger policies", () => {
     expect(() =>
-      resolveBrowserInputPreparationBudget("motion", { maxEntries: 0 }),
+      resolveBrowserInputPreparationBudget({ maxEntries: 0 }),
     ).toThrow(expect.objectContaining({ code: "PROCESSING_OPTION_INVALID" }));
-    const resolved = resolveBrowserInputPreparationBudget("motion", {
+    const resolved = resolveBrowserInputPreparationBudget({
       maxEntries: 1024,
       maxElapsedMs: 600_000,
     });
     expect(resolved.maxCompressedBytes).toBeUndefined();
     expect(resolved.maxEntries).toBe(1024);
     expect(resolved.maxElapsedMs).toBe(600_000);
-    expect(resolveBrowserInputPreparationBudget("motion")).toMatchObject({
+    expect(resolveBrowserInputPreparationBudget()).toMatchObject({
       maxEntries: undefined,
       maxCompressedBytes: undefined,
       maxElapsedMs: undefined,
@@ -445,7 +445,7 @@ class InvalidPreparationWorker extends EventTarget {
 }
 
 function request(file: File, role: "avatar" | "motion") {
-  const budget = resolveBrowserInputPreparationBudget(role);
+  const budget = resolveBrowserInputPreparationBudget();
   return {
     schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
     jobId: "input-test",

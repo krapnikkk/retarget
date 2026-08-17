@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  findAvatarImportAdapter,
-  vrmAvatarAdapter,
-} from "@/adapters/avatar";
-import {
-  findMotionImportAdapter,
-  mixamoFbxMotionAdapter,
-} from "@/adapters/motion";
+import { findAvatarImportAdapter } from "@/adapters/avatar";
+import { findMotionImportAdapter } from "@/adapters/motion";
 import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { importedMotionToAvatarPipelines } from "@/pipelines/imported-motion-to-avatar";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
@@ -19,11 +13,9 @@ import { restoreAssetPackageContext } from "@/import/asset-package";
 
 vi.mock("@/adapters/avatar", () => ({
   findAvatarImportAdapter: vi.fn(),
-  vrmAvatarAdapter: { probe: vi.fn() },
 }));
 vi.mock("@/adapters/motion", () => ({
   findMotionImportAdapter: vi.fn(),
-  mixamoFbxMotionAdapter: { probe: vi.fn(), importMotion: vi.fn() },
 }));
 vi.mock("@/browser/avatar-target-pipeline", () => ({
   bindMotionClipToAvatar: vi.fn(),
@@ -54,17 +46,16 @@ describe("generic humanoid pipeline options", () => {
       importMotion: vi.fn().mockResolvedValue(sourceClip),
     });
     vi.mocked(findAvatarImportAdapter).mockResolvedValue({
-      id: "gltf-humanoid",
-      label: "glTF humanoid",
+      id: "vrm",
+      label: "VRM",
       maturity: "active",
-      profileId: "generic-gltf-humanoid",
+      profileId: "vrm-humanoid",
       probe: vi.fn(),
     });
     vi.mocked(bindMotionClipToAvatar).mockResolvedValue(solvedClip);
     vi.mocked(runRetargetJob).mockResolvedValue(sourceClip);
     const pipeline = importedMotionToAvatarPipelines.find(
-      (candidate) =>
-        candidate.id === "bvh-to-gltf-humanoid-to-gltf-animation",
+      (candidate) => candidate.id === "bvh-to-vrm-to-baked-vrm",
     )!;
     const solveOptions = {
       armOffsetDegrees: 12,
@@ -80,7 +71,7 @@ describe("generic humanoid pipeline options", () => {
     await expect(
       pipeline.retarget({
         motionFile: new File([], "walk.bvh"),
-        avatarFile: new File([], "avatar.glb"),
+        avatarFile: new File([], "avatar.vrm"),
         solveOptions,
         mapping,
         signal: controller.signal,
@@ -180,57 +171,5 @@ describe("generic humanoid pipeline options", () => {
     const transferredSidecar = importTask.resources?.["motion.bin"];
     expect(transferredSidecar).toBeInstanceOf(ArrayBuffer);
     expect([...new Uint8Array(transferredSidecar!)]).toEqual([...sidecar]);
-  });
-
-  it("keeps the Mixamo-to-VRM probe experimental and preserves public errors", async () => {
-    const pipeline = importedMotionToAvatarPipelines.find(
-      (candidate) => candidate.id === "mixamo-fbx-to-vrm-to-vrma",
-    )!;
-    const input = {
-      motionFile: new File([], "walk.fbx"),
-      avatarFile: new File([], "avatar.vrm"),
-      solveOptions: {
-        armOffsetDegrees: 0,
-        heightScale: 1,
-        rootMotion: true,
-      },
-      mapping: DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
-    };
-
-    expect(pipeline).toMatchObject({ assurance: "experimental", availability: "hidden" });
-    vi.mocked(mixamoFbxMotionAdapter.probe).mockResolvedValue({
-      bytesInspected: 0,
-      confidence: 0.34,
-      contentSignature: false,
-      evidence: [],
-      evidenceDetails: [],
-      profile: "mixamo",
-      warnings: [],
-    });
-    await expect(pipeline.retarget(input)).rejects.toMatchObject({
-      code: "FBX_PARSE_FAILED",
-    });
-
-    vi.mocked(mixamoFbxMotionAdapter.probe).mockResolvedValue({
-      bytesInspected: 0,
-      confidence: 0.8,
-      contentSignature: true,
-      evidence: [],
-      evidenceDetails: [],
-      profile: "mixamo",
-      warnings: [],
-    });
-    vi.mocked(vrmAvatarAdapter.probe).mockResolvedValue({
-      bytesInspected: 0,
-      confidence: 0.34,
-      contentSignature: false,
-      evidence: [],
-      evidenceDetails: [],
-      profile: "vrm-humanoid",
-      warnings: [],
-    });
-    await expect(pipeline.retarget(input)).rejects.toMatchObject({
-      code: "VRM_PARSE_FAILED",
-    });
   });
 });

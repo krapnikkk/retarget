@@ -20,9 +20,6 @@ importers:
       '@pixiv/three-vrm':
         specifier: 3.5.3
         version: 3.5.3(three@0.184.0)
-      '@pixiv/three-vrm-animation':
-        specifier: 3.5.3
-        version: 3.5.3(three@0.184.0)
       gltf-transform-vrm-extensions:
         specifier: 0.1.6
         version: 0.1.6(@gltf-transform/core@4.3.0)
@@ -272,11 +269,6 @@ packages:
   '@oxc-project/types@0.144.0':
     resolution: {integrity: sha512-nuhZIOLuI6TFQ32I/WnUx+SCPY7SdSKwgnFHydAuoS1+Z4BRcaP+RRJmGzl9lw+0OFF7UmaESf7KQRXaNLHypg==}
 
-  '@pixiv/three-vrm-animation@3.5.3':
-    resolution: {integrity: sha512-3zcp8TfPZdVX2y0Tgff9HmLl7KlEQ7WfeTSdmmZzEJpauzqxCK609TOtpQQnFASZBtMsCLt5XIH3B+I1VRfuTw==}
-    peerDependencies:
-      three: '>=0.137'
-
   '@pixiv/three-vrm-core@3.5.3':
     resolution: {integrity: sha512-iZDOkOxOnvT8vGPE2SgNRee3fQw/u11y4MULE9VPXN/LKSf946aVi+YfVnnMBRdwMfQ2uBNHxUvkIQlRIkXnHQ==}
     peerDependencies:
@@ -332,9 +324,6 @@ packages:
 
   '@pixiv/types-vrmc-vrm-1.0@3.5.3':
     resolution: {integrity: sha512-3HsBZWKXU/CnY2J6uAVuYmM0NPt/e5jroQZH85WYK0EzYmebqTmWKF/fllguNliJQAovdhn8sIA8NbHZoQvbUA==}
-
-  '@pixiv/types-vrmc-vrm-animation-1.0@3.5.3':
-    resolution: {integrity: sha512-SwwHofRepbZVvseIXIC3THA3Z/EKULOH2JJR9NjHRGOUdDcrIkQuQaZ0ml99P47EaUx5vwSlG7C7FEM9+ByvTQ==}
 
   '@rolldown/binding-android-arm64@1.2.4':
     resolution: {integrity: sha512-jHC2cnyKz5xU2fhECtFl8OZ83cYNt13GZQD+0uMJ/X3o+ijmd56okHhTUwxVSHPx1IRVIJEZ1/1pPzeLCU6XKA==}
@@ -1239,13 +1228,6 @@ snapshots:
 
   '@oxc-project/types@0.144.0': {}
 
-  '@pixiv/three-vrm-animation@3.5.3(three@0.184.0)':
-    dependencies:
-      '@pixiv/three-vrm-core': 3.5.3(three@0.184.0)
-      '@pixiv/types-vrmc-vrm-1.0': 3.5.3
-      '@pixiv/types-vrmc-vrm-animation-1.0': 3.5.3
-      three: 0.184.0
-
   '@pixiv/three-vrm-core@3.5.3(three@0.184.0)':
     dependencies:
       '@pixiv/types-vrm-0.0': 3.5.3
@@ -1304,10 +1286,6 @@ snapshots:
   '@pixiv/types-vrmc-springbone-extended-collider-1.0@3.5.3': {}
 
   '@pixiv/types-vrmc-vrm-1.0@3.5.3': {}
-
-  '@pixiv/types-vrmc-vrm-animation-1.0@3.5.3':
-    dependencies:
-      '@pixiv/types-vrmc-vrm-1.0': 3.5.3
 
   '@rolldown/binding-android-arm64@1.2.4':
     optional: true

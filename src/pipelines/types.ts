@@ -2,7 +2,6 @@ import type {
   AvatarExportFormatId,
   AvatarFormatId,
   CapabilityAssurance,
-  CapabilityAvailability,
   MotionExportFormatId,
   MotionFormatId,
 } from "@/formats";
@@ -44,7 +43,6 @@ export type RetargetPipeline = {
   motionFormat: MotionFormatId;
   avatarFormat: AvatarFormatId;
   outputFormat: RetargetPipelineOutputFormatId;
-  availability: CapabilityAvailability;
   assurance: CapabilityAssurance;
   retarget(input: RetargetPipelineInput): Promise<RetargetPipelineResult>;
   run(input: RetargetPipelineInput): Promise<RetargetPipelineRunResult>;

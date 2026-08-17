@@ -38,6 +38,15 @@ describe("RetargetedMotionClip", () => {
     expect(parseMotionClip(serializeMotionClip(clip))).toEqual(clip);
   });
 
+  it("rejects clips without explicit processing evidence", () => {
+    const { processing: _, ...legacyClip } = clip;
+
+    expect(validateMotionClip(legacyClip)).toMatchObject({ ok: false });
+    expect(() => parseMotionClip(JSON.stringify(legacyClip))).toThrow(
+      /processing must describe/,
+    );
+  });
+
   it("rejects tracks with invalid sample lengths", () => {
     const result = validateMotionClip({
       ...clip,

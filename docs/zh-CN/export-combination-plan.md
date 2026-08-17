@@ -8,7 +8,7 @@
 
 | 关注点 | 权威来源 |
 |---|---|
-| 格式可用性和保证等级 | `src/formats/catalog.ts` |
+| 格式目录和保证等级 | `src/formats/catalog.ts` |
 | 可调用导出适配器 | `src/adapters/export/index.ts` |
 | 人形动作/角色配对 | `src/pipelines/registry.ts` |
 | 骨架家族输出能力 | `src/rigs/capabilities.ts` |
@@ -17,11 +17,10 @@
 
 这些来源不一致时测试必须失败。Markdown 表格永远不是启用导出的权威来源。
 
-## 状态模型
+## 保证等级模型
 
-`availability` 与 `assurance` 相互独立：
+格式目录只包含已经实现的格式；`assurance` 记录精确能力背后的证据：
 
-- `available`：兼容输入可以选择某项实现。
 - `experimental`：结构或语义证据不完整。
 - `beta`：精确用例具备锁定的结构和语义证据。
 - `certified`：还必须具备具名、锁定版本的生态兼容证据；标签本身不能提升状态。

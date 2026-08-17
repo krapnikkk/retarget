@@ -18,7 +18,6 @@ export type ProcessingBudget = {
   maxTotalSamples: number;
   maxGeneratedValues: number;
   maxOutputBytes: number;
-  softDeadlineMs?: number;
 };
 
 export const DEFAULT_PROCESSING_BUDGET = {

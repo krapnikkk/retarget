@@ -8,7 +8,6 @@
 | `@moeru/three-mmd` | 0.1.1 | MIT |
 | `@moeru/three-mmd-physics-ammo` | 0.1.1 | MIT |
 | `@pixiv/three-vrm` | 3.5.3 | MIT |
-| `@pixiv/three-vrm-animation` | 3.5.3 | MIT |
 | `gltf-transform-vrm-extensions` | 0.1.6 | MIT |
 | `three` | 0.184.0 | MIT |
 

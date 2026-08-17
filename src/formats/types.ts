@@ -1,4 +1,3 @@
-export type CapabilityAvailability = "available" | "hidden" | "planned";
 export type CapabilityAssurance = "experimental" | "beta" | "certified";
 
 export type MotionFormatId =
@@ -39,7 +38,6 @@ export type FileFormatDescriptor<TId extends string> = {
   label: string;
   extensions: readonly string[];
   mimeTypes?: readonly string[];
-  availability: CapabilityAvailability;
   assurance: CapabilityAssurance;
 };
 

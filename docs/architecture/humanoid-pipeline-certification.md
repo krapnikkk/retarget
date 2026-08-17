@@ -2,8 +2,8 @@
 
 [简体中文](../zh-CN/architecture/humanoid-pipeline-certification.md)
 
-Format availability is not evidence that a motion/avatar/export combination is
-correct. Humanoid assurance is evaluated for the complete triple:
+An implemented format is not evidence that a motion/avatar/export combination
+is correct. Humanoid assurance is evaluated for the complete triple:
 
 ```text
 motion format x avatar format x export format

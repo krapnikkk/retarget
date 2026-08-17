@@ -9,7 +9,7 @@ not duplicate the live format or adapter matrices.
 
 | Concern | Authoritative source |
 | --- | --- |
-| Format availability and assurance | `src/formats/catalog.ts` |
+| Format catalog and assurance | `src/formats/catalog.ts` |
 | Callable export adapters | `src/adapters/export/index.ts` |
 | Humanoid motion/avatar pairings | `src/pipelines/registry.ts` |
 | Rig-family output capabilities | `src/rigs/capabilities.ts` |
@@ -19,11 +19,11 @@ not duplicate the live format or adapter matrices.
 Tests must fail when these sources disagree. A Markdown table is never the
 authority for enabling an export.
 
-## State model
+## Assurance model
 
-`availability` and `assurance` are independent:
+The format catalog contains implemented formats. `assurance` records the
+evidence behind an exact capability:
 
-- `available` means an implementation can be selected for a compatible input.
 - `experimental` means structural or semantic evidence is incomplete.
 - `beta` requires locked structural and semantic evidence for the exact case.
 - `certified` additionally requires named, pinned ecosystem compatibility

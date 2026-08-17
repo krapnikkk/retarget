@@ -1,7 +1,6 @@
 import {
   MOTION_CLIP_SCHEMA_VERSION,
   type CanonicalMotion,
-  type CanonicalHumanoidMotionClip,
   type MotionTrack,
   type RetargetedMotionClip,
   isHumanoidBoneName,
@@ -66,7 +65,9 @@ export function validateMotionClip(
         issues.push("target.filename must be a non-empty string.");
       }
     }
-    if (clip.processing !== undefined) {
+    if (clip.processing === undefined) {
+      issues.push("processing must describe the canonical or solved stage.");
+    } else {
       validateProcessing(clip.processing, issues);
     }
   }
@@ -75,10 +76,7 @@ export function validateMotionClip(
     return { ok: false, issues };
   }
 
-  return {
-    ok: true,
-    clip: upgradeLegacyProcessing(clip as RetargetedMotionClip),
-  };
+  return { ok: true, clip: clip as RetargetedMotionClip };
 }
 
 function validateProcessing(value: unknown, issues: string[]) {
@@ -104,26 +102,6 @@ function validateProcessing(value: unknown, issues: string[]) {
   ) {
     issues.push("solved processing evidence must identify humanoid-custom-v4 revision 4 pass 1.");
   }
-}
-
-function upgradeLegacyProcessing(
-  clip: RetargetedMotionClip,
-): RetargetedMotionClip {
-  if (clip.processing) {
-    return clip;
-  }
-
-  return {
-    ...clip,
-    processing: {
-      stage: "canonical",
-      sourceCanonicalId: [
-        "legacy",
-        clip.source.filename,
-        clip.createdAt,
-      ].join(":"),
-    },
-  } as CanonicalHumanoidMotionClip;
 }
 
 function isSupportedTargetKind(value: unknown) {

@@ -29,7 +29,7 @@ export async function prepareBrowserAssetInput(
   }: PrepareBrowserAssetInputOptions,
 ): Promise<PreparedBrowserAssetInput> {
   signal?.throwIfAborted();
-  const budget = resolveBrowserInputPreparationBudget(role, budgetOverrides);
+  const budget = resolveBrowserInputPreparationBudget(budgetOverrides);
   const request: BrowserInputPreparationRequest = {
     schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),

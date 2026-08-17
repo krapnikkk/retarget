@@ -1,27 +1,15 @@
 import { MAX_IMPORT_PROBE_BYTES } from "@/adapters/probe";
-import type { AssetPackageRole } from "@/import/asset-package";
 import { RetargetError } from "@/retarget/errors";
 import type { BrowserInputPreparationBudget } from "./input-preparation-types";
 
-export const DEFAULT_BROWSER_INPUT_PREPARATION_BUDGETS = {
-  avatar: {
-    maxProbeBytes: MAX_IMPORT_PROBE_BYTES,
-  },
-  motion: {
-    maxProbeBytes: MAX_IMPORT_PROBE_BYTES,
-  },
-} as const satisfies Record<AssetPackageRole, BrowserInputPreparationBudget>;
-
 export function resolveBrowserInputPreparationBudget(
-  role: AssetPackageRole,
   overrides: Partial<BrowserInputPreparationBudget> = {},
 ): BrowserInputPreparationBudget {
-  const defaults = DEFAULT_BROWSER_INPUT_PREPARATION_BUDGETS[role];
   return {
     maxProbeBytes: resolveLimit(
       "maxProbeBytes",
       overrides.maxProbeBytes,
-      defaults.maxProbeBytes,
+      MAX_IMPORT_PROBE_BYTES,
     ),
     maxEntries: resolveOptionalLimit(
       "maxEntries",

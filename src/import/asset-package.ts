@@ -37,8 +37,6 @@ export type AssetPreparationLimits = {
   maxExpandedBytes?: number;
   maxSingleEntryBytes?: number;
   maxRetainedBytes?: number;
-  /** @deprecated Use maxExpandedBytes. */
-  maxTotalBytes?: number;
   selectPrimary?: (
     entries: readonly PreparedAssetPackageEntry[],
     role: AssetPackageRole,
@@ -711,7 +709,7 @@ function resolveAssetPreparationLimits(
       UNBOUNDED_INPUT_LIMIT,
     ),
     maxExpandedBytes: resolveDirectoryLimit(
-      limits.maxExpandedBytes ?? limits.maxTotalBytes,
+      limits.maxExpandedBytes,
       archive ? MAX_ARCHIVE_EXPANDED_BYTES : UNBOUNDED_INPUT_LIMIT,
     ),
     maxSingleEntryBytes: resolveDirectoryLimit(

@@ -49,10 +49,6 @@ describe("adapter registries", () => {
     return bytes;
   }
 
-  it("keeps the legacy Mixamo FBX to VRM pipeline hidden while stabilizing", () => {
-    expect(getRetargetPipeline("mixamo-fbx", "vrm", "vrma")).toBeNull();
-  });
-
   it("registers only evidence-backed complete beta combinations", () => {
     expect(RETARGET_PIPELINES.map((pipeline) => pipeline.id)).toEqual([
       "bvh-to-vrm-to-baked-vrm",
@@ -72,7 +68,6 @@ describe("adapter registries", () => {
         "animated-glb",
       ),
     ).toMatchObject({
-      availability: "available",
       assurance: "beta",
       outputFormat: "animated-glb",
       run: expect.any(Function),

@@ -11,7 +11,6 @@ export const MOTION_FORMATS = [
     role: "motion",
     label: "Mixamo FBX Motion",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -20,7 +19,6 @@ export const MOTION_FORMATS = [
     label: "VRM Animation",
     extensions: [".vrma"],
     mimeTypes: ["model/gltf-binary"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -28,7 +26,6 @@ export const MOTION_FORMATS = [
     role: "motion",
     label: "BVH Motion",
     extensions: [".bvh"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -36,7 +33,6 @@ export const MOTION_FORMATS = [
     role: "motion",
     label: "VMD Body Motion",
     extensions: [".vmd"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -45,7 +41,6 @@ export const MOTION_FORMATS = [
     label: "glTF / GLB Animation",
     extensions: [".gltf", ".glb"],
     mimeTypes: ["model/gltf+json", "model/gltf-binary"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -53,7 +48,6 @@ export const MOTION_FORMATS = [
     role: "motion",
     label: "ActorCore / Reallusion FBX Motion",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -61,7 +55,6 @@ export const MOTION_FORMATS = [
     role: "motion",
     label: "Generic Humanoid FBX Motion",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "experimental",
   },
 ] as const satisfies readonly MotionFormatDescriptor[];
@@ -73,7 +66,6 @@ export const AVATAR_FORMATS = [
     label: "VRM Avatar",
     extensions: [".vrm"],
     mimeTypes: ["model/gltf-binary"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -82,7 +74,6 @@ export const AVATAR_FORMATS = [
     label: "glTF / GLB Humanoid Avatar",
     extensions: [".gltf", ".glb"],
     mimeTypes: ["model/gltf+json", "model/gltf-binary"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -90,7 +81,6 @@ export const AVATAR_FORMATS = [
     role: "avatar",
     label: "Mixamo-rigged Avatar",
     extensions: [".fbx", ".glb"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -98,7 +88,6 @@ export const AVATAR_FORMATS = [
     role: "avatar",
     label: "Ready Player Me Avatar",
     extensions: [".glb"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -106,7 +95,6 @@ export const AVATAR_FORMATS = [
     role: "avatar",
     label: "MMD PMX / PMD Avatar",
     extensions: [".pmx", ".pmd"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -114,7 +102,6 @@ export const AVATAR_FORMATS = [
     role: "avatar",
     label: "Reallusion-compatible Avatar",
     extensions: [".fbx", ".glb"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -122,7 +109,6 @@ export const AVATAR_FORMATS = [
     role: "avatar",
     label: "Generic Humanoid FBX Avatar",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "experimental",
   },
 ] as const satisfies readonly AvatarFormatDescriptor[];
@@ -134,7 +120,6 @@ export const MOTION_EXPORT_FORMATS = [
     label: "VRMA",
     extensions: [".vrma"],
     mimeTypes: ["model/gltf-binary"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -143,7 +128,6 @@ export const MOTION_EXPORT_FORMATS = [
     label: "Motion JSON",
     extensions: [".motion.json"],
     mimeTypes: ["application/json"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -152,7 +136,6 @@ export const MOTION_EXPORT_FORMATS = [
     label: "VMD",
     extensions: [".vmd"],
     mimeTypes: ["application/octet-stream"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -160,7 +143,6 @@ export const MOTION_EXPORT_FORMATS = [
     role: "motion-export",
     label: "glTF / GLB Animation",
     extensions: [".glb", ".gltf"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -168,7 +150,6 @@ export const MOTION_EXPORT_FORMATS = [
     role: "motion-export",
     label: "BVH",
     extensions: [".bvh"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -176,7 +157,6 @@ export const MOTION_EXPORT_FORMATS = [
     role: "motion-export",
     label: "FBX Animation",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "beta",
   },
 ] as const satisfies readonly MotionExportFormatDescriptor[];
@@ -188,7 +168,6 @@ export const AVATAR_EXPORT_FORMATS = [
     label: "Animated GLB",
     extensions: [".glb"],
     mimeTypes: ["model/gltf-binary"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -197,7 +176,6 @@ export const AVATAR_EXPORT_FORMATS = [
     label: "VRM + external VRMA",
     extensions: [".zip"],
     mimeTypes: ["application/zip"],
-    availability: "available",
     assurance: "beta",
   },
   {
@@ -205,7 +183,6 @@ export const AVATAR_EXPORT_FORMATS = [
     role: "avatar-export",
     label: "VRM 1.0 with embedded animation (experimental)",
     extensions: [".vrm"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -213,7 +190,6 @@ export const AVATAR_EXPORT_FORMATS = [
     role: "avatar-export",
     label: "Animated FBX",
     extensions: [".fbx"],
-    availability: "available",
     assurance: "experimental",
   },
   {
@@ -221,7 +197,6 @@ export const AVATAR_EXPORT_FORMATS = [
     role: "avatar-export",
     label: "PMX Motion Morphs",
     extensions: [".pmx"],
-    availability: "available",
     assurance: "experimental",
   },
 ] as const satisfies readonly AvatarExportFormatDescriptor[];

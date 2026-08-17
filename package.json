@@ -78,7 +78,6 @@
     "@moeru/three-mmd": "0.1.1",
     "@moeru/three-mmd-physics-ammo": "0.1.1",
     "@pixiv/three-vrm": "3.5.3",
-    "@pixiv/three-vrm-animation": "3.5.3",
     "gltf-transform-vrm-extensions": "0.1.6",
     "three": "0.184.0"
   },

@@ -8,67 +8,54 @@ import {
 import { getRigProfile } from "@/profiles";
 
 describe("format and profile catalog", () => {
-  it("keeps the first available beta vertical slice registered", () => {
+  it("keeps the first beta vertical slice registered", () => {
     expect(MOTION_FORMATS.find((format) => format.id === "mixamo-fbx")).toMatchObject({
-      availability: "available",
       assurance: "beta",
       role: "motion",
     });
     expect(AVATAR_FORMATS.find((format) => format.id === "vrm")).toMatchObject({
-      availability: "available",
       assurance: "beta",
       role: "avatar",
     });
     expect(MOTION_EXPORT_FORMATS.find((format) => format.id === "vrma")).toMatchObject({
-      availability: "available",
       assurance: "beta",
       role: "motion-export",
     });
   });
 
-  it("separates available formats from evidence-backed assurance", () => {
+  it("keeps assurance scoped to evidence", () => {
     expect(MOTION_EXPORT_FORMATS.find((format) => format.id === "gltf-animation")).toMatchObject({
-      availability: "available",
       assurance: "beta",
     });
     expect(MOTION_EXPORT_FORMATS.find((format) => format.id === "bvh")).toMatchObject({
-      availability: "available",
       assurance: "beta",
     });
     expect(MOTION_EXPORT_FORMATS.find((format) => format.id === "vmd")).toMatchObject({
-      availability: "available",
       assurance: "experimental",
     });
     expect(AVATAR_EXPORT_FORMATS.find((format) => format.id === "animated-glb")).toMatchObject({
-      availability: "available",
       assurance: "experimental",
     });
     expect(AVATAR_EXPORT_FORMATS.find((format) => format.id === "baked-vrm")).toMatchObject({
-      availability: "available",
       assurance: "experimental",
     });
     expect(AVATAR_FORMATS.find((format) => format.id === "mmd-model")).toMatchObject({
-      availability: "available",
       assurance: "beta",
       extensions: [".pmx", ".pmd"],
     });
     expect(MOTION_EXPORT_FORMATS.find((format) => format.id === "fbx-animation")).toMatchObject({
-      availability: "available",
       assurance: "beta",
     });
     expect(AVATAR_EXPORT_FORMATS.find((format) => format.id === "vrm-external-vrma")).toMatchObject({
-      availability: "available",
       assurance: "beta",
       extensions: [".zip"],
     });
     expect(AVATAR_EXPORT_FORMATS.find((format) => format.id === "fbx-avatar-animation")).toMatchObject({
       label: "Animated FBX",
-      availability: "available",
       assurance: "experimental",
     });
     expect(AVATAR_EXPORT_FORMATS.find((format) => format.id === "animated-pmx")).toMatchObject({
       label: "PMX Motion Morphs",
-      availability: "available",
       assurance: "experimental",
     });
     expect(

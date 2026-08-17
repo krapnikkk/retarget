@@ -379,7 +379,7 @@ describe("ZIP asset package preflight", () => {
       prepareAssetDirectory(directory, "motion", { maxEntries: 1 }),
     ).rejects.toThrow("more than 1 entries");
     await expect(
-      prepareAssetDirectory(directory, "motion", { maxTotalBytes: 4 }),
+      prepareAssetDirectory(directory, "motion", { maxExpandedBytes: 4 }),
     ).rejects.toThrow("local processing limit");
   });
 
