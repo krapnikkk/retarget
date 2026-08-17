@@ -4,8 +4,12 @@ import {
   VRMC_VRM_EXTENSIONS,
   writeVRMA,
 } from "gltf-transform-vrm-extensions";
-import type { HumanoidBoneName, RetargetedMotionClip } from "@/retarget";
-import { validateMotionClip } from "@/retarget";
+import {
+  getMotionTargetBinding,
+  type HumanoidBoneName,
+  type RetargetedMotionClip,
+  validateMotionClip,
+} from "@/retarget";
 import {
   resolveExportBoneName,
   type BoneNamingOptions,
@@ -133,7 +137,10 @@ function addRestHipsTranslation(values: readonly number[], restHipsHeight: numbe
 }
 
 function getVRMARestHipsHeight(clip: RetargetedMotionClip) {
-  const restHipsHeight = clip.target.restHipsHeight;
+  const restHipsHeight =
+    getMotionTargetBinding(clip)?.restHipsHeight ??
+    clip.metadata?.targetHeight ??
+    clip.metadata?.restHipsHeight;
   if (typeof restHipsHeight === "number" && restHipsHeight > 0) {
     return restHipsHeight;
   }

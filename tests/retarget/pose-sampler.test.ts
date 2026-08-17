@@ -16,10 +16,6 @@ const clip: RetargetedMotionClip = {
     kind: "mixamo-fbx",
     filename: "walk.fbx",
   },
-  target: {
-    kind: "vrm",
-    filename: "avatar.vrm",
-  },
   processing: {
     stage: "canonical",
     sourceCanonicalId: "pose-sampler-test",
@@ -38,7 +34,6 @@ const clip: RetargetedMotionClip = {
       values: [0, 0, 0, 1, 0, 0, 1, 0],
     },
   ],
-  createdAt: "2026-01-01T00:00:00.000Z",
 };
 
 describe("sampleMotionClipPose", () => {

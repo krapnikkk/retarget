@@ -23,7 +23,6 @@ describe("retarget job runtime", () => {
       rootTranslationSpace: "offset-meters",
       restHipsHeight: 1,
     };
-    clip.target.restHipsHeight = 1;
     const phases: string[] = [];
     const bytes = await executeRetargetJob(
       {
@@ -56,6 +55,31 @@ describe("retarget job runtime", () => {
     expect(validated.semantic.metrics.maxRootDisplacementErrorMeters).toBeLessThan(
       1e-5,
     );
+  });
+
+  it("enforces only caller-supplied input and output budgets", async () => {
+    await expect(executeRetargetJob({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "input-budget",
+      budget: { parse: { maxInputBytes: 4 } },
+      task: {
+        type: "import-motion",
+        formatId: "bvh",
+        filename: "walk.bvh",
+        bytes: new ArrayBuffer(8),
+      },
+    })).rejects.toMatchObject({ code: "PARSE_BUDGET_EXCEEDED" });
+
+    const clip = createRetargetedMotionClipStub({
+      fbxFile: { name: "walk.fbx" },
+      vrmFile: { name: "avatar.vrm" },
+    });
+    await expect(executeRetargetJob({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "output-budget",
+      budget: { processing: { maxOutputBytes: 1 } },
+      task: { type: "export-motion", formatId: "motion-json", clip },
+    })).rejects.toMatchObject({ code: "PROCESSING_BUDGET_EXCEEDED" });
   });
 
   it("does not reject large finite solve requests using product policy", () => {

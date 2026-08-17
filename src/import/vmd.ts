@@ -14,7 +14,9 @@ import {
 import {
   DEFAULT_PARSE_BUDGET,
   ParseDomainError,
+  assertCountWithinBudget,
   assertInputWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 
 type VMDBoneBinding = {
@@ -31,13 +33,23 @@ export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
 const VMD_BONE_MAP = createVMDBoneMap();
 const MAX_VMD_GENERATED_TRACK_SAMPLES = 1_000_000;
 
-export function importVMD(bytes: Uint8Array, filename = "motion.vmd") {
-  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+export function importVMD(
+  bytes: Uint8Array,
+  filename = "motion.vmd",
+  budget: ParseBudget = DEFAULT_PARSE_BUDGET,
+) {
+  assertInputWithinBudget(bytes.byteLength, budget, {
     filename,
     section: "VMD",
   });
   const document = parseVMDDocument(padLegacyVMDSections(bytes));
-  const tracks = normalizeImportedTracks(createVMDTracks(document));
+  const tracks = normalizeImportedTracks(createVMDTracks(document, budget));
+  assertCountWithinBudget(
+    tracks.length,
+    budget.maxTracks,
+    "VMD track count",
+    { filename, section: "bone tracks" },
+  );
   if (tracks.length === 0) {
     throw new Error("VMD file does not contain supported body tracks.");
   }
@@ -84,15 +96,15 @@ export function importVMD(bytes: Uint8Array, filename = "motion.vmd") {
   });
 }
 
-function validateFrameDuration(frameNumber: number) {
-  if (frameNumber / VMD_FPS > DEFAULT_PARSE_BUDGET.maxDurationSeconds) {
+function validateFrameDuration(frameNumber: number, budget: ParseBudget) {
+  if (frameNumber / VMD_FPS > budget.maxDurationSeconds) {
     throw new ParseDomainError(
       "PARSE_BUDGET_EXCEEDED",
       "VMD bone frame exceeds the duration limit",
       {
         section: "bone frames",
         declared: Math.ceil(frameNumber / VMD_FPS),
-        limit: DEFAULT_PARSE_BUDGET.maxDurationSeconds,
+        limit: budget.maxDurationSeconds,
       },
     );
   }
@@ -111,10 +123,13 @@ function padLegacyVMDSections(bytes: Uint8Array) {
   return padded;
 }
 
-function createVMDTracks(document: VMDDocument): MotionTrack[] {
+function createVMDTracks(
+  document: VMDDocument,
+  budget: ParseBudget,
+): MotionTrack[] {
   const channelsByBone = new Map<HumanoidBoneName, Map<string, VMDChannel>>();
   for (const frame of document.boneFrames) {
-    validateFrameDuration(frame.frameNumber);
+    validateFrameDuration(frame.frameNumber, budget);
     const normalizedName = normalizeVMDName(frame.boneName);
     const binding = VMD_BONE_MAP.get(normalizedName);
     if (!binding) {
@@ -142,10 +157,20 @@ function createVMDTracks(document: VMDDocument): MotionTrack[] {
       }
     }
     const trackSamples = (maxFrame + 1) * (bone === "hips" ? 2 : 1);
+    assertCountWithinBudget(
+      maxFrame + 1,
+      budget.maxSamplesPerTrack,
+      "VMD samples per track",
+      { section: "bone tracks" },
+    );
     generatedSamples += trackSamples;
+    const generatedLimit = Math.min(
+      MAX_VMD_GENERATED_TRACK_SAMPLES,
+      budget.maxTotalSamples,
+    );
     if (
       !Number.isSafeInteger(generatedSamples) ||
-      generatedSamples > MAX_VMD_GENERATED_TRACK_SAMPLES
+      generatedSamples > generatedLimit
     ) {
       throw new ParseDomainError(
         "PARSE_BUDGET_EXCEEDED",
@@ -153,7 +178,7 @@ function createVMDTracks(document: VMDDocument): MotionTrack[] {
         {
           section: "bone tracks",
           declared: generatedSamples,
-          limit: MAX_VMD_GENERATED_TRACK_SAMPLES,
+          limit: generatedLimit,
         },
       );
     }

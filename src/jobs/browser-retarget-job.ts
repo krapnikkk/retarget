@@ -4,6 +4,7 @@ import type {
   RetargetJobProgress,
   RetargetJobRequest,
   RetargetJobResult,
+  RetargetJobBudget,
   RetargetJobTask,
 } from "./types";
 import { RetargetError } from "@/retarget/errors";
@@ -18,6 +19,7 @@ export type BufferOwnership = "copy" | "transfer";
 export type RunRetargetJobOptions = {
   signal?: AbortSignal;
   deadlineMs?: number;
+  budget?: RetargetJobBudget;
   onProgress?: (progress: RetargetJobProgress) => void;
   bufferOwnership?: BufferOwnership;
 };
@@ -26,6 +28,7 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
   task: TTask,
   {
     deadlineMs,
+    budget,
     onProgress,
     signal,
     bufferOwnership = "copy",
@@ -36,6 +39,7 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),
     deadlineMs,
+    budget,
     task,
   };
   assertRetargetJobRequest(requestToValidate);
@@ -155,6 +159,7 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
   task: TTask,
   {
     deadlineMs,
+    budget,
     onProgress,
     signal,
   }: RunRetargetJobOptions = {},
@@ -164,6 +169,7 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
     schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
     jobId: crypto.randomUUID(),
     deadlineMs,
+    budget,
     task,
   };
   const { executeRetargetJob } = await import("./execute-retarget-job");

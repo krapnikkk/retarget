@@ -12,6 +12,7 @@ import {
   DEFAULT_PARSE_BUDGET,
   assertCountWithinBudget,
   assertInputWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 import { readGLTFAnimationTrack } from "./gltf-interpolation";
 import { RetargetError } from "@/retarget/errors";
@@ -21,6 +22,7 @@ const SUPPORTED_TARGET_PATHS = new Set(["rotation", "translation"]);
 export type GLTFAnimationImportOptions = {
   animationIndex?: number;
   animationName?: string;
+  budget?: ParseBudget;
   sourceFile?: File;
   resources?: Record<string, Uint8Array<ArrayBuffer>>;
 };
@@ -30,7 +32,8 @@ export async function importGLTFAnimation(
   filename = "motion.glb",
   options: GLTFAnimationImportOptions = {},
 ) {
-  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+  const budget = options.budget ?? DEFAULT_PARSE_BUDGET;
+  assertInputWithinBudget(bytes.byteLength, budget, {
     filename,
     section: "glTF animation",
   });
@@ -45,7 +48,7 @@ export async function importGLTFAnimation(
   const channels = animation.listChannels();
   assertCountWithinBudget(
     channels.length,
-    DEFAULT_PARSE_BUDGET.maxTracks,
+    budget.maxTracks,
     "glTF animation channel count",
     { filename, section: "animation" },
   );
@@ -67,6 +70,7 @@ export async function importGLTFAnimation(
     }
 
     const importedTrack = readGLTFAnimationTrack({
+      budget,
       filename,
       input,
       interpolation: sampler.getInterpolation() || "LINEAR",
@@ -77,7 +81,7 @@ export async function importGLTFAnimation(
     totalSamples += importedTrack.times.length;
     assertCountWithinBudget(
       totalSamples,
-      DEFAULT_PARSE_BUDGET.maxTotalSamples,
+      budget.maxTotalSamples,
       "glTF total animation samples",
       { filename, section: "animation" },
     );

@@ -2,6 +2,7 @@ import {
   MOTION_CLIP_SCHEMA_VERSION,
   type CanonicalMotion,
   type MotionTrack,
+  type RetargetTargetBinding,
   type RetargetedMotionClip,
   isHumanoidBoneName,
 } from "./types";
@@ -55,20 +56,28 @@ export function validateMotionClip(
   const clip = value as Partial<RetargetedMotionClip> | null;
 
   if (clip && typeof clip === "object") {
-    if (!clip.target || typeof clip.target !== "object") {
-      issues.push("target must be a VRM binding.");
-    } else {
-      if (!isSupportedTargetKind(clip.target.kind)) {
+    const target = (clip as { target?: Partial<RetargetTargetBinding> }).target;
+    if (target !== undefined) {
+      if (!target || typeof target !== "object") {
+        issues.push("target must be a target binding when present.");
+      } else if (!isSupportedTargetKind(target.kind)) {
         issues.push("target.kind must be a supported avatar target format.");
-      }
-      if (!clip.target.filename || typeof clip.target.filename !== "string") {
+      } else if (!target.filename || typeof target.filename !== "string") {
         issues.push("target.filename must be a non-empty string.");
+      } else if (
+        typeof target.rigSignature !== "string" ||
+        target.rigSignature.length === 0
+      ) {
+        issues.push("a target-bound clip must include target.rigSignature.");
       }
     }
     if (clip.processing === undefined) {
       issues.push("processing must describe the canonical or solved stage.");
     } else {
       validateProcessing(clip.processing, issues);
+      if (target !== undefined && clip.processing.stage !== "solved") {
+        issues.push("only a solved clip may include a target binding.");
+      }
     }
   }
 

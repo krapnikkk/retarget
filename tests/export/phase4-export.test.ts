@@ -46,7 +46,11 @@ import {
   prepareAssetInput,
   releaseAssetPackage,
 } from "@/import/asset-package";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "../fixtures/retarget-stub";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
 import {
   GENERIC_GLTF_HUMANOID_PROFILE,
   MMD_BODY_PROFILE,
@@ -115,7 +119,6 @@ describe("Phase 4 export adapters", () => {
       rootTranslationSpace: "offset-meters",
       targetHeight: 1,
     };
-    clip.target.restHipsHeight = 1;
     for (const bone of ["leftToes", "rightToes"] as const) {
       clip.tracks.push({
         bone,
@@ -274,7 +277,6 @@ describe("Phase 4 export adapters", () => {
       restHipsHeight: 0.9,
       rootTranslationSpace: "offset-meters",
     };
-    clip.target.restHipsHeight = 0.94;
     const bytes = await getMotionExportAdapter("gltf-animation")!.exportMotion(clip);
     const document = await new WebIO().readBinary(bytes);
     const hips = document
@@ -815,21 +817,14 @@ describe("Phase 4 export adapters", () => {
 });
 
 function createClip() {
-  const clip = createRetargetedMotionClipStub({
+  const canonical = createRetargetedMotionClipStub({
     fbxFile: { name: "idle.fbx" },
     vrmFile: { name: "avatar.vrm" },
   });
-  return {
-    ...clip,
-    target: { ...clip.target, rigSignature: "unbound-test-rig" },
-    processing: {
-      stage: "solved" as const,
-      sourceCanonicalId: clip.processing.sourceCanonicalId,
-      solverId: "humanoid-custom-v4" as const,
-      solverRevision: 4 as const,
-      solvePass: 1 as const,
-    },
-  };
+  return bindSolvedMotionClipStub(
+    solveHumanoidCustomRigMotion(canonical),
+    { rigSignature: "unbound-test-rig" },
+  );
 }
 
 function expectDirectNodeParent(

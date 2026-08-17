@@ -17,10 +17,11 @@ Worker 拥有的副本，调用方缓冲区不会 detached。受信任且追求�
 `File` 创建且自行拥有的缓冲区，同时保留调用方拥有的动作片段。成功、失败、取消、超时、克隆异常、`messageerror` 与进度回调异常统一进入同一
 Worker 清理路径。
 
-重定向消息使用协议 schema version `1`。双方都会校验版本、task/response 精确字段、
+重定向消息使用协议 schema version `2`。双方都会校验版本、task/response 精确字段、
 普通对象原型、已注册格式 ID、有界资源字典、进度值、已注册错误码和对应 task 的成功
-结果；客户端会在克隆请求前完成校验。未知 task
-或格式会 fail-closed，绝不会落入另一 importer、exporter 或验证分支。
+结果。版本 2 新增可选且可序列化的 `budget` 对象，其中 `parse` 与 `processing` 限制
+彼此分离；客户端会在克隆请求前完成校验。未知字段、非正数或非有限限制、未知 task
+或格式都会 fail-closed，绝不会落入另一 importer、exporter 或验证分支。
 
 活动 Worker 路由为：
 
@@ -37,7 +38,7 @@ Worker 清理路径。
 
 库不再使用默认的文件大小、时长、FPS、采样数量、估算内存、输出字节或处理时间上限拒绝任务。这些阈值随设备和产品变化，并且没有真实失败证据支持。
 
-`src/processing-budget.ts` 继续集中处理格式安全的有限数值、安全整数乘法和调用方显式限制。调用方可以选择 `deadlineMs`，或配置平台特定的 Node/浏览器限制；正的安全整数不会被库收紧。
+`src/processing-budget.ts` 继续集中处理格式安全的有限数值、安全整数乘法和调用方显式限制。调用方可以选择 `deadlineMs`、`budget.parse` 或 `budget.processing`。解析预算覆盖可转移输入缓冲区的累计字节数，并传入受支持的动作 importer；处理预算覆盖片段/求解校验、BVH/VMD 生成数量和最终输出字节。省略这些字段时仍使用库的无界默认值；协议不会自行假设设备或产品策略。
 
 `heightScale`、`armOffsetDegrees` 和 `playbackSpeed` 仍必须为有限值并位于语义范围。VMD/BVH 导出器在分配输出前继续计算展开数量，使整数溢出或调用方显式限制能够确定性失败。Worker 隔离、取消、结构化失败与资源清理仍是强制要求。
 

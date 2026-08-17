@@ -21,7 +21,11 @@ import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
 import { MMD_BODY_PROFILE } from "@/profiles";
 import { importVMD } from "@/import/vmd";
-import { createRetargetedMotionClipStub } from "./fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "./fixtures/retarget-stub";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
@@ -60,24 +64,18 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
       vrmFile: { name: "Gene_light.pmx" },
     });
     const document = convertMMDModelToGLBDocument(bytes, "Gene_light.pmx");
-    const clip = {
-      ...canonical,
-      target: {
-        ...canonical.target,
+    const clip = bindSolvedMotionClipStub(
+      solveHumanoidCustomRigMotion(canonical),
+      {
+        kind: "mmd-model",
+        filename: "Gene_light.pmx",
         profile: MMD_BODY_PROFILE.id,
         rigSignature: createGLTFHumanoidRigSignature(
           collectHumanoidNodes(document),
           MMD_BODY_PROFILE.id,
         ),
       },
-      processing: {
-        stage: "solved" as const,
-        sourceCanonicalId: canonical.processing.sourceCanonicalId,
-        solverId: "humanoid-custom-v4" as const,
-        solverRevision: 4 as const,
-        solvePass: 1 as const,
-      },
-    };
+    );
     const after = readAnimatedPMXMotionSummary(
       writeAnimatedPMX(
         bytes,

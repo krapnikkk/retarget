@@ -11,6 +11,7 @@ import {
   ParseDomainError,
   assertCountWithinBudget,
   assertInputWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 
 type BVHChannel = {
@@ -29,13 +30,17 @@ type BVHRestNode = {
 const ROTATION_VALUE_SIZE = 4;
 const TRANSLATION_VALUE_SIZE = 3;
 
-export function importBVH(bytes: Uint8Array, filename = "motion.bvh") {
-  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+export function importBVH(
+  bytes: Uint8Array,
+  filename = "motion.bvh",
+  budget: ParseBudget = DEFAULT_PARSE_BUDGET,
+) {
+  assertInputWithinBudget(bytes.byteLength, budget, {
     filename,
     section: "BVH",
   });
   const text = new TextDecoder().decode(bytes);
-  const parsed = parseBVH(text, filename);
+  const parsed = parseBVH(text, filename, budget);
   const tracks = normalizeImportedTracks(createBVHTracks(parsed));
 
   if (tracks.length === 0) {
@@ -61,7 +66,7 @@ export function importBVH(bytes: Uint8Array, filename = "motion.bvh") {
   });
 }
 
-function parseBVH(text: string, filename: string) {
+function parseBVH(text: string, filename: string, budget: ParseBudget) {
   const motionIndex = text.search(/\bMOTION\b/i);
   if (motionIndex < 0) {
     throw new Error("BVH file is missing MOTION section.");
@@ -69,7 +74,7 @@ function parseBVH(text: string, filename: string) {
 
   const hierarchy = text.slice(0, motionIndex);
   const motion = text.slice(motionIndex);
-  const { channels, restNodes } = parseHierarchy(hierarchy, filename);
+  const { channels, restNodes } = parseHierarchy(hierarchy, filename, budget);
   const restHipsHeight = estimateRestHipsHeight(restNodes);
   const rootName = channels[0]?.nodeName ?? "BVH root";
   const framesMatch = motion.match(/Frames:\s*(\d+)/i);
@@ -82,7 +87,7 @@ function parseBVH(text: string, filename: string) {
   const frameTime = Number(frameTimeMatch[1]);
   assertCountWithinBudget(
     frameCount,
-    DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
+    budget.maxSamplesPerTrack,
     "BVH frame count",
     { filename, section: "MOTION" },
   );
@@ -100,16 +105,16 @@ function parseBVH(text: string, filename: string) {
     });
   }
   const fps = 1 / frameTime;
-  if (fps > DEFAULT_PARSE_BUDGET.maxFps + 1e-6) {
+  if (fps > budget.maxFps + 1e-6) {
     throw new ParseDomainError("PARSE_BUDGET_EXCEEDED", "BVH FPS exceeds the processing limit", {
       filename,
       section: "MOTION",
       declared: Math.round(fps),
-      limit: DEFAULT_PARSE_BUDGET.maxFps,
+      limit: budget.maxFps,
     });
   }
   const duration = frameTime * Math.max(frameCount - 1, 0);
-  if (duration > DEFAULT_PARSE_BUDGET.maxDurationSeconds) {
+  if (duration > budget.maxDurationSeconds) {
     throw new ParseDomainError(
       "PARSE_BUDGET_EXCEEDED",
       "BVH duration exceeds the processing limit",
@@ -117,7 +122,7 @@ function parseBVH(text: string, filename: string) {
         filename,
         section: "MOTION",
         declared: Math.ceil(duration),
-        limit: DEFAULT_PARSE_BUDGET.maxDurationSeconds,
+        limit: budget.maxDurationSeconds,
       },
     );
   }
@@ -137,7 +142,7 @@ function parseBVH(text: string, filename: string) {
   const expectedValueCount = frameCount * channelCount;
   assertCountWithinBudget(
     expectedValueCount,
-    DEFAULT_PARSE_BUDGET.maxTotalSamples,
+    budget.maxTotalSamples,
     "BVH channel values",
     { filename, section: "MOTION" },
   );
@@ -177,11 +182,15 @@ function parseBVH(text: string, filename: string) {
   return { channels, frameTime, frames, restHipsHeight, rootName };
 }
 
-function parseHierarchy(hierarchy: string, filename: string) {
+function parseHierarchy(
+  hierarchy: string,
+  filename: string,
+  budget: ParseBudget,
+) {
   const tokens = hierarchy.match(/[{}]|[^\s{}]+/g) ?? [];
   assertCountWithinBudget(
     tokens.length,
-    DEFAULT_PARSE_BUDGET.maxTotalSamples,
+    budget.maxTotalSamples,
     "BVH hierarchy tokens",
     { filename, section: "HIERARCHY" },
   );

@@ -29,7 +29,7 @@ describe("VRMA export", () => {
       vrmFile: { name: "avatar.vrm" },
       fbxFile: { name: "idle.fbx" },
     });
-    clip.target.restHipsHeight = 0.92;
+    clip.metadata = { ...clip.metadata, restHipsHeight: 0.92 };
     const bytes = await exportVRMA(clip);
     const io = new WebIO().registerExtensions(VRMC_VRM_EXTENSIONS);
     const document = await io.readBinary(bytes);
@@ -101,10 +101,7 @@ describe("VRMA export", () => {
     });
     expect(importedClip.duration).toBeCloseTo(clip.duration, 6);
     expect(importedClip.fps).toBeGreaterThan(0);
-    expect(importedClip.target).toMatchObject({
-      filename: "pending-vrm",
-      pending: true,
-    });
+    expect("target" in importedClip).toBe(false);
     expect(importedClip.diagnostics).toMatchObject({
       solver: {
         id: "canonical-normalization-v1",
@@ -116,9 +113,9 @@ describe("VRMA export", () => {
       },
     });
     expect(importedClip.diagnostics?.mapping.mappedSourceBones).toBeGreaterThan(0);
-    expect(importedClip.target.restHipsHeight).toBeGreaterThan(0);
     expect(importedClip.metadata).toMatchObject({
       rootTranslationSpace: "offset-meters",
+      restHipsHeight: 1,
       sourceRestBinding: 1,
     });
     expect(importedClip.tracks).toHaveLength(expectedTracks.length);

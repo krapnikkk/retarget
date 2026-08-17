@@ -15,6 +15,7 @@ import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertMotionProcessingBudget,
   assertRetargetSolveBudget,
+  type ProcessingBudget,
 } from "@/processing-budget";
 import {
   applyAxisCorrectionToQuaternion,
@@ -46,6 +47,7 @@ export type CustomRigMappingReport = {
 };
 
 export type HumanoidSolverTargetRig = {
+  rigSignature: string;
   profile: RigProfile;
   bones: ReadonlySet<HumanoidBoneName>;
   skeleton: RetargetSkeletonNode;
@@ -58,6 +60,7 @@ export type SolveHumanoidMotionInput = {
   options?: RetargetSolveOptions;
   sourceProfile?: RigProfile;
   targetRig?: HumanoidSolverTargetRig;
+  budget?: ProcessingBudget;
 };
 
 export const CUSTOM_MAPPING_BONES = [
@@ -99,8 +102,15 @@ export function solveHumanoidCustomRigMotion(
   config: CustomRigMappingConfig = DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
   targetRig?: HumanoidSolverTargetRig,
   options: RetargetSolveOptions = DEFAULT_RETARGET_SOLVE_OPTIONS,
+  budget?: ProcessingBudget,
 ): SolvedHumanoidMotionClip {
-  return solveHumanoidMotion({ motion: clip, mapping: config, options, targetRig });
+  return solveHumanoidMotion({
+    motion: clip,
+    mapping: config,
+    options,
+    targetRig,
+    budget,
+  });
 }
 
 export function solveHumanoidMotion({
@@ -109,14 +119,16 @@ export function solveHumanoidMotion({
   options = DEFAULT_RETARGET_SOLVE_OPTIONS,
   sourceProfile: sourceProfileInput,
   targetRig,
+  budget,
 }: SolveHumanoidMotionInput): SolvedHumanoidMotionClip {
-  assertMotionProcessingBudget(clip);
+  assertMotionProcessingBudget(clip, budget);
   assertCanonicalSolverInput(clip);
   assertRetargetSolveBudget({
     boneCount: new Set(clip.tracks.map((track) => track.bone)).size,
     duration: clip.duration,
     fps: clip.fps,
     options,
+    budget,
   });
 
   const sourceBones = collectTrackBones(clip.tracks);
@@ -160,7 +172,7 @@ export function solveHumanoidMotion({
     targetBones,
   });
 
-  return {
+  const solved: SolvedHumanoidMotionClip = {
     ...clip,
     processing: {
       stage: "solved",
@@ -241,6 +253,8 @@ export function solveHumanoidMotion({
       targetHeight: targetRig?.restHipsHeight ?? clip.metadata?.targetHeight,
     },
   };
+  assertMotionProcessingBudget(solved, budget);
+  return solved;
 }
 
 const ARM_OPTION_WEIGHTS: Partial<Record<HumanoidBoneName, number>> = {
@@ -331,11 +345,10 @@ function assertCanonicalSolverInput(
 }
 
 function createTargetRigRevision(targetRig: HumanoidSolverTargetRig) {
-  return [
-    targetRig.profile.id,
-    [...targetRig.bones].sort().join(","),
-    targetRig.restHipsHeight ?? "unknown-height",
-  ].join(":");
+  if (!targetRig.rigSignature) {
+    throw new RetargetError("TARGET_RIG_IDENTITY_MISSING");
+  }
+  return targetRig.rigSignature;
 }
 
 export function createSemiAutomaticBoneMap({

@@ -2,6 +2,7 @@ import { Euler, Quaternion, Vector3 } from "three";
 import { BVH_HUMANOID_PROFILE } from "@/profiles";
 import {
   HUMANOID_BONES,
+  getMotionTargetBinding,
   normalizeMotionTime,
   sampleMotionClipPose,
   type HumanoidBoneName,
@@ -17,7 +18,10 @@ import {
   type BoneNamingOptions,
   type BoneNamingProfileId,
 } from "./bone-naming";
-import { assertGeneratedExportBudget } from "@/processing-budget";
+import {
+  assertGeneratedExportBudget,
+  type ProcessingBudget,
+} from "@/processing-budget";
 
 type BVHNode = {
   bone: HumanoidBoneName;
@@ -216,13 +220,15 @@ const BVH_TREE_REST_HIPS_HEIGHT = 0.95;
 export async function exportBVH(
   clip: RetargetedMotionClip,
   options: BoneNamingOptions = {},
+  budget?: ProcessingBudget,
 ): Promise<Uint8Array> {
-  return new TextEncoder().encode(createBVHText(clip, options));
+  return new TextEncoder().encode(createBVHText(clip, options, budget));
 }
 
 export function createBVHText(
   clip: RetargetedMotionClip,
   { boneNamingProfile = "canonical" }: BoneNamingOptions = {},
+  budget?: ProcessingBudget,
 ) {
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
@@ -244,6 +250,7 @@ export function createBVHText(
     frameCount,
     valuesPerFrame,
     estimatedOutputBytes: frameCount * valuesPerFrame * 18,
+    budget,
     phase: "bvh-export",
   });
   const frameLines: string[] = [];
@@ -392,7 +399,8 @@ function estimateBVHHeightScale(clip: RetargetedMotionClip) {
   const restHipsHeight = Math.max(
     clip.metadata?.targetHeight ??
       clip.metadata?.sourceHeight ??
-      clip.target.restHipsHeight ??
+      getMotionTargetBinding(clip)?.restHipsHeight ??
+      clip.metadata?.restHipsHeight ??
       1.7,
     0.1,
   );

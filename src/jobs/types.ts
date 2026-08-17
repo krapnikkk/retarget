@@ -36,6 +36,8 @@ import type {
   ExportSemanticValidationResult,
 } from "@/export/reload-validation";
 import type { SemanticMotionValidationResult } from "@/validation";
+import type { ParseBudget } from "@/import/parse-budget";
+import type { ProcessingBudget } from "@/processing-budget";
 
 export type RetargetJobPhase =
   | "validate"
@@ -194,12 +196,18 @@ export type RetargetJobResult<TTask extends RetargetJobTask> =
                     ? SemanticMotionValidationResult
                     : never;
 
-export const RETARGET_JOB_PROTOCOL_VERSION = 1 as const;
+export type RetargetJobBudget = {
+  parse?: Partial<ParseBudget>;
+  processing?: Partial<ProcessingBudget>;
+};
+
+export const RETARGET_JOB_PROTOCOL_VERSION = 2 as const;
 
 export type RetargetJobRequest = {
   schemaVersion: typeof RETARGET_JOB_PROTOCOL_VERSION;
   jobId: string;
   deadlineMs?: number;
+  budget?: RetargetJobBudget;
   task: RetargetJobTask;
 };
 

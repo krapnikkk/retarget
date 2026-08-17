@@ -17,7 +17,11 @@ import {
   getRigProfile,
   type RigProfileId,
 } from "@/profiles";
-import { parseMotionClip, type RetargetedMotionClip } from "@/retarget";
+import {
+  getMotionTargetBinding,
+  parseMotionClip,
+  type RetargetedMotionClip,
+} from "@/retarget";
 import {
   CANONICAL_AXIS_FRAME,
   createAxisCorrection,
@@ -212,7 +216,9 @@ function normalizeBoundBVHRootUnits(
 ): RetargetedMotionClip {
   const actualHeight = actual.metadata?.restHipsHeight;
   const expectedHeight =
-    expected.metadata?.targetHeight ?? expected.target.restHipsHeight;
+    expected.metadata?.targetHeight ??
+    getMotionTargetBinding(expected)?.restHipsHeight ??
+    expected.metadata?.restHipsHeight;
   if (
     actual.metadata?.rootTranslationSpace !== "offset-source-units" ||
     actual.metadata.rootMotionEvidence?.status !== "preserved" ||
@@ -273,8 +279,9 @@ export async function validateAvatarExportSemantics(
 }
 
 function resolveWorldAxisCorrection(expected: RetargetedMotionClip) {
-  const profile = expected.target.profile
-    ? getRigProfile(expected.target.profile as RigProfileId)
+  const target = getMotionTargetBinding(expected);
+  const profile = target?.profile
+    ? getRigProfile(target.profile as RigProfileId)
     : null;
   return profile
     ? createAxisCorrection(CANONICAL_AXIS_FRAME, profile)

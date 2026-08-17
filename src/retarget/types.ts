@@ -1,4 +1,5 @@
-export const MOTION_CLIP_SCHEMA_VERSION = 1 as const;
+export const MOTION_CLIP_SCHEMA_VERSION = 2 as const;
+export const MOTION_ARTIFACT_ENVELOPE_SCHEMA_VERSION = 1 as const;
 
 export const HUMANOID_BONES = [
   "hips",
@@ -155,7 +156,6 @@ export type CanonicalMotion = {
     profile?: string;
   };
   tracks: MotionTrack[];
-  createdAt: string;
   diagnostics?: RetargetDiagnostics;
   metadata?: {
     sourceHeight?: number;
@@ -202,7 +202,15 @@ export type RetargetTargetBinding = {
   rigSignature?: string;
   restHipsHeight?: number;
   profile?: string;
-  pending?: boolean;
+};
+
+export type MotionArtifactEnvelope = {
+  schemaVersion: typeof MOTION_ARTIFACT_ENVELOPE_SCHEMA_VERSION;
+  artifactId: string;
+  createdAt: string;
+  toolVersion: string;
+  sourceHash: string;
+  motion: CanonicalMotion;
 };
 
 export type CanonicalMotionProcessing = {
@@ -219,34 +227,24 @@ export type SolvedMotionProcessing = {
   targetRigRevision?: string;
 };
 
-type HumanoidMotionClipBase = CanonicalMotion & {
-  target: {
-    kind: RetargetTargetKind;
-    filename: string;
-    rigSignature?: string;
-    restHipsHeight?: number;
-    profile?: string;
-    pending?: boolean;
-  };
-};
-
-export type CanonicalHumanoidMotionClip = HumanoidMotionClipBase & {
+export type CanonicalHumanoidMotionClip = CanonicalMotion & {
   processing: CanonicalMotionProcessing;
 };
 
-export type SolvedHumanoidMotionClip = HumanoidMotionClipBase & {
+export type SolvedHumanoidMotionClip = CanonicalMotion & {
   processing: SolvedMotionProcessing;
 };
 
 export type TargetBoundSolvedHumanoidMotionClip = SolvedHumanoidMotionClip & {
-  target: SolvedHumanoidMotionClip["target"] & {
+  target: RetargetTargetBinding & {
     rigSignature: string;
   };
 };
 
 export type RetargetedMotionClip =
   | CanonicalHumanoidMotionClip
-  | SolvedHumanoidMotionClip;
+  | SolvedHumanoidMotionClip
+  | TargetBoundSolvedHumanoidMotionClip;
 
 export type RetargetSolveOptions = {
   heightScale: number;

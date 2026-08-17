@@ -30,12 +30,14 @@ Success, failure, abort, timeout, clone errors,
 `messageerror`, and progress-callback failures all converge on the same Worker
 cleanup path.
 
-Retarget messages use protocol schema version `1`. Both sides validate the
+Retarget messages use protocol schema version `2`. Both sides validate the
 version, exact task/response fields, plain object prototypes, registered format
 IDs, bounded resource dictionaries, progress values, registered error codes,
-and the task-specific success result. Validation happens before the client
-clones a request. Unknown task or format values fail closed and never fall through to a
-different importer, exporter, or validation route.
+and the task-specific success result. Version 2 adds an optional serializable
+`budget` object with separate `parse` and `processing` overrides. Validation
+happens before the client clones a request. Unknown fields, non-positive or
+non-finite limits, and unknown task or format values fail closed and never fall
+through to a different importer, exporter, or validation route.
 
 The active worker routes are:
 
@@ -62,8 +64,12 @@ thresholds varied by device and product without observed failure evidence.
 
 `src/processing-budget.ts` remains the shared implementation for format-safe
 finite values, safe integer multiplication, and explicit caller limits. A
-caller may opt into `deadlineMs` or platform-specific Node/browser limits;
-positive safe-integer values are accepted without a library ceiling.
+caller may opt into `deadlineMs`, `budget.parse`, or `budget.processing`.
+Parse budgets cover the cumulative transferable input bytes and are threaded
+through supported motion importers; processing budgets cover clip/solver
+validation, generated BVH/VMD counts, and final output bytes. Omitting these
+fields preserves the unbounded library default; the protocol does not invent a
+device or product policy.
 
 `heightScale`, `armOffsetDegrees`, and `playbackSpeed` remain finite and within
 their semantic domains. VMD and BVH exporters still calculate expanded counts

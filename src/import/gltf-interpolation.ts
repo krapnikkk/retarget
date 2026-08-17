@@ -5,6 +5,7 @@ import {
   DEFAULT_PARSE_BUDGET,
   ParseDomainError,
   assertCountWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 
 const CUBIC_TRANSLATION_ERROR_METERS = 0.0005;
@@ -15,6 +16,7 @@ const MIN_ADAPTIVE_INTERVAL_SECONDS = 1e-6;
 const STEP_TRANSITION_EPSILON_SECONDS = 1e-6;
 
 export function readGLTFAnimationTrack({
+  budget = DEFAULT_PARSE_BUDGET,
   filename,
   input,
   interpolation,
@@ -22,6 +24,7 @@ export function readGLTFAnimationTrack({
   path,
   section,
 }: {
+  budget?: ParseBudget;
   filename: string;
   input: Accessor;
   interpolation: string;
@@ -46,12 +49,12 @@ export function readGLTFAnimationTrack({
   }
   assertCountWithinBudget(
     input.getCount(),
-    DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
+    budget.maxSamplesPerTrack,
     `${section} source samples`,
     { filename, section },
   );
   const sourceTimes = readScalarAccessor(input, filename, section);
-  validateTimes(sourceTimes, filename, section);
+  validateTimes(sourceTimes, filename, section, budget);
   if (sourceTimes.length === 0) {
     return { times: [], values: [], resampled: false };
   }
@@ -102,8 +105,8 @@ export function readGLTFAnimationTrack({
   }
 
   const { times, values } = cubic
-    ? resampleCubicSpline({ filename, output, path, section, sourceTimes })
-    : resampleStep({ filename, output, path, section, sourceTimes });
+    ? resampleCubicSpline({ budget, filename, output, path, section, sourceTimes })
+    : resampleStep({ budget, filename, output, path, section, sourceTimes });
   return {
     times,
     values: ensureQuaternionContinuity(values, path),
@@ -157,7 +160,12 @@ function readScalarAccessor(accessor: Accessor, filename: string, section: strin
   return values;
 }
 
-function validateTimes(times: readonly number[], filename: string, section: string) {
+function validateTimes(
+  times: readonly number[],
+  filename: string,
+  section: string,
+  budget: ParseBudget,
+) {
   for (let index = 0; index < times.length; index += 1) {
     if ((times[index] ?? -1) < 0 || (index > 0 && times[index]! <= times[index - 1]!)) {
       throw new ParseDomainError(
@@ -168,7 +176,7 @@ function validateTimes(times: readonly number[], filename: string, section: stri
     }
   }
   const lastTime = times.at(-1) ?? 0;
-  if (lastTime > DEFAULT_PARSE_BUDGET.maxDurationSeconds) {
+  if (lastTime > budget.maxDurationSeconds) {
     throw new ParseDomainError(
       "PARSE_BUDGET_EXCEEDED",
       "glTF animation duration exceeds the processing limit",
@@ -176,7 +184,7 @@ function validateTimes(times: readonly number[], filename: string, section: stri
         filename,
         section,
         declared: Math.ceil(lastTime),
-        limit: DEFAULT_PARSE_BUDGET.maxDurationSeconds,
+        limit: budget.maxDurationSeconds,
       },
     );
   }
@@ -273,12 +281,14 @@ function sampleCubicSpline(
 }
 
 function resampleCubicSpline({
+  budget,
   filename,
   output,
   path,
   section,
   sourceTimes,
 }: {
+  budget: ParseBudget;
   filename: string;
   output: Accessor;
   path: MotionTrackPath;
@@ -292,6 +302,7 @@ function resampleCubicSpline({
     const leftTime = sourceTimes[index - 1]!;
     const rightTime = sourceTimes[index]!;
     appendAdaptiveCubicInterval({
+      budget,
       depth: 0,
       filename,
       leftTime,
@@ -307,7 +318,7 @@ function resampleCubicSpline({
     });
     assertCountWithinBudget(
       times.length,
-      DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
+      budget.maxSamplesPerTrack,
       `${section} adaptively resampled samples`,
       { filename, section },
     );
@@ -316,6 +327,7 @@ function resampleCubicSpline({
 }
 
 function appendAdaptiveCubicInterval({
+  budget,
   depth,
   filename,
   leftTime,
@@ -329,6 +341,7 @@ function appendAdaptiveCubicInterval({
   times,
   values,
 }: {
+  budget: ParseBudget;
   depth: number;
   filename: string;
   leftTime: number;
@@ -360,7 +373,7 @@ function appendAdaptiveCubicInterval({
   ) {
     assertCountWithinBudget(
       times.length + 1,
-      DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
+      budget.maxSamplesPerTrack,
       `${section} adaptively resampled samples`,
       { filename, section },
     );
@@ -383,6 +396,7 @@ function appendAdaptiveCubicInterval({
   const middleTime = leftTime + duration / 2;
   const middleValue = sampleCubicSpline(output, sourceTimes, path, middleTime);
   appendAdaptiveCubicInterval({
+    budget,
     depth: depth + 1,
     filename,
     leftTime,
@@ -397,6 +411,7 @@ function appendAdaptiveCubicInterval({
     values,
   });
   appendAdaptiveCubicInterval({
+    budget,
     depth: depth + 1,
     filename,
     leftTime: middleTime,
@@ -413,12 +428,14 @@ function appendAdaptiveCubicInterval({
 }
 
 function resampleStep({
+  budget,
   filename,
   output,
   path,
   section,
   sourceTimes,
 }: {
+  budget: ParseBudget;
   filename: string;
   output: Accessor;
   path: MotionTrackPath;
@@ -443,7 +460,7 @@ function resampleStep({
     values.push(...readElement(output, index, path));
     assertCountWithinBudget(
       times.length,
-      DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
+      budget.maxSamplesPerTrack,
       `${section} step-preserving samples`,
       { filename, section },
     );

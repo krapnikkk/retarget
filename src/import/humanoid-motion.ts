@@ -2,7 +2,7 @@ import {
   HUMANOID_BONES,
   MOTION_CLIP_SCHEMA_VERSION,
   REQUIRED_VRM_BONES,
-  createRetargetedMotionClipFromCanonicalMotion,
+  createCanonicalHumanoidMotionClip,
   type CanonicalMotion,
   type CanonicalHumanoidMotionClip,
   type CanonicalMotionSourceKind,
@@ -88,7 +88,6 @@ export function createImportedHumanoidMotionClip({
       rootName,
       tracks: canonicalTracks,
     }),
-    createdAt: new Date().toISOString(),
     metadata: {
       ...metadata,
       restHipsHeight: canonicalRestHipsHeight,
@@ -114,13 +113,7 @@ export function createImportedHumanoidMotionClip({
     },
   } satisfies CanonicalMotion;
 
-  return createRetargetedMotionClipFromCanonicalMotion(canonicalMotion, {
-    kind: "vrm",
-    filename: "pending-vrm",
-    restHipsHeight: canonicalRestHipsHeight,
-    profile: undefined,
-    pending: true,
-  });
+  return createCanonicalHumanoidMotionClip(canonicalMotion);
 }
 
 export function normalizeImportedTracks(tracks: MotionTrack[]) {

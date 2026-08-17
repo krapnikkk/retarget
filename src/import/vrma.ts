@@ -21,6 +21,7 @@ import {
   ParseDomainError,
   assertCountWithinBudget,
   assertInputWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 
 type VRMAAnimationExtension = VRMCVRMAnimation & {
@@ -34,8 +35,9 @@ const SUPPORTED_TARGET_PATHS = new Set(["rotation", "translation"]);
 export async function importVRMA(
   bytes: Uint8Array,
   filename = "motion.vrma",
+  budget: ParseBudget = DEFAULT_PARSE_BUDGET,
 ): Promise<CanonicalHumanoidMotionClip> {
-  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+  assertInputWithinBudget(bytes.byteLength, budget, {
     filename,
     section: "VRMA",
   });
@@ -43,7 +45,7 @@ export async function importVRMA(
   const document = await io.readBinary(bytes);
   assertVRMADocument(document);
 
-  const clip = createMotionClipFromVRMADocument(document, filename);
+  const clip = createMotionClipFromVRMADocument(document, filename, budget);
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));
@@ -55,6 +57,7 @@ export async function importVRMA(
 export function createMotionClipFromVRMADocument(
   document: Document,
   filename = "motion.vrma",
+  budget: ParseBudget = DEFAULT_PARSE_BUDGET,
 ): CanonicalHumanoidMotionClip {
   const extension = getVRMAAnimationExtension(document);
   const restHipsHeight = getRestHipsHeight(extension);
@@ -72,7 +75,7 @@ export function createMotionClipFromVRMADocument(
   const channels = animation.listChannels();
   assertCountWithinBudget(
     channels.length,
-    DEFAULT_PARSE_BUDGET.maxTracks,
+    budget.maxTracks,
     "VRMA animation channel count",
     { filename, section: "animation" },
   );
@@ -100,6 +103,7 @@ export function createMotionClipFromVRMADocument(
     }
 
     const importedTrack = readGLTFAnimationTrack({
+      budget,
       filename,
       input,
       interpolation: sampler.getInterpolation() || "LINEAR",
@@ -114,7 +118,7 @@ export function createMotionClipFromVRMADocument(
     totalSamples += importedTrack.times.length;
     assertCountWithinBudget(
       totalSamples,
-      DEFAULT_PARSE_BUDGET.maxTotalSamples,
+      budget.maxTotalSamples,
       "VRMA total animation samples",
       { filename, section: "animation" },
     );

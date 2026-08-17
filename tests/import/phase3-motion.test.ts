@@ -5,6 +5,7 @@ import { importBVH } from "@/import/bvh";
 import { createImportedFBXMotionClipFromAnimation } from "@/import/fbx-motion";
 import { importGLTFAnimation } from "@/import/gltf-animation";
 import { importVMD } from "@/import/vmd";
+import { resolveParseBudget } from "@/import/parse-budget";
 import { ACTORCORE_PROFILE } from "@/profiles";
 
 describe("Phase 3 motion importers", () => {
@@ -15,7 +16,7 @@ describe("Phase 3 motion importers", () => {
       kind: "bvh",
       profile: "bvh-humanoid",
     });
-    expect(clip.target.pending).toBe(true);
+    expect("target" in clip).toBe(false);
     expect(clip.tracks.some((track) => track.bone === "hips")).toBe(true);
     expect(clip.diagnostics?.mapping.mappedSourceBones).toBeGreaterThan(0);
   });
@@ -270,6 +271,14 @@ describe("Phase 3 motion importers", () => {
       const quaternion = rotation!.values.slice(index, index + 4);
       expect(Math.hypot(...quaternion)).toBeCloseTo(1, 6);
     }
+  });
+
+  it("applies an explicit caller sample budget during glTF import", async () => {
+    await expect(importGLTFAnimation(
+      await createMinimalAnimatedGLB("LINEAR"),
+      "budgeted.glb",
+      { budget: resolveParseBudget({ maxSamplesPerTrack: 1 }) },
+    )).rejects.toMatchObject({ code: "PARSE_BUDGET_EXCEEDED" });
   });
 
   it("rejects zero-length glTF animation quaternions", async () => {

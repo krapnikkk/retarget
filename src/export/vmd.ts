@@ -12,11 +12,18 @@ import {
   type VMDBoneFrame,
 } from "@/mmd/vmd-document";
 import { MMD_EXPORT_BONE_NAMES } from "./bone-naming";
-import { assertGeneratedExportBudget } from "@/processing-budget";
+import {
+  assertGeneratedExportBudget,
+  type ProcessingBudget,
+} from "@/processing-budget";
 
 const MAX_EXPORTED_VMD_KEYFRAMES = 0xffff_ffff;
 
-export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array> {
+export async function exportVMD(
+  clip: RetargetedMotionClip,
+  _options?: import("./bone-naming").BoneNamingOptions,
+  budget?: ProcessingBudget,
+): Promise<Uint8Array> {
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));
@@ -38,6 +45,7 @@ export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array>
     frameCount,
     valuesPerFrame: bones.length * 7,
     estimatedOutputBytes: 30 + 20 + 4 + keyframeCount * 111 + 20,
+    budget,
     phase: "vmd-export",
   });
 

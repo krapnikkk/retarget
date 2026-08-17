@@ -2,7 +2,7 @@
 
 [简体中文](../zh-CN/architecture/humanoid-motion-semantics.md)
 
-The humanoid pipeline has three explicit semantic stages. Format adapters may
+The humanoid pipeline has four explicit semantic stages. Format adapters may
 parse source data, but they must not label raw source-local values as canonical
 motion.
 
@@ -10,7 +10,9 @@ motion.
 RawImportedHumanoidMotion
   -> Source normalization
 CanonicalMotion
-  -> Target rig mapping and binding
+  -> Target-aware solve
+SolvedHumanoidMotionClip
+  -> Verified target binding
 Target-local animation
 ```
 
@@ -36,6 +38,12 @@ Target-local animation
   `metadata.resampledTracks` records the affected track count.
 - `metadata.normalizationVersion` distinguishes normalized tracks from legacy
   clips so profile overrides cannot transform the same values twice.
+- Canonical motion is targetless and deterministic. `sourceCanonicalId` is the
+  SHA-256 identity of stable semantic content; wall-clock time, random artifact
+  ids, processing evidence, and target bindings do not participate.
+- Persisted artifact identity belongs in `MotionArtifactEnvelope`, whose
+  `artifactId`, canonical ISO `createdAt`, and `toolVersion` are explicit caller
+  inputs around the canonical motion.
 
 For glTF and parsed FBX sources, normalization reads each mapped bone's source
 rest transform. An absolute local sample becomes a rest-relative world delta
@@ -44,10 +52,13 @@ step.
 
 ## Target contract
 
-The loaded target profile, available humanoid bones, skeleton tree, and rest
+The loaded target profile, available humanoid bones, skeleton tree, full rig
+signature, and rest
 hips height enter the solver before automatic or manual mapping. Mapping is
 therefore constrained by the real target rather than diagnostics created at
-source-import time.
+source-import time. A solved clip records that full signature as
+`processing.targetRigRevision`; only the subsequent binding stage adds the
+public `target` object.
 
 The shared target binder converts canonical world deltas into the target axis
 basis and parent-local rest basis. Generic avatar preview, document-based

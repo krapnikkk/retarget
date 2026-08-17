@@ -61,6 +61,20 @@ export class ParseDomainError extends RetargetError {
 export function resolveParseBudget(
   overrides: Partial<ParseBudget> = {},
 ): ParseBudget {
+  for (const [key, value] of Object.entries(overrides)) {
+    const countField = key !== "maxDurationSeconds" && key !== "maxFps";
+    if (
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      (countField ? value < 0 : value <= 0) ||
+      (countField && !Number.isSafeInteger(value))
+    ) {
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { field: key, value },
+        message: `${key} must be a ${countField ? "non-negative safe integer" : "positive finite number"}.`,
+      });
+    }
+  }
   return { ...DEFAULT_PARSE_BUDGET, ...overrides };
 }
 

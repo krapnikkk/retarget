@@ -5,7 +5,7 @@ import {
   assertHumanoidTargetIdentity,
   createHumanoidRigSignature,
   type HumanoidBoneName,
-  type RetargetedMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import {
   bindCanonicalTracksToTargetRest,
@@ -15,7 +15,7 @@ import {
 type RawGLTFNode = Record<string, unknown>;
 
 export function bindCanonicalClipToRawGLTFTarget(
-  clip: RetargetedMotionClip,
+  clip: TargetBoundSolvedHumanoidMotionClip,
   nodes: readonly RawGLTFNode[],
   nodesByBone: ReadonlyMap<HumanoidBoneName, number>,
   profile: RigProfile | null = clip.target.profile

@@ -235,7 +235,7 @@ describe("adapter registries", () => {
     const json = new TextDecoder().decode(bytes);
 
     expect(JSON.parse(json)).toMatchObject({
-      schemaVersion: 1,
+      schemaVersion: 2,
       source: {
         kind: "mixamo-fbx",
       },

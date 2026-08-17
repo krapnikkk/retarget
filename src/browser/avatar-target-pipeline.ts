@@ -82,6 +82,7 @@ export async function bindMotionClipToAvatar({
       mapping: mappingConfig,
       options: solveOptions,
       targetRig: {
+        rigSignature: rig.rigSignature,
         profile: rig.profile,
         bones: rig.bones,
         skeleton: rig.skeleton,
@@ -100,7 +101,6 @@ export async function bindMotionClipToAvatar({
       rigSignature: rig.rigSignature,
       restHipsHeight: rig.restHipsHeight,
       profile: rig.profile.id,
-      pending: false,
     },
     diagnostics: solvedClip.diagnostics
       ? bindDiagnosticsToAvatar(solvedClip.diagnostics, rig)

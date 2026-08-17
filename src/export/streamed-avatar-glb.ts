@@ -4,7 +4,11 @@ import type {
   TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import type { RetargetedRigMotionV2 } from "@/rig-motion";
-import { HUMANOID_BONES, isHumanoidBoneName } from "@/retarget";
+import {
+  getMotionTargetBinding,
+  HUMANOID_BONES,
+  isHumanoidBoneName,
+} from "@/retarget";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
 import { readGLBRangeInfo } from "@/import/glb-range";
 import {
@@ -404,8 +408,9 @@ function resolveRawHumanoidNodeIndices(
 }
 
 function resolveWorldAxisCorrection(expected: RetargetedMotionClip) {
-  const profile = expected.target.profile
-    ? getRigProfile(expected.target.profile as RigProfileId)
+  const target = getMotionTargetBinding(expected);
+  const profile = target?.profile
+    ? getRigProfile(target.profile as RigProfileId)
     : null;
   return profile
     ? createAxisCorrection(CANONICAL_AXIS_FRAME, profile)

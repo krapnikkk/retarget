@@ -3,7 +3,10 @@ import {
   MOTION_CLIP_SCHEMA_VERSION,
   type CanonicalHumanoidMotionClip,
   type RetargetOptions,
+  type SolvedHumanoidMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget/types";
+import { createCanonicalHumanoidMotionClip } from "@/retarget/canonical-motion";
 
 export type RetargetStubInput = {
   vrmFile: FileLike;
@@ -16,7 +19,6 @@ export type FileLike = {
 };
 
 export function createRetargetedMotionClipStub({
-  vrmFile,
   fbxFile,
   options,
 }: RetargetStubInput): CanonicalHumanoidMotionClip {
@@ -26,7 +28,7 @@ export function createRetargetedMotionClipStub({
   };
   const duration = 2;
 
-  return {
+  return createCanonicalHumanoidMotionClip({
     schemaVersion: MOTION_CLIP_SCHEMA_VERSION,
     name: stripExtension(fbxFile.name) || "mixamo-motion",
     duration,
@@ -34,14 +36,6 @@ export function createRetargetedMotionClipStub({
     source: {
       kind: "mixamo-fbx",
       filename: fbxFile.name,
-    },
-    target: {
-      kind: "vrm",
-      filename: vrmFile.name,
-    },
-    processing: {
-      stage: "canonical",
-      sourceCanonicalId: `stub:${fbxFile.name}:${vrmFile.name}`,
     },
     tracks: [
       {
@@ -115,7 +109,21 @@ export function createRetargetedMotionClipStub({
         values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
       },
     ],
-    createdAt: new Date().toISOString(),
+  });
+}
+
+export function bindSolvedMotionClipStub(
+  clip: SolvedHumanoidMotionClip,
+  target: Partial<TargetBoundSolvedHumanoidMotionClip["target"]> = {},
+): TargetBoundSolvedHumanoidMotionClip {
+  return {
+    ...clip,
+    target: {
+      kind: "vrm",
+      filename: "avatar.vrm",
+      rigSignature: "humanoid-rest-v1:test",
+      ...target,
+    },
   };
 }
 

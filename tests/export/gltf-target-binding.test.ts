@@ -7,8 +7,12 @@ import {
 } from "@/export/gltf-target-binding";
 import { bindCanonicalClipToRawGLTFTarget } from "@/export/raw-gltf-target-binding";
 import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "../fixtures/retarget-stub";
 import { CANONICAL_AXIS_FRAME, createAxisCorrection } from "@/retarget/coordinate-space";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
 
 describe("glTF target binding", () => {
   it("writes target-local tracks from canonical world deltas and target rest transforms", () => {
@@ -41,24 +45,16 @@ describe("glTF target binding", () => {
       0.35,
     );
     const nodesByBone = new Map([["hips" as const, hips]]);
-    const clip = {
-      ...canonical,
-      target: {
-        ...canonical.target,
+    const clip = bindSolvedMotionClipStub(
+      solveHumanoidCustomRigMotion(canonical),
+      {
         profile: GENERIC_GLTF_HUMANOID_PROFILE.id,
         rigSignature: createGLTFHumanoidRigSignature(
           nodesByBone,
           GENERIC_GLTF_HUMANOID_PROFILE.id,
         ),
       },
-      processing: {
-        stage: "solved" as const,
-        sourceCanonicalId: canonical.processing.sourceCanonicalId,
-        solverId: "humanoid-custom-v4" as const,
-        solverRevision: 4 as const,
-        solvePass: 1 as const,
-      },
-    };
+    );
     clip.metadata = {
       normalizationVersion: 1,
       canonicalProfile: "vrm-humanoid",
@@ -138,10 +134,13 @@ describe("glTF target binding", () => {
   });
 
   it("rejects cyclic raw glTF parent graphs before walking ancestors", () => {
-    const clip = createRetargetedMotionClipStub({
+    const canonical = createRetargetedMotionClipStub({
       vrmFile: { name: "avatar.glb" },
       fbxFile: { name: "motion.fbx" },
     });
+    const clip = bindSolvedMotionClipStub(
+      solveHumanoidCustomRigMotion(canonical),
+    );
     expect(() =>
       bindCanonicalClipToRawGLTFTarget(
         clip,

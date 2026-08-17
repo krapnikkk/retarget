@@ -30,6 +30,26 @@ export const DEFAULT_PROCESSING_BUDGET = {
   maxOutputBytes: Number.MAX_SAFE_INTEGER,
 } as const satisfies ProcessingBudget;
 
+export function resolveProcessingBudget(
+  overrides: Partial<ProcessingBudget> = {},
+): ProcessingBudget {
+  for (const [key, value] of Object.entries(overrides)) {
+    const scalarField = key === "maxDurationSeconds" || key === "maxFps";
+    if (
+      typeof value !== "number" ||
+      !Number.isFinite(value) ||
+      (scalarField ? value <= 0 : value < 0) ||
+      (!scalarField && !Number.isSafeInteger(value))
+    ) {
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { field: key, value },
+        message: `${key} must be a ${scalarField ? "positive finite number" : "non-negative safe integer"}.`,
+      });
+    }
+  }
+  return { ...DEFAULT_PROCESSING_BUDGET, ...overrides };
+}
+
 export class ProcessingBudgetError extends RetargetError {
   readonly declared?: number;
   readonly limit?: number;

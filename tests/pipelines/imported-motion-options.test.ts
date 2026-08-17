@@ -3,7 +3,10 @@ import { findAvatarImportAdapter } from "@/adapters/avatar";
 import { findMotionImportAdapter } from "@/adapters/motion";
 import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { importedMotionToAvatarPipelines } from "@/pipelines/imported-motion-to-avatar";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "../fixtures/retarget-stub";
 import {
   DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
   solveHumanoidCustomRigMotion,
@@ -33,10 +36,7 @@ describe("generic humanoid pipeline options", () => {
       vrmFile: { name: "pending.vrm" },
     });
     const solved = solveHumanoidCustomRigMotion(sourceClip);
-    const solvedClip = {
-      ...solved,
-      target: { ...solved.target, rigSignature: "humanoid-rest-v1:test" },
-    };
+    const solvedClip = bindSolvedMotionClipStub(solved);
     vi.mocked(findMotionImportAdapter).mockResolvedValue({
       id: "bvh",
       label: "BVH",
@@ -142,10 +142,9 @@ describe("generic humanoid pipeline options", () => {
       profileId: "generic-gltf-humanoid",
       probe: vi.fn(),
     });
-    vi.mocked(bindMotionClipToAvatar).mockResolvedValue({
-      ...solved,
-      target: { ...solved.target, rigSignature: "humanoid-rest-v1:test" },
-    });
+    vi.mocked(bindMotionClipToAvatar).mockResolvedValue(
+      bindSolvedMotionClipStub(solved),
+    );
     vi.mocked(runRetargetJob).mockResolvedValue(sourceClip);
     const pipeline = importedMotionToAvatarPipelines.find(
       (candidate) =>

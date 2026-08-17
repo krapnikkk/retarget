@@ -20,7 +20,10 @@ import {
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
 import {
   DEFAULT_PARSE_BUDGET,
+  ParseDomainError,
+  assertCountWithinBudget,
   assertInputWithinBudget,
+  type ParseBudget,
 } from "./parse-budget";
 import {
   createImportedHumanoidMotionClip,
@@ -34,6 +37,7 @@ export async function importFBXHumanoidMotion({
   profile,
   animationIndex,
   animationName,
+  budget,
 }: {
   file: File;
   kind: Extract<
@@ -43,6 +47,7 @@ export async function importFBXHumanoidMotion({
   profile: RigProfile;
   animationIndex?: number;
   animationName?: string;
+  budget?: ParseBudget;
 }) {
   return importFBXHumanoidMotionBytes({
     bytes: await file.arrayBuffer(),
@@ -51,6 +56,7 @@ export async function importFBXHumanoidMotion({
     profile,
     animationIndex,
     animationName,
+    budget,
   });
 }
 
@@ -61,6 +67,7 @@ export function importFBXHumanoidMotionBytes({
   profile,
   animationIndex,
   animationName,
+  budget = DEFAULT_PARSE_BUDGET,
 }: {
   bytes: ArrayBuffer;
   filename: string;
@@ -71,8 +78,9 @@ export function importFBXHumanoidMotionBytes({
   profile: RigProfile;
   animationIndex?: number;
   animationName?: string;
+  budget?: ParseBudget;
 }) {
-  assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
+  assertInputWithinBudget(bytes.byteLength, budget, {
     filename,
     section: kind,
   });
@@ -87,6 +95,7 @@ export function importFBXHumanoidMotionBytes({
 
   return createImportedFBXMotionClipFromAnimation({
     animationClip,
+    budget,
     filename,
     kind,
     profile: applyFBXUnitEvidence(profile, group),
@@ -151,6 +160,7 @@ function applyFBXUnitEvidence(profile: RigProfile, root: Object3D): RigProfile {
 
 export function createImportedFBXMotionClipFromAnimation({
   animationClip,
+  budget = DEFAULT_PARSE_BUDGET,
   filename = "motion.fbx",
   kind,
   profile,
@@ -158,6 +168,7 @@ export function createImportedFBXMotionClipFromAnimation({
   sourceRoot,
 }: {
   animationClip: AnimationClip;
+  budget?: ParseBudget;
   filename?: string;
   kind: Extract<
     CanonicalMotionSourceKind,
@@ -167,6 +178,7 @@ export function createImportedFBXMotionClipFromAnimation({
   rootName?: string;
   sourceRoot?: Object3D;
 }) {
+  assertFBXAnimationWithinBudget(animationClip, filename, budget);
   const tracks = normalizeImportedTracks(
     animationClip.tracks
       .map((track) => createMotionTrackFromFBXTrack(track, profile))
@@ -195,6 +207,50 @@ export function createImportedFBXMotionClipFromAnimation({
     rotationSemantics: sourceRest ? "absolute-local" : "delta-local",
     translationSemantics: sourceRest ? "absolute-local" : "root-offset",
   });
+}
+
+function assertFBXAnimationWithinBudget(
+  animation: AnimationClip,
+  filename: string,
+  budget: ParseBudget,
+) {
+  assertCountWithinBudget(
+    animation.tracks.length,
+    budget.maxTracks,
+    "FBX animation track count",
+    { filename, section: "animation" },
+  );
+  if (
+    !Number.isFinite(animation.duration) ||
+    animation.duration > budget.maxDurationSeconds
+  ) {
+    throw new ParseDomainError(
+      "PARSE_BUDGET_EXCEEDED",
+      "FBX animation duration exceeds the processing limit",
+      {
+        filename,
+        section: "animation",
+        declared: Math.ceil(animation.duration),
+        limit: budget.maxDurationSeconds,
+      },
+    );
+  }
+  let totalSamples = 0;
+  for (const track of animation.tracks) {
+    assertCountWithinBudget(
+      track.times.length,
+      budget.maxSamplesPerTrack,
+      "FBX samples per track",
+      { filename, section: track.name },
+    );
+    totalSamples += track.times.length;
+    assertCountWithinBudget(
+      totalSamples,
+      budget.maxTotalSamples,
+      "FBX total animation samples",
+      { filename, section: "animation" },
+    );
+  }
 }
 
 function collectSourceRestTransforms(root: Object3D, profile: RigProfile) {

@@ -31,7 +31,6 @@ describe("avatar target binding", () => {
       kind: "gltf-humanoid",
       filename: "avatar.glb",
       profile: "generic-gltf-humanoid",
-      pending: false,
     });
     expect(boundClip.target.rigSignature).toMatch(/^humanoid-rest-v1:/);
   });
@@ -105,7 +104,6 @@ describe("avatar target binding", () => {
     expect(boundClip.target).toMatchObject({
       filename: "large-avatar.glb",
       profile: "generic-gltf-humanoid",
-      pending: false,
     });
     expect(boundClip.target.rigSignature).toMatch(/^humanoid-rest-v1:/);
   });

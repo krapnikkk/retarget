@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createCanonicalMotionFromRetargetedClip,
+  createMotionArtifactEnvelope,
   parseCanonicalMotion,
   parseMotionClip,
   serializeCanonicalMotion,
@@ -27,6 +28,41 @@ describe("CanonicalMotion", () => {
       canonicalMotion,
     );
   });
+
+  it("derives target-neutral identity from stable semantic content", () => {
+    const anotherTarget = createRetargetedMotionClipStub({
+      vrmFile: { name: "another-avatar.vrm" },
+      fbxFile: { name: "walk.fbx" },
+    });
+
+    expect(anotherTarget.processing.sourceCanonicalId).toBe(
+      clip.processing.sourceCanonicalId,
+    );
+    const serialized = JSON.parse(serializeMotionClip(anotherTarget));
+    expect(serialized).not.toHaveProperty("createdAt");
+    expect(serialized).not.toHaveProperty("target");
+  });
+
+  it("keeps artifact identity and time outside canonical motion", () => {
+    const envelope = createMotionArtifactEnvelope({
+      artifactId: "motion-artifact-1",
+      createdAt: "2026-08-17T00:00:00.000Z",
+      motion: canonicalMotion,
+      toolVersion: "0.6.0",
+    });
+
+    expect(envelope).toMatchObject({
+      artifactId: "motion-artifact-1",
+      createdAt: "2026-08-17T00:00:00.000Z",
+      sourceHash: clip.processing.sourceCanonicalId,
+    });
+    expect(() => createMotionArtifactEnvelope({
+      artifactId: "motion-artifact-1",
+      createdAt: "August 17, 2026",
+      motion: canonicalMotion,
+      toolVersion: "0.6.0",
+    })).toThrow(/ISO timestamp/);
+  });
 });
 
 describe("RetargetedMotionClip", () => {
@@ -45,6 +81,13 @@ describe("RetargetedMotionClip", () => {
     expect(() => parseMotionClip(JSON.stringify(legacyClip))).toThrow(
       /processing must describe/,
     );
+  });
+
+  it("allows target bindings only after solve with verified rig identity", () => {
+    expect(validateMotionClip({
+      ...clip,
+      target: { kind: "vrm", filename: "avatar.vrm" },
+    })).toMatchObject({ ok: false });
   });
 
   it("rejects tracks with invalid sample lengths", () => {

@@ -8,10 +8,19 @@ import { RETARGET_ERROR_CODES, RetargetError } from "@/retarget/errors";
 import { HUMANOID_BONES } from "@/retarget/types";
 import {
   assertMotionProcessingBudget,
+  assertOutputBytes,
   assertRigMotionProcessingBudget,
+  resolveProcessingBudget,
+  type ProcessingBudget,
 } from "@/processing-budget";
 import {
+  assertInputWithinBudget,
+  resolveParseBudget,
+} from "@/import/parse-budget";
+import { collectRetargetTaskTransfers } from "./transferables";
+import {
   RETARGET_JOB_PROTOCOL_VERSION,
+  type RetargetJobBudget,
   type RetargetJobRequest,
   type RetargetJobResponse,
   type RetargetJobTask,
@@ -81,7 +90,7 @@ export function assertRetargetJobRequest(
   const request = asRecord(value, "Worker request");
   assertExactKeys(
     request,
-    ["schemaVersion", "jobId", "deadlineMs", "task"],
+    ["schemaVersion", "jobId", "deadlineMs", "budget", "task"],
     "Worker request",
   );
   if (request.schemaVersion !== RETARGET_JOB_PROTOCOL_VERSION) {
@@ -95,12 +104,24 @@ export function assertRetargetJobRequest(
   ) {
     protocolError("Worker request deadlineMs must be a positive safe integer.");
   }
+  assertRetargetJobBudget(request.budget);
+  const parseBudget = resolveParseBudget(request.budget?.parse);
+  const processingBudget = resolveProcessingBudget(request.budget?.processing);
   const task = asRecord(request.task, "Worker request task");
   assertDataProperties(task, "Worker request task");
   if (typeof task.type !== "string" || !TASK_TYPES.has(task.type as never)) {
     protocolError("Worker request task discriminator is unsupported.");
   }
-  assertTaskFields(task as unknown as RetargetJobTask);
+  const typedTask = task as unknown as RetargetJobTask;
+  assertTaskFields(typedTask, processingBudget);
+  assertInputWithinBudget(
+    collectRetargetTaskTransfers(typedTask).reduce(
+      (total, buffer) => total + buffer.byteLength,
+      0,
+    ),
+    parseBudget,
+    { section: `${typedTask.type} Worker request` },
+  );
 }
 
 export function assertRetargetJobResponse(
@@ -162,10 +183,14 @@ export function assertRetargetJobResponse(
     ["schemaVersion", "jobId", "type", "result"],
     "Worker success response",
   );
-  assertTaskResult(request.task, response.result);
+  assertTaskResult(
+    request.task,
+    response.result,
+    resolveProcessingBudget(request.budget?.processing),
+  );
 }
 
-function assertTaskFields(task: RetargetJobTask) {
+function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
   switch (task.type) {
     case "inspect-humanoid-avatar":
       assertExactKeys(task, [
@@ -231,17 +256,19 @@ function assertTaskFields(task: RetargetJobTask) {
         ["type", "motion", "mapping", "options", "targetRig"],
         task.type,
       );
-      assertMotionProcessingBudget(task.motion);
+      assertMotionProcessingBudget(task.motion, budget);
       assertMapping(task.mapping);
       assertSolveOptions(task.options);
       if (task.targetRig !== undefined) {
         const targetRig = asRecord(task.targetRig, "solve-humanoid.targetRig");
         assertExactKeys(
           targetRig,
-          ["profile", "bones", "skeleton", "restHipsHeight"],
+          ["rigSignature", "profile", "bones", "skeleton", "restHipsHeight"],
           "solve-humanoid.targetRig",
         );
-        if (!Array.isArray(targetRig.bones) || !isRecord(targetRig.profile) ||
+        if (typeof targetRig.rigSignature !== "string" ||
+          targetRig.rigSignature.length === 0 ||
+          !Array.isArray(targetRig.bones) || !isRecord(targetRig.profile) ||
           !isRecord(targetRig.skeleton)) {
           protocolError("solve-humanoid.targetRig is invalid.");
         }
@@ -293,7 +320,7 @@ function assertTaskFields(task: RetargetJobTask) {
         task.type,
       );
       assertFormat(task.formatId, MOTION_EXPORT_FORMAT_IDS);
-      assertMotionProcessingBudget(task.clip);
+      assertMotionProcessingBudget(task.clip, budget);
       if (task.options !== undefined) {
         const options = asRecord(task.options, "export-motion.options");
         assertExactKeys(options, ["boneNamingProfile"], "export-motion.options");
@@ -314,7 +341,7 @@ function assertTaskFields(task: RetargetJobTask) {
       );
       assertArrayBuffer(task.bytes, "validate-motion-export.bytes");
       assertFormat(task.formatId, MOTION_EXPORT_FORMAT_IDS);
-      assertMotionProcessingBudget(task.expected);
+      assertMotionProcessingBudget(task.expected, budget);
       return;
     case "validate-avatar-export":
       assertExactKeys(
@@ -324,7 +351,7 @@ function assertTaskFields(task: RetargetJobTask) {
       );
       assertArrayBuffer(task.bytes, "validate-avatar-export.bytes");
       assertFormat(task.formatId, AVATAR_EXPORT_FORMAT_IDS);
-      assertMotionProcessingBudget(task.expected);
+      assertMotionProcessingBudget(task.expected, budget);
       return;
     case "semantic-validate":
       assertExactKeys(
@@ -332,8 +359,8 @@ function assertTaskFields(task: RetargetJobTask) {
         ["type", "actual", "expected", "restPose"],
         task.type,
       );
-      assertMotionProcessingBudget(task.actual);
-      assertMotionProcessingBudget(task.expected);
+      assertMotionProcessingBudget(task.actual, budget);
+      assertMotionProcessingBudget(task.expected, budget);
       if (task.restPose !== undefined && !Array.isArray(task.restPose)) {
         protocolError("semantic-validate.restPose is invalid.");
       }
@@ -343,7 +370,11 @@ function assertTaskFields(task: RetargetJobTask) {
   }
 }
 
-function assertTaskResult(task: RetargetJobTask, result: unknown) {
+function assertTaskResult(
+  task: RetargetJobTask,
+  result: unknown,
+  budget: ProcessingBudget,
+) {
   try {
     switch (task.type) {
       case "convert-mmd-avatar":
@@ -351,15 +382,16 @@ function assertTaskResult(task: RetargetJobTask, result: unknown) {
         if (!(result instanceof Uint8Array)) {
           protocolError(`${task.type} result must be Uint8Array.`);
         }
+        assertOutputBytes(result.byteLength, budget);
         return;
       case "import-motion":
       case "solve-humanoid":
-        assertMotionProcessingBudget(result as never);
+        assertMotionProcessingBudget(result as never, budget);
         return;
       case "retarget-rigged-gltf": {
         const record = asRecord(result, "retarget-rigged-gltf result");
-        assertRigMotionProcessingBudget(record.motion as never);
-        assertRigMotionProcessingBudget(record.sourceMotion as never);
+        assertRigMotionProcessingBudget(record.motion as never, budget);
+        assertRigMotionProcessingBudget(record.sourceMotion as never, budget);
         if (!isRecord(record.sourceInspection) || !isRecord(record.targetInspection)) {
           protocolError("retarget-rigged-gltf inspections are invalid.");
         }
@@ -402,6 +434,62 @@ function assertTaskResult(task: RetargetJobTask, result: unknown) {
       cause,
       message: `${task.type} result failed runtime validation.`,
     });
+  }
+}
+
+function assertRetargetJobBudget(
+  value: unknown,
+): asserts value is RetargetJobBudget | undefined {
+  if (value === undefined) return;
+  const budget = asRecord(value, "Worker request budget");
+  assertExactKeys(budget, ["parse", "processing"], "Worker request budget");
+  if (budget.parse !== undefined) {
+    const parse = asRecord(budget.parse, "Worker request budget.parse");
+    assertExactKeys(parse, [
+      "maxInputBytes",
+      "maxTracks",
+      "maxSamplesPerTrack",
+      "maxTotalSamples",
+      "maxDurationSeconds",
+      "maxFps",
+      "maxStringBytes",
+      "maxVertices",
+      "maxIndices",
+      "maxMaterials",
+      "maxBones",
+      "maxMorphs",
+    ], "Worker request budget.parse");
+    try {
+      resolveParseBudget(parse);
+    } catch {
+      protocolError("Worker request budget.parse is invalid.");
+    }
+    if (Object.values(parse).some((value) => (value as number) <= 0)) {
+      protocolError("Worker request budget.parse limits must be positive.");
+    }
+  }
+  if (budget.processing !== undefined) {
+    const processing = asRecord(
+      budget.processing,
+      "Worker request budget.processing",
+    );
+    assertExactKeys(processing, [
+      "maxDurationSeconds",
+      "maxFps",
+      "maxFrames",
+      "maxTracks",
+      "maxTotalSamples",
+      "maxGeneratedValues",
+      "maxOutputBytes",
+    ], "Worker request budget.processing");
+    try {
+      resolveProcessingBudget(processing);
+    } catch {
+      protocolError("Worker request budget.processing is invalid.");
+    }
+    if (Object.values(processing).some((value) => (value as number) <= 0)) {
+      protocolError("Worker request budget.processing limits must be positive.");
+    }
   }
 }
 

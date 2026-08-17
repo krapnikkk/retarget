@@ -31,8 +31,14 @@ import {
   assertOutputBytes,
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
-  DEFAULT_PROCESSING_BUDGET,
+  resolveProcessingBudget,
+  type ProcessingBudget,
 } from "@/processing-budget";
+import {
+  assertInputWithinBudget,
+  resolveParseBudget,
+  type ParseBudget,
+} from "@/import/parse-budget";
 import type {
   RetargetJobPhase,
   RetargetJobRequest,
@@ -41,6 +47,7 @@ import type {
 } from "./types";
 import { serializeRigInspection } from "./serialize-rig-inspection";
 import { assertRetargetJobRequest } from "./runtime-protocol";
+import { collectRetargetTaskTransfers } from "./transferables";
 
 export type RetargetJobReporter = (
   phase: RetargetJobPhase,
@@ -52,11 +59,20 @@ export async function executeRetargetJob(
   report: RetargetJobReporter = () => undefined,
 ) {
   assertRetargetJobRequest(request);
+  const parseBudget = resolveParseBudget(request.budget?.parse);
+  const processingBudget = resolveProcessingBudget(request.budget?.processing);
+  assertTaskInputBudget(request.task, parseBudget);
   const deadline = createProcessingDeadline(request.deadlineMs);
   report("validate", 0.02);
   deadline.checkpoint("validate");
 
-  const result = await executeTask(request.task, report, deadline);
+  const result = await executeTask(
+    request.task,
+    report,
+    deadline,
+    parseBudget,
+    processingBudget,
+  );
   deadline.checkpoint("complete");
   report("complete", 1);
   return result;
@@ -66,8 +82,10 @@ async function executeTask(
   task: RetargetJobTask,
   report: RetargetJobReporter,
   deadline: ReturnType<typeof createProcessingDeadline>,
+  parseBudget: ParseBudget,
+  processingBudget: ProcessingBudget,
 ) {
-  assertTaskInputSafety(task);
+  assertTaskInputSafety(task, processingBudget);
   if (task.type === "inspect-humanoid-avatar") {
     report("parse", 0.08);
     const { inspectHumanoidAvatarBytes } = await import(
@@ -95,7 +113,7 @@ async function executeTask(
     deadline.checkpoint("convert-mmd-avatar");
     report("export", 0.78);
     const bytes = await new WebIO().writeBinary(document);
-    assertOutputBytes(bytes.byteLength, DEFAULT_PROCESSING_BUDGET);
+    assertOutputBytes(bytes.byteLength, processingBudget);
     return bytes;
   }
 
@@ -134,13 +152,14 @@ async function executeTask(
                   : GENERIC_FBX_HUMANOID_PROFILE,
             animationIndex: task.animationIndex,
             animationName: task.animationName,
+            budget: parseBudget,
           })
         : task.formatId === "bvh"
-        ? importBVH(bytes, task.filename)
+        ? importBVH(bytes, task.filename, parseBudget)
         : task.formatId === "vmd"
-          ? importVMD(bytes, task.filename)
+          ? importVMD(bytes, task.filename, parseBudget)
           : task.formatId === "vrma"
-            ? await importVRMA(bytes, task.filename)
+            ? await importVRMA(bytes, task.filename, parseBudget)
             : task.formatId === "gltf-animation"
               ? await importGLTFAnimation(
                   bytes,
@@ -148,18 +167,19 @@ async function executeTask(
                   {
                     animationIndex: task.animationIndex,
                     animationName: task.animationName,
+                    budget: parseBudget,
                     resources: restoreGLTFResources(task.resources),
                   },
                 )
               : assertNever(task.formatId);
     deadline.checkpoint("parse");
     report("normalize", 0.82);
-    assertMotionProcessingBudget(clip);
+    assertMotionProcessingBudget(clip, processingBudget);
     return clip;
   }
 
   if (task.type === "solve-humanoid") {
-    assertMotionProcessingBudget(task.motion);
+    assertMotionProcessingBudget(task.motion, processingBudget);
     report("solve", 0.18);
     const targetRig = task.targetRig
       ? { ...task.targetRig, bones: new Set(task.targetRig.bones) }
@@ -169,10 +189,11 @@ async function executeTask(
       task.mapping,
       targetRig,
       task.options,
+      processingBudget,
     );
     deadline.checkpoint("solve");
     report("refine", 0.82);
-    assertMotionProcessingBudget(clip);
+    assertMotionProcessingBudget(clip, processingBudget);
     return clip;
   }
 
@@ -230,7 +251,7 @@ async function executeTask(
         animationName: task.animationName,
       },
     );
-    assertRigMotionProcessingBudget(sourceMotion);
+    assertRigMotionProcessingBudget(sourceMotion, processingBudget);
     report("solve", 0.55);
     const motion = solver.solve({
       motion: sourceMotion,
@@ -238,7 +259,7 @@ async function executeTask(
       targetFilename: task.targetFilename,
     });
     deadline.checkpoint("solve-rig-motion");
-    assertRigMotionProcessingBudget(motion);
+    assertRigMotionProcessingBudget(motion, processingBudget);
     return {
       motion,
       sourceMotion,
@@ -249,10 +270,10 @@ async function executeTask(
   }
 
   if (task.type === "export-motion") {
-    assertMotionProcessingBudget(task.clip);
+    assertMotionProcessingBudget(task.clip, processingBudget);
     report("export", 0.15);
-    const bytes = await exportMotion(task);
-    assertOutputBytes(bytes.byteLength, DEFAULT_PROCESSING_BUDGET);
+    const bytes = await exportMotion(task, processingBudget);
+    assertOutputBytes(bytes.byteLength, processingBudget);
     deadline.checkpoint("export");
     return bytes;
   }
@@ -295,8 +316,8 @@ async function executeTask(
 
   if (task.type === "semantic-validate") {
     report("semantic-validate", 0.15);
-    assertMotionProcessingBudget(task.actual);
-    assertMotionProcessingBudget(task.expected);
+    assertMotionProcessingBudget(task.actual, processingBudget);
+    assertMotionProcessingBudget(task.expected, processingBudget);
     return validateHumanoidMotionSemantics({
       actual: task.actual,
       expected: task.expected,
@@ -306,7 +327,20 @@ async function executeTask(
   return assertNever(task);
 }
 
-function assertTaskInputSafety(task: RetargetJobTask) {
+function assertTaskInputBudget(task: RetargetJobTask, budget: ParseBudget) {
+  const byteLength = collectRetargetTaskTransfers(task).reduce(
+    (total, buffer) => total + buffer.byteLength,
+    0,
+  );
+  assertInputWithinBudget(byteLength, budget, {
+    section: `${task.type} Worker request`,
+  });
+}
+
+function assertTaskInputSafety(
+  task: RetargetJobTask,
+  processingBudget: ProcessingBudget,
+) {
   if (
     task.type === "convert-mmd-avatar" ||
     task.type === "inspect-rigged-gltf" ||
@@ -321,20 +355,23 @@ function assertTaskInputSafety(task: RetargetJobTask) {
   }
   if (task.type === "retarget-rigged-gltf") {
     if (task.targetInspection) {
-      assertSerializedRigInspection(task.targetInspection);
+      assertSerializedRigInspection(task.targetInspection, processingBudget);
     }
     return;
   }
   if (task.type === "validate-motion-export") {
-    assertMotionProcessingBudget(task.expected);
+    assertMotionProcessingBudget(task.expected, processingBudget);
     return;
   }
   if (task.type === "validate-avatar-export") {
-    assertMotionProcessingBudget(task.expected);
+    assertMotionProcessingBudget(task.expected, processingBudget);
   }
 }
 
-function assertSerializedRigInspection(inspection: SerializedRigInspection) {
+function assertSerializedRigInspection(
+  inspection: SerializedRigInspection,
+  budget: ProcessingBudget,
+) {
   const canonicalDefinition = getRigDefinition(inspection.definition?.id);
   if (
     !canonicalDefinition ||
@@ -357,14 +394,14 @@ function assertSerializedRigInspection(inspection: SerializedRigInspection) {
     throw createRetargetError("TARGET_RIG_INVALID");
   }
   if (
-    inspection.restPose.length > DEFAULT_PROCESSING_BUDGET.maxTracks ||
+    inspection.restPose.length > budget.maxTracks ||
     !Number.isFinite(inspection.requiredChainCoverage) ||
     inspection.requiredChainCoverage < 0 ||
     inspection.requiredChainCoverage > 1 ||
-    !isBoundedStringArray(inspection.unmappedNodes) ||
-    !isBoundedStringArray(inspection.axisWarnings) ||
+    !isBoundedStringArray(inspection.unmappedNodes, budget.maxTracks) ||
+    !isBoundedStringArray(inspection.axisWarnings, budget.maxTracks) ||
     !Array.isArray(inspection.topologyConflicts) ||
-    inspection.topologyConflicts.length > DEFAULT_PROCESSING_BUDGET.maxTracks ||
+    inspection.topologyConflicts.length > budget.maxTracks ||
     inspection.topologyConflicts.some((conflict) =>
       !conflict ||
       typeof conflict !== "object" ||
@@ -461,9 +498,9 @@ function sameStrings(actual: unknown, expected: readonly string[]) {
     JSON.stringify([...actual].sort()) === JSON.stringify(expected);
 }
 
-function isBoundedStringArray(value: unknown) {
+function isBoundedStringArray(value: unknown, maxItems: number) {
   return Array.isArray(value) &&
-    value.length <= DEFAULT_PROCESSING_BUDGET.maxTracks &&
+    value.length <= maxItems &&
     value.every((item) => typeof item === "string" && item.length <= 1024);
 }
 
@@ -512,6 +549,7 @@ function restoreGLTFResources(
 
 async function exportMotion(
   task: Extract<RetargetJobTask, { type: "export-motion" }>,
+  budget: ProcessingBudget,
 ) {
   if (task.formatId === "motion-json") {
     return new TextEncoder().encode(serializeMotionClip(task.clip));
@@ -520,7 +558,11 @@ async function exportMotion(
     return (await import("@/export/vrma")).exportVRMA(task.clip, task.options);
   }
   if (task.formatId === "vmd") {
-    return (await import("@/export/vmd")).exportVMD(task.clip);
+    return (await import("@/export/vmd")).exportVMD(
+      task.clip,
+      task.options,
+      budget,
+    );
   }
   if (task.formatId === "gltf-animation") {
     return (await import("@/export/gltf-animation")).exportGLTFAnimation(
@@ -529,7 +571,11 @@ async function exportMotion(
     );
   }
   if (task.formatId === "bvh") {
-    return (await import("@/export/bvh")).exportBVH(task.clip, task.options);
+    return (await import("@/export/bvh")).exportBVH(
+      task.clip,
+      task.options,
+      budget,
+    );
   }
   if (task.formatId === "fbx-animation") {
     return (await import("@/export/fbx")).exportFBXAnimation(

@@ -2,7 +2,11 @@ import { Accessor, Document, WebIO, type Node } from "@gltf-transform/core";
 import { Quaternion } from "three";
 import { assertValidParentGraph } from "@/core/parent-graph";
 import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
-import type { HumanoidBoneName, RetargetedMotionClip } from "@/retarget";
+import {
+  getMotionTargetBinding,
+  type HumanoidBoneName,
+  type RetargetedMotionClip,
+} from "@/retarget";
 import {
   bindCanonicalRotationDeltasToTargetLocal,
   bindCanonicalTranslationOffsetsToTargetLocal,
@@ -248,7 +252,7 @@ function getGLTFAnimationRestHipsHeight(clip: RetargetedMotionClip) {
     return sourceRestHipsHeight;
   }
 
-  const targetRestHipsHeight = clip.target.restHipsHeight;
+  const targetRestHipsHeight = getMotionTargetBinding(clip)?.restHipsHeight;
   if (
     typeof targetRestHipsHeight === "number" &&
     Number.isFinite(targetRestHipsHeight) &&

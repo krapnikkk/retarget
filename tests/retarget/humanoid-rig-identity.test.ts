@@ -3,7 +3,11 @@ import {
   assertHumanoidTargetIdentity,
   createHumanoidRigSignature,
 } from "@/retarget";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "../fixtures/retarget-stub";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
 
 describe("humanoid target rig identity", () => {
   it("rejects exporting a solved clip to another semantic rig", () => {
@@ -21,17 +25,10 @@ describe("humanoid target rig identity", () => {
       fbxFile: { name: "walk.fbx" },
       vrmFile: { name: "avatar-a.glb" },
     });
-    const solved = {
-      ...canonical,
-      target: { ...canonical.target, rigSignature: rigA },
-      processing: {
-        stage: "solved" as const,
-        sourceCanonicalId: canonical.processing.sourceCanonicalId,
-        solverId: "humanoid-custom-v4" as const,
-        solverRevision: 4 as const,
-        solvePass: 1 as const,
-      },
-    };
+    const solved = bindSolvedMotionClipStub(
+      solveHumanoidCustomRigMotion(canonical),
+      { filename: "avatar-a.glb", rigSignature: rigA },
+    );
 
     expect(() => assertHumanoidTargetIdentity(solved, rigA)).not.toThrow();
     expect(() => assertHumanoidTargetIdentity(solved, rigB))

@@ -4,9 +4,13 @@ import {
   exportAnimatedGLBStream,
   validateAnimatedGLBStream,
 } from "@/export/streamed-avatar-glb";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import {
+  bindSolvedMotionClipStub,
+  createRetargetedMotionClipStub,
+} from "../fixtures/retarget-stub";
 import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
 import { VRM_HUMANOID_PROFILE } from "@/profiles";
+import { solveHumanoidCustomRigMotion } from "@/solvers";
 
 describe("streamed animated GLB export", () => {
   it("appends animation through Blob parts without reading the whole avatar", async () => {
@@ -15,21 +19,14 @@ describe("streamed animated GLB export", () => {
       vrmFile: avatarFile,
       fbxFile: { name: "walk.fbx" },
     });
-    const clip = {
-      ...canonical,
-      target: {
-        ...canonical.target,
+    const clip = bindSolvedMotionClipStub(
+      solveHumanoidCustomRigMotion(canonical),
+      {
+        filename: avatarFile.name,
         profile: VRM_HUMANOID_PROFILE.id,
         rigSignature: avatarFile.rigSignature,
       },
-      processing: {
-        stage: "solved" as const,
-        sourceCanonicalId: canonical.processing.sourceCanonicalId,
-        solverId: "humanoid-custom-v4" as const,
-        solverRevision: 4 as const,
-        solvePass: 1 as const,
-      },
-    };
+    );
     clip.metadata = {
       ...clip.metadata,
       rootTranslationSpace: "offset-meters",

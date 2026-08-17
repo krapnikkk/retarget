@@ -17,6 +17,7 @@ export type {
   RunRetargetJobOptions,
 } from "../jobs/browser-retarget-job";
 export type {
+  RetargetJobBudget,
   RetargetJobProgress,
   RetargetJobRequest,
   RetargetJobResult,

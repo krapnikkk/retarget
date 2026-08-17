@@ -168,6 +168,7 @@ describe("humanoid custom rig solver v4", () => {
     const solved = solveHumanoidMotion({
       motion: createTestClip(),
       targetRig: {
+        rigSignature: "humanoid-rest-v1:rpm-loaded",
         profile: READY_PLAYER_ME_PROFILE,
         bones: new Set(targetBones),
         skeleton: targetSkeleton,
@@ -187,7 +188,9 @@ describe("humanoid custom rig solver v4", () => {
     expect(solved.diagnostics?.skeletons.target).toBe(targetSkeleton);
     expect(solved.diagnostics?.mapping.mappedTargetBones).toBe(6);
     expect(solved.metadata?.targetHeight).toBe(0.88);
-    expect(solved.processing.targetRigRevision).toContain("ready-player-me");
+    expect(solved.processing.targetRigRevision).toBe(
+      "humanoid-rest-v1:rpm-loaded",
+    );
   });
 
   it("fails closed when no source tracks map to the target", () => {
@@ -348,6 +351,7 @@ function createTestClip() {
 
 function createTargetRig(bones: readonly HumanoidBoneName[]) {
   return {
+    rigSignature: "humanoid-rest-v1:test-target",
     profile: READY_PLAYER_ME_PROFILE,
     bones: new Set(bones),
     skeleton: {

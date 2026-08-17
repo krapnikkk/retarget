@@ -1,7 +1,7 @@
 import {
   HUMANOID_BONES,
   type HumanoidBoneName,
-  type RetargetedMotionClip,
+  type TargetBoundSolvedHumanoidMotionClip,
 } from "./types";
 import { RetargetError } from "./errors";
 
@@ -38,7 +38,7 @@ export function createHumanoidRigSignature(
 }
 
 export function assertHumanoidTargetIdentity(
-  clip: RetargetedMotionClip,
+  clip: TargetBoundSolvedHumanoidMotionClip,
   actualRigSignature: string,
 ) {
   if (clip.processing.stage !== "solved" || !clip.target.rigSignature) {

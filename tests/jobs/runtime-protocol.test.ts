@@ -148,6 +148,33 @@ describe("retarget Worker runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
   });
 
+  it("accepts only serializable positive caller budgets", () => {
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "valid-budget",
+      budget: {
+        parse: { maxInputBytes: 32 },
+        processing: { maxOutputBytes: 64 },
+      },
+      task: {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+    })).not.toThrow();
+
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "invalid-budget",
+      budget: { processing: { maxOutputBytes: 0 } },
+      task: {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+  });
+
   it("validates success results against the requested task", () => {
     const request: RetargetJobRequest = {
       schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
