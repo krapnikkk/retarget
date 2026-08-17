@@ -1,7 +1,7 @@
 import { LoadingManager } from "three";
 import {
   readZipBlobArchiveAsync,
-} from "@/export/zip";
+} from "@/archive/zip";
 import {
   PMXBinaryReader,
   readPMXHeader,

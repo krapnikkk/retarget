@@ -35,7 +35,7 @@ import { validateGLTFWorldSemantics } from "@/validation/gltf-world-semantic-ora
 import { collectHumanoidNodes } from "./avatar-glb";
 import { validateFBXAnimationBytes } from "./fbx";
 import { validateAnimatedPMXBytes } from "./pmx";
-import { readZipArchive } from "./zip";
+import { readZipArchive } from "@/archive/zip";
 
 export type ExportReloadValidationResult = {
   level: "structural";

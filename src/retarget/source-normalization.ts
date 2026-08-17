@@ -73,10 +73,10 @@ export function normalizeSourceMotionToCanonical({
           rotation.set(-rotation.x, -rotation.y, -rotation.z, -rotation.w);
         }
         values.push(
-          round(rotation.x),
-          round(rotation.y),
-          round(rotation.z),
-          round(rotation.w),
+          rotation.x,
+          rotation.y,
+          rotation.z,
+          rotation.w,
         );
         previous = rotation;
       }
@@ -102,7 +102,7 @@ export function normalizeSourceMotionToCanonical({
       if (axisCorrectionApplied) {
         translation.applyQuaternion(axisCorrection);
       }
-      values.push(round(translation.x), round(translation.y), round(translation.z));
+      values.push(translation.x, translation.y, translation.z);
     }
     return { ...track, values };
   });
@@ -122,8 +122,4 @@ function scaleUnitToMeters(unit: RigProfile["scaleUnit"]) {
   if (unit === "centimeters") return { known: true, scale: 0.01 };
   if (unit === "meters") return { known: true, scale: 1 };
   return { known: false, scale: 1 };
-}
-
-function round(value: number) {
-  return Number(value.toFixed(6));
 }

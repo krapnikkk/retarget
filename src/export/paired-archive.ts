@@ -16,7 +16,7 @@ import { exportGLTFAnimation } from "./gltf-animation";
 import { validateMotionExportReload } from "./reload-validation";
 import { exportVMD } from "./vmd";
 import { exportVRMA } from "./vrma";
-import { createZipArchive, createZipArchiveBlob } from "./zip";
+import { createZipArchive, createZipArchiveBlob } from "@/archive/zip";
 import {
   readBlobArrayBufferWithSignal,
   readFileArrayBufferWithSignal,

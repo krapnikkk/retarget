@@ -65,7 +65,15 @@ describe("source motion normalization", () => {
     });
 
     expect(result.usedRestTransforms).toBe(true);
-    expect(result.tracks[0]?.values).toEqual([0, 0, 0, 1, 0, 0, 0, 1]);
-    expect(result.tracks[1]?.values).toEqual([0, 0, -1]);
+    const rotations = result.tracks[0]?.values ?? [];
+    expect(rotations).toHaveLength(8);
+    rotations.forEach((value, index) => {
+      expect(value).toBeCloseTo([0, 0, 0, 1, 0, 0, 0, 1][index] ?? 0, 12);
+    });
+    const translation = result.tracks[1]?.values ?? [];
+    expect(translation).toHaveLength(3);
+    translation.forEach((value, index) => {
+      expect(value).toBeCloseTo([0, 0, -1][index] ?? 0, 12);
+    });
   });
 });

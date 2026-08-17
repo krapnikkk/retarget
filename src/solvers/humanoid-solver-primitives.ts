@@ -194,7 +194,7 @@ function bakeSwingTwistValues({
       baked.set(-baked.x, -baked.y, -baked.z, -baked.w);
     }
     previous = baked.clone();
-    output.push(round(baked.x), round(baked.y), round(baked.z), round(baked.w));
+    output.push(baked.x, baked.y, baked.z, baked.w);
   }
 
   return output;
@@ -260,8 +260,4 @@ function axisNameToVector(axis: AxisName) {
     case "-z":
       return new Vector3(0, 0, -1);
   }
-}
-
-function round(value: number) {
-  return Number(value.toFixed(6));
 }

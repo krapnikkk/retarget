@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { loadCanonicalAvatarRig } from "@/browser/avatar-rig";
-import { disposeObject } from "@/resources/dispose-three";
 import { readGLBRangeInfo } from "@/import/glb-range";
 import { detectVRMVersionFromFile } from "@/import/vrm-version";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
@@ -31,7 +30,11 @@ describe("range-loaded large GLB and VRM assets", () => {
     expect(
       source.reads.reduce((sum, read) => sum + read.byteLength, 0),
     ).toBeLessThan(1024 * 1024);
-    disposeObject(rig.root);
+    rig.dispose();
+    rig.dispose();
+    expect(rig.disposed).toBe(true);
+    expect(rig.bones.size).toBe(0);
+    expect(rig.root.children).toHaveLength(0);
   });
 
   it("builds a glTF-Transform structural document for solver inspection", async () => {

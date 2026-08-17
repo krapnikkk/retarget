@@ -4,11 +4,26 @@ import { describe, expect, it } from "vitest";
 import { importBVH } from "@/import/bvh";
 import { createImportedFBXMotionClipFromAnimation } from "@/import/fbx-motion";
 import { importGLTFAnimation } from "@/import/gltf-animation";
+import { normalizeImportedTracks } from "@/import/humanoid-motion";
 import { importVMD } from "@/import/vmd";
 import { resolveParseBudget } from "@/import/parse-budget";
 import { ACTORCORE_PROFILE } from "@/profiles";
 
 describe("Phase 3 motion importers", () => {
+  it("preserves distinct sub-microsecond keyframe times", () => {
+    const times = [0.00000041, 0.00000049];
+    const [track] = normalizeImportedTracks([{
+      bone: "hips",
+      path: "translation",
+      times,
+      values: [0, 0, 0, 1, 0, 0],
+    }]);
+
+    expect(track?.times).toEqual(times);
+    expect(track?.times[0]).toBeLessThan(track?.times[1] ?? 0);
+    expect(track?.times).not.toBe(times);
+  });
+
   it("imports BVH humanoid rotation and hips translation", () => {
     const clip = importBVH(new TextEncoder().encode(createMinimalBVH()), "walk.bvh");
 

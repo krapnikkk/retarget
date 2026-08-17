@@ -2,8 +2,13 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2023"],
-    "types": ["node", "vitest/globals"]
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"],
+  "include": [
+    "src/node.ts",
+    "src/node-tooling/**/*.ts",
+    "src/workers/node-tooling.worker.ts",
+    "src/cli/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist", "references"]
 }

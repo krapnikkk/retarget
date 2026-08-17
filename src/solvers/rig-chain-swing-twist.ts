@@ -306,7 +306,7 @@ function transferSerpentineTracks(
         rightRotation,
         alpha,
       );
-      return [round(rotation.x), round(rotation.y), round(rotation.z), round(rotation.w)];
+      return [rotation.x, rotation.y, rotation.z, rotation.w];
     });
     const leftRest = sourceRest.get(left.role);
     const rightRest = sourceRest.get(right.role);
@@ -427,7 +427,7 @@ function transferRotationTrack(
     if (previous && previous.dot(output) < 0) {
       output.set(-output.x, -output.y, -output.z, -output.w);
     }
-    values.push(round(output.x), round(output.y), round(output.z), round(output.w));
+    values.push(output.x, output.y, output.z, output.w);
     previous = output;
   }
   return { ...track, values };
@@ -465,9 +465,9 @@ function transferTranslationTrack(
   const values: number[] = [];
   for (let index = 0; index < track.values.length; index += 3) {
     values.push(
-      round(target.translation[0] + ((track.values[index] ?? 0) - source.translation[0]) * scale),
-      round(target.translation[1] + ((track.values[index + 1] ?? 0) - source.translation[1]) * scale),
-      round(target.translation[2] + ((track.values[index + 2] ?? 0) - source.translation[2]) * scale),
+      target.translation[0] + ((track.values[index] ?? 0) - source.translation[0]) * scale,
+      target.translation[1] + ((track.values[index + 1] ?? 0) - source.translation[1]) * scale,
+      target.translation[2] + ((track.values[index + 2] ?? 0) - source.translation[2]) * scale,
     );
   }
   return { ...track, values };
@@ -481,7 +481,7 @@ function calculateRootScale(
   const sourceSpan = measureSpan(definition.scaleRoles, source);
   const targetSpan = measureSpan(definition.scaleRoles, target);
   if (sourceSpan <= 1e-6 || targetSpan <= 1e-6) return 1;
-  return Number((targetSpan / sourceSpan).toFixed(6));
+  return targetSpan / sourceSpan;
 }
 
 function axialPosition(role: string) {

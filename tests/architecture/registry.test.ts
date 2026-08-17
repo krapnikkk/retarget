@@ -61,6 +61,8 @@ describe("adapter registries", () => {
       "vmd-to-vrm-to-baked-vrm",
       "vrma-to-gltf-humanoid-to-animated-glb",
     ]);
+    expect(Object.isFrozen(RETARGET_PIPELINES)).toBe(true);
+    expect(RETARGET_PIPELINES.every(Object.isFrozen)).toBe(true);
     expect(
       getRetargetPipeline(
         "gltf-animation",

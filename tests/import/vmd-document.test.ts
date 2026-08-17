@@ -67,7 +67,7 @@ describe("VMD document codec", () => {
       (track) => track.bone === "hips" && track.path === "translation",
     );
 
-    expect(translation?.times).toEqual([0, 0.033333, 0.066667]);
+    expect(translation?.times).toEqual([0, 1 / 30, 2 / 30]);
     expect(translation?.values.slice(3, 5)).toEqual([1, 4]);
     expect(translation?.values[5]).toBeLessThan(-3);
     expect(translation?.values.slice(-3)).toEqual([2, 7, -6]);

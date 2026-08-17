@@ -416,9 +416,11 @@ describe("non-humanoid quadruped contract", () => {
     const targetUpperRest = target.restPose.find(
       (transform) => transform.role === "frontLeft.upper",
     )!;
-    expect(firstUpperRotation?.values.slice(0, 4)).toEqual(
-      targetUpperRest.rotation.map((value) => Number(value.toFixed(6))),
-    );
+    const firstUpperValues = firstUpperRotation?.values.slice(0, 4) ?? [];
+    expect(firstUpperValues).toHaveLength(4);
+    firstUpperValues.forEach((value, index) => {
+      expect(value).toBeCloseTo(targetUpperRest.rotation[index] ?? 0, 12);
+    });
     const root = solved.tracks.find(
       (track) => track.role === "root" && track.path === "translation",
     );

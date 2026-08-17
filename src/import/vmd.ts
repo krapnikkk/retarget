@@ -1,4 +1,4 @@
-import { MMD_EXPORT_BONE_NAMES } from "@/export/bone-naming";
+import { MMD_EXPORT_BONE_NAMES } from "@/profiles/bone-naming";
 import {
   parseVMDDocument,
   VMD_FPS,

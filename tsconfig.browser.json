@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "types": []
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "src/cli/**",
+    "src/node.ts",
+    "src/node-tooling/**",
+    "src/workers/node-tooling.worker.ts",
+    "node_modules",
+    "dist",
+    "references"
+  ]
+}

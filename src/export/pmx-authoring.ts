@@ -13,7 +13,7 @@ import {
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { MMD_EXPORT_BONE_NAMES } from "@/export/bone-naming";
 import { parsePMX } from "@/export/avatar-conversion";
-import { createZipArchive, readZipArchive } from "@/export/zip";
+import { createZipArchive, readZipArchive } from "@/archive/zip";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 import type { PMXConfig } from "@/parsers/pmx-binary";
 import { REQUIRED_VRM_BONES, type HumanoidBoneName } from "@/retarget";

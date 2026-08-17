@@ -285,7 +285,7 @@ function applyRetargetSolveOptions(
       return {
         ...track,
         values: track.values.map((value) =>
-          options.rootMotion ? round(value * options.heightScale) : 0,
+          options.rootMotion ? value * options.heightScale : 0,
         ),
       };
     }
@@ -324,10 +324,10 @@ function applyRetargetSolveOptions(
       }
       previous = sample.clone();
       values.push(
-        round(sample.x),
-        round(sample.y),
-        round(sample.z),
-        round(sample.w),
+        sample.x,
+        sample.y,
+        sample.z,
+        sample.w,
       );
     }
     return { ...track, values };
@@ -511,7 +511,7 @@ function applyProfileOverrideTransforms({
           track.values[index + 3] ?? 1,
         ).normalize();
         applyAxisCorrectionToQuaternion(quaternion, basis);
-        values.push(round(quaternion.x), round(quaternion.y), round(quaternion.z), round(quaternion.w));
+        values.push(quaternion.x, quaternion.y, quaternion.z, quaternion.w);
       }
       return { ...track, values };
     }
@@ -524,7 +524,7 @@ function applyProfileOverrideTransforms({
         track.values[index + 2] ?? 0,
       ).multiplyScalar(scale);
       applyAxisCorrectionToVector(vector, basis);
-      values.push(round(vector.x), round(vector.y), round(vector.z));
+      values.push(vector.x, vector.y, vector.z);
     }
     return { ...track, values };
   });
@@ -709,7 +709,7 @@ function applyBasicFootCleanup(tracks: MotionTrack[]) {
     }
 
     for (let index = 1; index < values.length; index += 3) {
-      values[index] = round((values[index] ?? 0) - minY);
+      values[index] = (values[index] ?? 0) - minY;
     }
 
     return {
@@ -753,8 +753,4 @@ function createCustomMappingReport({
 
 function trackKey(bone: HumanoidBoneName, path: MotionTrack["path"]) {
   return `${bone}.${path}`;
-}
-
-function round(value: number) {
-  return Number(value.toFixed(6));
 }

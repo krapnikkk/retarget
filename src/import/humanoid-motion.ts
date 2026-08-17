@@ -63,7 +63,7 @@ export function createImportedHumanoidMotionClip({
   const canonicalTracks = normalizeImportedTracks(normalized.tracks);
   const canonicalRestHipsHeight =
     restHipsHeight && restHipsHeight > 0
-      ? roundSample(restHipsHeight * normalized.scaleToMeters)
+      ? restHipsHeight * normalized.scaleToMeters
       : undefined;
   const safeDuration =
     duration && duration > 0 ? duration : estimateDurationFromTracks(canonicalTracks);
@@ -121,8 +121,8 @@ export function normalizeImportedTracks(tracks: MotionTrack[]) {
     .filter((track) => track.times.length > 0 && track.values.length > 0)
     .map((track) => ({
       ...track,
-      times: track.times.map(roundSample),
-      values: track.values.map(roundSample),
+      times: [...track.times],
+      values: [...track.values],
     }));
 }
 
@@ -286,8 +286,4 @@ function estimateFPSFromTracks(tracks: MotionTrack[]) {
 
 function stripExtension(filename: string) {
   return filename.replace(/\.[^.]+$/, "") || "imported-motion";
-}
-
-function roundSample(value: number) {
-  return Number(value.toFixed(6));
 }

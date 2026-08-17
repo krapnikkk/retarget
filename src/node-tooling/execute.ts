@@ -12,7 +12,7 @@ import {
   validateRigMotionGLTFReload,
 } from "@/export/rig-motion-gltf";
 import { authorCanonicalGLBAsVRM } from "@/export/vrm-authoring";
-import { readZipBlobArchiveAsync } from "@/export/zip";
+import { readZipBlobArchiveAsync } from "@/archive/zip";
 import { readGLTFDocument } from "@/import/gltf-document";
 import {
   importRigMotionDocument,

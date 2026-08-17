@@ -154,7 +154,7 @@ export function refineRootTranslationSamples({
       root[2] += correctionZ / denominator;
     }
 
-    return root.map(roundSample) as Vec3Tuple;
+    return root;
   });
 }
 
@@ -413,10 +413,6 @@ function average(values: Vec3Tuple[], component: 0 | 1 | 2) {
   return (
     values.reduce((sum, value) => sum + value[component], 0) / values.length
   );
-}
-
-function roundSample(value: number) {
-  return Number(value.toFixed(6));
 }
 
 function clamp(value: number, min: number, max: number) {

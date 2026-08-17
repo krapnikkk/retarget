@@ -265,10 +265,24 @@ export function createMMDConversionCapabilityReport(
         note: "Bone names, hierarchy, and local rest translations are represented as glTF nodes and joints.",
       },
       {
-        id: "vertex-skinning",
-        status: "approximated",
-        note: "MMD BDEF, SDEF, and QDEF inputs are reduced to normalized four-weight glTF skinning with derived inverse bind matrices.",
+        id: "bdef-skinning",
+        status: "preserved",
+        note: "MMD BDEF influences are represented as normalized four-weight glTF skinning with derived inverse bind matrices.",
       },
+      ...(sourceFormat === "pmx"
+        ? [
+            {
+              id: "sdef-skinning",
+              status: "approximated" as const,
+              note: "PMX SDEF deformation parameters are reduced to normalized glTF joint weights.",
+            },
+            {
+              id: "qdef-skinning",
+              status: "approximated" as const,
+              note: "PMX QDEF dual-quaternion deformation is reduced to normalized glTF joint weights.",
+            },
+          ]
+        : []),
       {
         id: "material-shading",
         status: "approximated",

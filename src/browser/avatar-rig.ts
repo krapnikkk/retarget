@@ -41,6 +41,7 @@ import {
 import { readFileArrayBufferWithSignal } from "./read-file";
 import { readGLTFRigMetadata } from "@/import/glb-range";
 import type { TargetBoneRestTransform } from "@/retarget/target-binding";
+import { disposeObject } from "@/resources/dispose-three";
 
 export type LoadedAvatarRig = {
   format: AvatarFormatId;
@@ -58,6 +59,8 @@ export type LoadedAvatarRig = {
   structuralOnly?: boolean;
   nativeMMD?: MMD;
   resourceScope?: AssetResourceScope;
+  readonly disposed: boolean;
+  dispose(): void;
 };
 
 export type LoadCanonicalAvatarRigOptions = {
@@ -201,7 +204,7 @@ async function loadStructuralGLBRig(
     disposeStructuralRoot(root);
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", file.name);
   }
-  return {
+  return createDisposableLoadedAvatarRig({
     format,
     filename: file.name,
     rigSignature: createObjectRigSignature(profile.id, bones),
@@ -214,7 +217,7 @@ async function loadStructuralGLBRig(
     restHipsHeight: estimateRestHipsHeight(bones),
     vrm0FacingCorrection: hasVRM0Extension(json),
     structuralOnly: true,
-  };
+  });
 }
 
 export async function loadStructuralGLBScene(
@@ -383,6 +386,7 @@ async function loadVRMRig(
 
   const vrm = gltf.userData.vrm as VRM | undefined;
   if (!vrm) {
+    disposeObject(gltf.scene);
     throw createRetargetError("VRM_PARSE_FAILED");
   }
 
@@ -397,7 +401,7 @@ async function loadVRMRig(
     if (rawNode) identityBones.set(bone, rawNode);
   }
 
-  return {
+  return createDisposableLoadedAvatarRig({
     format: "vrm",
     filename: file.name,
     rigSignature: createObjectRigSignature(profile.id, identityBones),
@@ -410,7 +414,7 @@ async function loadVRMRig(
     restHipsHeight: estimateRestHipsHeight(bones),
     vrm,
     vrm0FacingCorrection: vrm.meta?.metaVersion === "0",
-  };
+  });
 }
 
 function loadObjectRig({
@@ -438,10 +442,11 @@ function loadObjectRig({
   });
 
   if (bones.size === 0) {
+    disposeLoadedAvatarRigResources(root, nativeMMD, resourceScope);
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", file.name);
   }
 
-  return {
+  return createDisposableLoadedAvatarRig({
     format,
     filename: file.name,
     rigSignature: createObjectRigSignature(profile.id, bones),
@@ -454,7 +459,40 @@ function loadObjectRig({
     restHipsHeight: estimateRestHipsHeight(bones),
     nativeMMD,
     resourceScope,
+  });
+}
+
+function createDisposableLoadedAvatarRig(
+  rig: Omit<LoadedAvatarRig, "disposed" | "dispose">,
+): LoadedAvatarRig {
+  let disposed = false;
+  return {
+    ...rig,
+    get disposed() {
+      return disposed;
+    },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      disposeLoadedAvatarRigResources(
+        rig.root,
+        rig.nativeMMD,
+        rig.resourceScope,
+      );
+      rig.bones.clear();
+      rig.restTransforms.clear();
+    },
   };
+}
+
+function disposeLoadedAvatarRigResources(
+  root: Object3D,
+  nativeMMD?: MMD,
+  resourceScope?: AssetResourceScope,
+) {
+  (nativeMMD as { dispose?: () => void } | undefined)?.dispose?.();
+  disposeObject(root);
+  resourceScope?.dispose();
 }
 
 function createObjectRigSignature(

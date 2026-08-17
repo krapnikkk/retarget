@@ -2,7 +2,6 @@ import { WebIO, type Document } from "@gltf-transform/core";
 import { Vector3, type Object3D } from "three";
 import { findMotionImportAdapter } from "@/adapters/motion";
 import { loadCanonicalAvatarRig } from "@/browser/avatar-rig";
-import { disposeObject } from "@/resources/dispose-three";
 import {
   HUMANOID_BONES,
   REQUIRED_VRM_BONES,
@@ -199,8 +198,7 @@ async function validateHumanoidCharacterAsset(
     },
   };
   if (!("error" in rig)) {
-    rig.resourceScope?.dispose();
-    disposeObject(rig.root);
+    rig.dispose();
   }
   return result;
 }

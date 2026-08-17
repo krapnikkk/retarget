@@ -580,6 +580,11 @@ describe("Phase 4 export adapters", () => {
     expect(new Set(report.features.map((feature) => feature.status))).toEqual(
       new Set(["preserved", "approximated", "stored-in-extras", "dropped"]),
     );
+    expect(report.features).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "bdef-skinning", status: "preserved" }),
+      expect.objectContaining({ id: "sdef-skinning", status: "approximated" }),
+      expect.objectContaining({ id: "qdef-skinning", status: "approximated" }),
+    ]));
 
     const reloaded = await new WebIO().readBinary(
       await new WebIO().writeBinary(document),
