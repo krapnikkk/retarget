@@ -211,6 +211,7 @@ export type NodeToolJobResult<TTask extends NodeToolTask> =
 
 export type RunNodeToolJobOptions = {
   budget?: Partial<NodeToolBudget>;
+  bufferOwnership?: "copy" | "transfer";
   signal?: AbortSignal;
   onProgress?: (progress: NodeToolProgress) => void;
 };

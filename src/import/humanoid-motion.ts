@@ -12,6 +12,7 @@ import {
   type RetargetSkeletonNode,
 } from "@/retarget";
 import { VRM_HUMANOID_PROFILE, type RigProfile } from "@/profiles";
+import { normalizeBoneName } from "@/core/bone-name";
 import {
   normalizeSourceMotionToCanonical,
   type SourceBoneRestTransform,
@@ -145,16 +146,7 @@ export function resolveProfileBoneName(
 }
 
 export function normalizeBoneAlias(name: string) {
-  const normalized = name.normalize("NFKC").trim();
-  const ascii = normalized
-    .replace(/^mixamorig[:_]?/i, "")
-    .replace(/[^a-z0-9]/gi, "")
-    .toLowerCase();
-  if (ascii) {
-    return ascii;
-  }
-
-  return normalized.replace(/\s+/g, "").toLowerCase();
+  return normalizeBoneName(name);
 }
 
 function createImportedMotionDiagnostics({

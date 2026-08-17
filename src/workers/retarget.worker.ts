@@ -3,7 +3,7 @@
 import { executeRetargetJob } from "@/jobs/execute-retarget-job";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 import type { RetargetJobResponse } from "@/jobs/types";
-import { collectArrayBufferTransfers } from "@/jobs/transferables";
+import { collectRetargetResultTransfers } from "@/jobs/transferables";
 import {
   assertRetargetJobRequest,
   assertRetargetJobResponse,
@@ -42,7 +42,7 @@ workerScope.addEventListener(
       assertRetargetJobResponse(response, request);
       post(
         response,
-        collectArrayBufferTransfers(result),
+        collectRetargetResultTransfers(request.task, result),
       );
     } catch (cause) {
       post({

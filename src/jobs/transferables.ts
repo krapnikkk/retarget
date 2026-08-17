@@ -1,31 +1,64 @@
-export function collectArrayBufferTransfers(value: unknown): ArrayBuffer[] {
+import type { RetargetJobTask } from "./types";
+
+export function collectRetargetTaskTransfers(
+  task: RetargetJobTask,
+): ArrayBuffer[] {
   const transfers = new Set<ArrayBuffer>();
-  const visited = new WeakSet<object>();
-  const pending: unknown[] = [value];
+  const add = (value: ArrayBuffer | undefined) => {
+    if (value) transfers.add(value);
+  };
+  const addResources = (resources?: Readonly<Record<string, ArrayBuffer>>) => {
+    if (!resources) return;
+    for (const bytes of Object.values(resources)) add(bytes);
+  };
+  const addPackage = (
+    assetPackage?: { resources: Readonly<Record<string, ArrayBuffer>> },
+  ) => addResources(assetPackage?.resources);
 
-  while (pending.length > 0) {
-    const current = pending.pop();
-    if (!current || typeof current !== "object") continue;
-    if (current instanceof ArrayBuffer) {
-      transfers.add(current);
-      continue;
-    }
-    if (ArrayBuffer.isView(current)) {
-      if (current.buffer instanceof ArrayBuffer) transfers.add(current.buffer);
-      continue;
-    }
-    if (visited.has(current)) continue;
-    visited.add(current);
-    if (current instanceof Map) {
-      for (const [key, entry] of current) pending.push(key, entry);
-      continue;
-    }
-    if (current instanceof Set) {
-      for (const entry of current) pending.push(entry);
-      continue;
-    }
-    pending.push(...Object.values(current));
+  switch (task.type) {
+    case "inspect-humanoid-avatar":
+      add(task.bytes);
+      add(task.structuralJSONBytes);
+      addResources(task.resources);
+      addPackage(task.assetPackage);
+      break;
+    case "convert-mmd-avatar":
+      add(task.bytes);
+      addPackage(task.assetPackage);
+      break;
+    case "inspect-rigged-gltf":
+    case "import-motion":
+      add(task.bytes);
+      addResources(task.resources);
+      break;
+    case "retarget-rigged-gltf":
+      add(task.motionBytes);
+      add(task.targetBytes);
+      addResources(task.motionResources);
+      addResources(task.targetResources);
+      break;
+    case "validate-motion-export":
+    case "validate-avatar-export":
+      add(task.bytes);
+      break;
+    case "solve-humanoid":
+    case "export-motion":
+    case "semantic-validate":
+      break;
   }
-
   return [...transfers];
+}
+
+export function collectRetargetResultTransfers(
+  task: RetargetJobTask,
+  result: unknown,
+): ArrayBuffer[] {
+  if (
+    (task.type === "convert-mmd-avatar" || task.type === "export-motion") &&
+    result instanceof Uint8Array &&
+    result.buffer instanceof ArrayBuffer
+  ) {
+    return [result.buffer];
+  }
+  return [];
 }

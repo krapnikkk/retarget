@@ -32,6 +32,7 @@ import {
 } from "@/export/streamed-avatar-glb";
 import { retargetRiggedGLTF } from "@/pipelines/rigged-gltf";
 import { loadSemanticAvatarRig } from "@/browser/semantic-rig";
+import { normalizeRigNodeName } from "@/rigs/gltf-inspection";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
@@ -39,6 +40,11 @@ vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
 });
 
 describe("non-humanoid quadruped contract", () => {
+  it("preserves non-ASCII rig names after Unicode normalization", () => {
+    expect(normalizeRigNodeName("左 腕")).toBe("左腕");
+    expect(normalizeRigNodeName("ＭｉｘａｍｏＲｉｇ：Hips")).toBe("hips");
+  });
+
   it("keeps rig family, definition, and recipe compatibility explicit", () => {
     expect(
       getRigCompatibility(

@@ -28,6 +28,7 @@ import { assertValidParentGraph } from "@/core/parent-graph";
 import { createTransferableAssetPackageResolver } from "@/import/asset-package";
 import {
   assertMotionProcessingBudget,
+  assertOutputBytes,
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
   DEFAULT_PROCESSING_BUDGET,
@@ -94,6 +95,7 @@ async function executeTask(
     deadline.checkpoint("convert-mmd-avatar");
     report("export", 0.78);
     const bytes = await new WebIO().writeBinary(document);
+    assertOutputBytes(bytes.byteLength, DEFAULT_PROCESSING_BUDGET);
     return bytes;
   }
 
@@ -250,6 +252,7 @@ async function executeTask(
     assertMotionProcessingBudget(task.clip);
     report("export", 0.15);
     const bytes = await exportMotion(task);
+    assertOutputBytes(bytes.byteLength, DEFAULT_PROCESSING_BUDGET);
     deadline.checkpoint("export");
     return bytes;
   }

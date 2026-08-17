@@ -7,8 +7,11 @@ import type {
   RetargetJobTask,
 } from "./types";
 import { RetargetError } from "@/retarget/errors";
-import { collectArrayBufferTransfers } from "./transferables";
-import { assertRetargetJobResponse } from "./runtime-protocol";
+import { collectRetargetTaskTransfers } from "./transferables";
+import {
+  assertRetargetJobRequest,
+  assertRetargetJobResponse,
+} from "./runtime-protocol";
 
 export type BufferOwnership = "copy" | "transfer";
 
@@ -28,16 +31,21 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     bufferOwnership = "copy",
   }: RunRetargetJobOptions = {},
 ): Promise<RetargetJobResult<TTask>> {
+  if (signal?.aborted) throw createAbortError();
+  const requestToValidate: RetargetJobRequest = {
+    schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+    jobId: crypto.randomUUID(),
+    deadlineMs,
+    task,
+  };
+  assertRetargetJobRequest(requestToValidate);
   const workerTask = bufferOwnership === "copy"
     ? structuredClone(task)
     : task;
   const request: RetargetJobRequest = {
-    schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
-    jobId: crypto.randomUUID(),
-    deadlineMs,
+    ...requestToValidate,
     task: workerTask,
   };
-  if (signal?.aborted) throw createAbortError();
 
   return new Promise<RetargetJobResult<TTask>>((resolve, reject) => {
     const worker = createRetargetWorker(request.jobId);
@@ -121,7 +129,7 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     worker.addEventListener("message", onMessage);
     worker.addEventListener("messageerror", onMessageError);
     try {
-      worker.postMessage(request, collectArrayBufferTransfers(workerTask));
+      worker.postMessage(request, collectRetargetTaskTransfers(workerTask));
     } catch (cause) {
       fail(new RetargetError("RETARGET_JOB_FAILED", {
         cause,

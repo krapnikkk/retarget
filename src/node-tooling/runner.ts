@@ -21,6 +21,17 @@ export async function runNodeToolJob<TTask extends NodeToolTask>(
   if (options.signal?.aborted) {
     return failure(jobId, cancellationError());
   }
+  if (
+    options.bufferOwnership !== undefined &&
+    options.bufferOwnership !== "copy" &&
+    options.bufferOwnership !== "transfer"
+  ) {
+    return failure(jobId, {
+      name: "RetargetError",
+      code: "PROCESSING_OPTION_INVALID",
+      message: "Node tooling bufferOwnership must be copy or transfer.",
+    });
+  }
 
   let budget;
   try {
@@ -104,11 +115,46 @@ export async function runNodeToolJob<TTask extends NodeToolTask>(
       }
     });
     try {
-      worker.postMessage(request);
+      worker.postMessage(
+        request,
+        options.bufferOwnership === "transfer"
+          ? collectNodeTaskTransfers(task)
+          : [],
+      );
     } catch (cause) {
       finish(failure(jobId, serializeLocalError(cause)));
     }
   });
+}
+
+function collectNodeTaskTransfers(task: NodeToolTask): ArrayBuffer[] {
+  const transfers = new Set<ArrayBuffer>();
+  const add = (value: ArrayBuffer | undefined) => {
+    if (value) transfers.add(value);
+  };
+  const addResources = (resources?: Readonly<Record<string, ArrayBuffer>>) => {
+    if (!resources) return;
+    for (const bytes of Object.values(resources)) add(bytes);
+  };
+
+  switch (task.type) {
+    case "inspect-rigged-gltf":
+    case "import-rig-motion-gltf":
+      add(task.bytes);
+      addResources(task.resources);
+      break;
+    case "validate-rig-motion-gltf":
+    case "validate-artifact":
+      add(task.bytes);
+      break;
+    case "author-vrm":
+    case "author-pmx":
+      add(task.canonicalGLBBytes);
+      break;
+    case "export-rig-motion-gltf":
+      break;
+  }
+  return [...transfers];
 }
 
 function failure(jobId: string, error: NodeToolError): NodeToolJobFailure {

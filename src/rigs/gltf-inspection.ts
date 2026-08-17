@@ -22,6 +22,7 @@ import type {
 } from "./types";
 import type { Quat, RigRestTransform, Vec3 } from "@/rig-motion/types";
 import { sha256Hex } from "@/core/sha256";
+import { normalizeBoneName } from "@/core/bone-name";
 
 export type RigInspectionOptions = {
   familyOverride?: RigFamilyId | "auto";
@@ -101,11 +102,7 @@ export function inspectGLTFRig(
 }
 
 export function normalizeRigNodeName(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/^mixamorig[:_\s-]*/i, "")
-    .replace(/[^a-z0-9]+/g, "");
+  return normalizeBoneName(value);
 }
 
 function selectProfile(

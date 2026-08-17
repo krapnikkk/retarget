@@ -91,7 +91,7 @@ describe("generic humanoid pipeline options", () => {
         formatId: "bvh",
         filename: "walk.bvh",
       }),
-      { signal: controller.signal },
+      { bufferOwnership: "transfer", signal: controller.signal },
     );
   });
 

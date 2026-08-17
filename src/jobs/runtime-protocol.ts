@@ -5,6 +5,7 @@ import type {
   MotionFormatId,
 } from "@/formats";
 import { RETARGET_ERROR_CODES, RetargetError } from "@/retarget/errors";
+import { HUMANOID_BONES } from "@/retarget/types";
 import {
   assertMotionProcessingBudget,
   assertRigMotionProcessingBudget,
@@ -78,6 +79,11 @@ export function assertRetargetJobRequest(
   value: unknown,
 ): asserts value is RetargetJobRequest {
   const request = asRecord(value, "Worker request");
+  assertExactKeys(
+    request,
+    ["schemaVersion", "jobId", "deadlineMs", "task"],
+    "Worker request",
+  );
   if (request.schemaVersion !== RETARGET_JOB_PROTOCOL_VERSION) {
     protocolError("Worker request schemaVersion is unsupported.");
   }
@@ -90,6 +96,7 @@ export function assertRetargetJobRequest(
     protocolError("Worker request deadlineMs must be a positive safe integer.");
   }
   const task = asRecord(request.task, "Worker request task");
+  assertDataProperties(task, "Worker request task");
   if (typeof task.type !== "string" || !TASK_TYPES.has(task.type as never)) {
     protocolError("Worker request task discriminator is unsupported.");
   }
@@ -111,6 +118,11 @@ export function assertRetargetJobResponse(
     protocolError("Worker response discriminator is unsupported.");
   }
   if (response.type === "progress") {
+    assertExactKeys(
+      response,
+      ["schemaVersion", "jobId", "type", "phase", "progress"],
+      "Worker progress response",
+    );
     if (
       typeof response.phase !== "string" ||
       !PROGRESS_PHASES.has(response.phase) ||
@@ -124,7 +136,17 @@ export function assertRetargetJobResponse(
     return;
   }
   if (response.type === "failure") {
+    assertExactKeys(
+      response,
+      ["schemaVersion", "jobId", "type", "error"],
+      "Worker failure response",
+    );
     const error = asRecord(response.error, "Worker failure error");
+    assertExactKeys(
+      error,
+      ["name", "code", "message", "details"],
+      "Worker failure error",
+    );
     if (
       typeof error.code !== "string" ||
       !RETARGET_ERROR_CODES.includes(error.code as never)
@@ -135,27 +157,68 @@ export function assertRetargetJobResponse(
     assertBoundedString(error.message, "Worker failure message", 16_384);
     return;
   }
+  assertExactKeys(
+    response,
+    ["schemaVersion", "jobId", "type", "result"],
+    "Worker success response",
+  );
   assertTaskResult(request.task, response.result);
 }
 
 function assertTaskFields(task: RetargetJobTask) {
   switch (task.type) {
     case "inspect-humanoid-avatar":
+      assertExactKeys(task, [
+        "type",
+        "bytes",
+        "filename",
+        "formatId",
+        "structuralJSONBytes",
+        "resources",
+        "assetPackage",
+      ], task.type);
       assertArrayBuffer(task.bytes, "inspect-humanoid-avatar.bytes");
+      if (task.structuralJSONBytes !== undefined) {
+        assertArrayBuffer(
+          task.structuralJSONBytes,
+          "inspect-humanoid-avatar.structuralJSONBytes",
+        );
+      }
       assertFilename(task.filename);
       assertFormat(task.formatId, AVATAR_FORMAT_IDS);
       assertResources(task.resources, "inspect-humanoid-avatar.resources");
+      assertAssetPackage(task.assetPackage, "inspect-humanoid-avatar.assetPackage");
       return;
     case "convert-mmd-avatar":
+      assertExactKeys(
+        task,
+        ["type", "bytes", "filename", "assetPackage"],
+        task.type,
+      );
       assertArrayBuffer(task.bytes, "convert-mmd-avatar.bytes");
       assertFilename(task.filename);
+      assertAssetPackage(task.assetPackage, "convert-mmd-avatar.assetPackage");
       return;
     case "inspect-rigged-gltf":
+      assertExactKeys(
+        task,
+        ["type", "bytes", "filename", "resources"],
+        task.type,
+      );
       assertArrayBuffer(task.bytes, "inspect-rigged-gltf.bytes");
       assertFilename(task.filename);
       assertResources(task.resources, "inspect-rigged-gltf.resources");
       return;
     case "import-motion":
+      assertExactKeys(task, [
+        "type",
+        "formatId",
+        "filename",
+        "bytes",
+        "resources",
+        "animationIndex",
+        "animationName",
+      ], task.type);
       assertArrayBuffer(task.bytes, "import-motion.bytes");
       assertFilename(task.filename);
       assertFormat(task.formatId, MOTION_FORMAT_IDS);
@@ -163,11 +226,41 @@ function assertTaskFields(task: RetargetJobTask) {
       assertAnimationSelection(task);
       return;
     case "solve-humanoid":
-      if (!isRecord(task.motion)) protocolError("solve-humanoid.motion is invalid.");
-      if (!isRecord(task.mapping)) protocolError("solve-humanoid.mapping is invalid.");
-      if (!isRecord(task.options)) protocolError("solve-humanoid.options is invalid.");
+      assertExactKeys(
+        task,
+        ["type", "motion", "mapping", "options", "targetRig"],
+        task.type,
+      );
+      assertMotionProcessingBudget(task.motion);
+      assertMapping(task.mapping);
+      assertSolveOptions(task.options);
+      if (task.targetRig !== undefined) {
+        const targetRig = asRecord(task.targetRig, "solve-humanoid.targetRig");
+        assertExactKeys(
+          targetRig,
+          ["profile", "bones", "skeleton", "restHipsHeight"],
+          "solve-humanoid.targetRig",
+        );
+        if (!Array.isArray(targetRig.bones) || !isRecord(targetRig.profile) ||
+          !isRecord(targetRig.skeleton)) {
+          protocolError("solve-humanoid.targetRig is invalid.");
+        }
+      }
       return;
     case "retarget-rigged-gltf":
+      assertExactKeys(task, [
+        "type",
+        "motionBytes",
+        "motionFilename",
+        "motionResources",
+        "targetBytes",
+        "targetFilename",
+        "targetResources",
+        "targetInspection",
+        "recipe",
+        "animationIndex",
+        "animationName",
+      ], task.type);
       assertArrayBuffer(task.motionBytes, "retarget-rigged-gltf.motionBytes");
       assertFilename(task.motionFilename);
       assertFilename(task.targetFilename);
@@ -188,28 +281,61 @@ function assertTaskFields(task: RetargetJobTask) {
       if (task.targetBytes === undefined && task.targetInspection === undefined) {
         protocolError("retarget-rigged-gltf requires target bytes or inspection.");
       }
+      assertRiggedGLTFAnimationSelection(task);
+      if (task.recipe !== undefined) {
+        asRecord(task.recipe, "retarget-rigged-gltf.recipe");
+      }
       return;
     case "export-motion":
+      assertExactKeys(
+        task,
+        ["type", "formatId", "clip", "options"],
+        task.type,
+      );
       assertFormat(task.formatId, MOTION_EXPORT_FORMAT_IDS);
-      if (!isRecord(task.clip)) protocolError("export-motion.clip is invalid.");
+      assertMotionProcessingBudget(task.clip);
+      if (task.options !== undefined) {
+        const options = asRecord(task.options, "export-motion.options");
+        assertExactKeys(options, ["boneNamingProfile"], "export-motion.options");
+        if (
+          options.boneNamingProfile !== undefined &&
+          !["canonical", "mixamo", "actorcore", "bvh-standard", "mmd"]
+            .includes(options.boneNamingProfile as string)
+        ) {
+          protocolError("export-motion.options is invalid.");
+        }
+      }
       return;
     case "validate-motion-export":
+      assertExactKeys(
+        task,
+        ["type", "formatId", "bytes", "expected"],
+        task.type,
+      );
       assertArrayBuffer(task.bytes, "validate-motion-export.bytes");
       assertFormat(task.formatId, MOTION_EXPORT_FORMAT_IDS);
-      if (!isRecord(task.expected)) {
-        protocolError("validate-motion-export.expected is invalid.");
-      }
+      assertMotionProcessingBudget(task.expected);
       return;
     case "validate-avatar-export":
+      assertExactKeys(
+        task,
+        ["type", "formatId", "bytes", "expected"],
+        task.type,
+      );
       assertArrayBuffer(task.bytes, "validate-avatar-export.bytes");
       assertFormat(task.formatId, AVATAR_EXPORT_FORMAT_IDS);
-      if (!isRecord(task.expected)) {
-        protocolError("validate-avatar-export.expected is invalid.");
-      }
+      assertMotionProcessingBudget(task.expected);
       return;
     case "semantic-validate":
-      if (!isRecord(task.actual) || !isRecord(task.expected)) {
-        protocolError("semantic-validate clips are invalid.");
+      assertExactKeys(
+        task,
+        ["type", "actual", "expected", "restPose"],
+        task.type,
+      );
+      assertMotionProcessingBudget(task.actual);
+      assertMotionProcessingBudget(task.expected);
+      if (task.restPose !== undefined && !Array.isArray(task.restPose)) {
+        protocolError("semantic-validate.restPose is invalid.");
       }
       return;
     default:
@@ -279,18 +405,35 @@ function assertTaskResult(task: RetargetJobTask, result: unknown) {
   }
 }
 
-function assertArrayBuffer(value: unknown, label: string) {
+function assertArrayBuffer(
+  value: unknown,
+  label: string,
+): asserts value is ArrayBuffer {
   if (!(value instanceof ArrayBuffer)) protocolError(`${label} must be ArrayBuffer.`);
 }
 
 function assertResources(value: unknown, label: string) {
   if (value === undefined) return;
   const resources = asRecord(value, label);
+  assertDataProperties(resources, label);
   const entries = Object.entries(resources);
+  let totalBytes = 0;
   for (const [uri, bytes] of entries) {
     assertBoundedString(uri, `${label} URI`, 4096);
     assertArrayBuffer(bytes, `${label}[${JSON.stringify(uri)}]`);
+    totalBytes += bytes.byteLength;
+    if (!Number.isSafeInteger(totalBytes)) {
+      protocolError(`${label} byte total is not a safe integer.`);
+    }
   }
+}
+
+function assertAssetPackage(value: unknown, label: string) {
+  if (value === undefined) return;
+  const assetPackage = asRecord(value, label);
+  assertExactKeys(assetPackage, ["primaryPath", "resources"], label);
+  assertBoundedString(assetPackage.primaryPath, `${label}.primaryPath`, 4096);
+  assertResources(assetPackage.resources, `${label}.resources`);
 }
 
 function assertAnimationSelection(task: Extract<RetargetJobTask, { type: "import-motion" }>) {
@@ -309,6 +452,89 @@ function assertAnimationSelection(task: Extract<RetargetJobTask, { type: "import
   if (task.animationName !== undefined) {
     assertBoundedString(task.animationName, "import-motion.animationName", 1024);
   }
+}
+
+function assertRiggedGLTFAnimationSelection(
+  task: Extract<RetargetJobTask, { type: "retarget-rigged-gltf" }>,
+) {
+  if (
+    task.animationIndex !== undefined &&
+    (!Number.isSafeInteger(task.animationIndex) || task.animationIndex < 0)
+  ) {
+    protocolError("retarget-rigged-gltf.animationIndex is invalid.");
+  }
+  if (task.animationName !== undefined) {
+    assertBoundedString(
+      task.animationName,
+      "retarget-rigged-gltf.animationName",
+      1024,
+    );
+  }
+}
+
+function assertMapping(value: unknown) {
+  const mapping = asRecord(value, "solve-humanoid.mapping");
+  assertExactKeys(mapping, [
+    "enabled",
+    "sourceProfileOverride",
+    "targetProfileOverride",
+    "chainPreset",
+    "footCleanup",
+    "boneMap",
+  ], "solve-humanoid.mapping");
+  if (
+    typeof mapping.enabled !== "boolean" ||
+    typeof mapping.footCleanup !== "boolean" ||
+    !["full-body", "upper-body", "lower-body"].includes(
+      mapping.chainPreset as string,
+    )
+  ) {
+    protocolError("solve-humanoid.mapping is invalid.");
+  }
+  for (const key of ["sourceProfileOverride", "targetProfileOverride"] as const) {
+    const profile = mapping[key];
+    if (
+      profile !== undefined &&
+      (typeof profile !== "string" || profile.length === 0 || profile.length > 128)
+    ) {
+      protocolError("solve-humanoid.mapping profile override is invalid.");
+    }
+  }
+  const boneMap = asRecord(mapping.boneMap, "solve-humanoid.mapping.boneMap");
+  assertDataProperties(boneMap, "solve-humanoid.mapping.boneMap");
+  for (const [target, source] of Object.entries(boneMap)) {
+    if (
+      !isHumanoidBone(target) ||
+      (source !== "none" &&
+        (typeof source !== "string" || !isHumanoidBone(source)))
+    ) {
+      protocolError("solve-humanoid.mapping.boneMap is invalid.");
+    }
+  }
+}
+
+function assertSolveOptions(value: unknown) {
+  const options = asRecord(value, "solve-humanoid.options");
+  assertExactKeys(
+    options,
+    ["heightScale", "rootMotion", "armOffsetDegrees"],
+    "solve-humanoid.options",
+  );
+  if (
+    typeof options.heightScale !== "number" ||
+    !Number.isFinite(options.heightScale) ||
+    typeof options.rootMotion !== "boolean" ||
+    typeof options.armOffsetDegrees !== "number" ||
+    !Number.isFinite(options.armOffsetDegrees)
+  ) {
+    protocolError("solve-humanoid.options is invalid.");
+  }
+}
+
+const HUMANOID_BONE_NAMES = new Set<string>(HUMANOID_BONES);
+
+function isHumanoidBone(value: string) {
+  return HUMANOID_BONE_NAMES.has(value);
 }
 
 function assertFilename(value: unknown) {
@@ -335,7 +561,32 @@ function asRecord(value: unknown, label: string): Record<string, unknown> {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+}
+
+function assertExactKeys(
+  record: Record<string, unknown>,
+  allowed: readonly string[],
+  label: string,
+) {
+  const allowedKeys = new Set(allowed);
+  for (const key of Reflect.ownKeys(record)) {
+    if (typeof key !== "string" || !allowedKeys.has(key)) {
+      protocolError(`${label} contains an unknown field.`);
+    }
+  }
+  assertDataProperties(record, label);
+}
+
+function assertDataProperties(record: Record<string, unknown>, label: string) {
+  for (const key of Reflect.ownKeys(record)) {
+    const descriptor = Object.getOwnPropertyDescriptor(record, key);
+    if (!descriptor || !("value" in descriptor) || !descriptor.enumerable) {
+      protocolError(`${label} contains an unsupported property.`);
+    }
+  }
 }
 
 function protocolError(message: string): never {

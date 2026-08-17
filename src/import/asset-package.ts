@@ -305,20 +305,22 @@ export function resolveAssetPackageResource(file: File, uri: string) {
     return null;
   }
   const primaryDirectory = dirname(context.report.primaryPath);
-  const relative = normalizeResourcePath(
+  const relative = normalizeResourceKey(normalizeResourcePath(
     primaryDirectory ? `${primaryDirectory}/${cleanUri}` : cleanUri,
-  ).toLowerCase();
+  ));
   const direct = context.resources.get(relative);
   if (direct) {
     return direct;
   }
   const rootRelative = context.resources.get(
-    normalizeResourcePath(cleanUri).toLowerCase(),
+    normalizeResourceKey(normalizeResourcePath(cleanUri)),
   );
   if (rootRelative) {
     return rootRelative;
   }
-  return context.uniqueBasenames.get(cleanUri.split("/").at(-1)!.toLowerCase()) ?? null;
+  return context.uniqueBasenames.get(normalizeResourceKey(
+    cleanUri.split("/").at(-1)!,
+  )) ?? null;
 }
 
 export async function readAssetPackageResource(file: File, uri: string) {
@@ -358,11 +360,11 @@ export async function collectTransferableAssetPackage(
 ): Promise<TransferableAssetPackage | undefined> {
   const context = getAssetPackageContext<AssetPackageReport>(file);
   if (!context) return undefined;
-  const resources: Record<string, ArrayBuffer> = {};
+  const resources = Object.create(null) as Record<string, ArrayBuffer>;
   for (const entry of context.entries.values()) {
     if (
-      normalizeResourcePath(entry.name).toLowerCase() ===
-      normalizeResourcePath(context.report.primaryPath).toLowerCase()
+      normalizeResourceKey(normalizeResourcePath(entry.name)) ===
+      normalizeResourceKey(normalizeResourcePath(context.report.primaryPath))
     ) {
       continue;
     }
@@ -385,7 +387,7 @@ export function createTransferableAssetPackageResolver(
   if (!assetPackage) return () => null;
   const entries = new Map(
     Object.entries(assetPackage.resources).map(([name, bytes]) => [
-      normalizeResourcePath(name).toLowerCase(),
+      normalizeResourceKey(normalizeResourcePath(name)),
       bytes,
     ]),
   );
@@ -398,13 +400,13 @@ export function createTransferableAssetPackageResolver(
   return (uri: string) => {
     const cleanUri = decodeResourceUri(uri);
     if (!cleanUri || !isPackageRelativeUri(cleanUri)) return null;
-    const relative = normalizeResourcePath(
+    const relative = normalizeResourceKey(normalizeResourcePath(
       primaryDirectory ? `${primaryDirectory}/${cleanUri}` : cleanUri,
-    ).toLowerCase();
+    ));
     const bytes =
       entries.get(relative) ??
-      entries.get(normalizeResourcePath(cleanUri).toLowerCase()) ??
-      basenames.get(cleanUri.split("/").at(-1)!.toLowerCase());
+      entries.get(normalizeResourceKey(normalizeResourcePath(cleanUri))) ??
+      basenames.get(normalizeResourceKey(cleanUri.split("/").at(-1)!));
     return bytes ? new Uint8Array(bytes) : null;
   };
 }
@@ -423,7 +425,10 @@ export async function getGLTFPackageResources(
   json: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
-  const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
+  const resources = Object.create(null) as Record<
+    string,
+    Uint8Array<ArrayBuffer>
+  >;
   for (const uri of collectGLTFExternalUris(json)) {
     const resource = resolveAssetPackageResource(file, uri);
     if (resource) {
@@ -549,9 +554,10 @@ async function collectMissingPrimaryResources(
     if (!isPackageRelativeUri(decodeResourceUri(uri))) {
       return true;
     }
-    const relative = normalizeResourcePath(
-      primaryDirectory ? `${primaryDirectory}/${decodeResourceUri(uri)}` : uri,
-    ).toLowerCase();
+    const cleanUri = decodeResourceUri(uri);
+    const relative = normalizeResourceKey(normalizeResourcePath(
+      primaryDirectory ? `${primaryDirectory}/${cleanUri}` : cleanUri,
+    ));
     return !resources.has(relative);
   });
 }
@@ -733,7 +739,7 @@ function createStoredAssetPackageContext(
   const uniqueBasenames = new Map<string, Blob | null>();
   for (const entry of entries) {
     const normalized = normalizePackageEntryPath(entry.name);
-    const resourceKey = normalized.toLowerCase();
+    const resourceKey = normalizeResourceKey(normalized);
     if (resources.has(resourceKey)) {
       throw new RetargetError("PACKAGE_INVALID", {
         details: { path: entry.name },
@@ -745,7 +751,7 @@ function createStoredAssetPackageContext(
       name: normalized,
       blob: entry.blob,
     });
-    const basename = normalized.split("/").at(-1)!.toLowerCase();
+    const basename = normalizeResourceKey(normalized.split("/").at(-1)!);
     uniqueBasenames.set(
       basename,
       uniqueBasenames.has(basename) ? null : entry.blob,
@@ -789,12 +795,22 @@ function normalizeResourcePath(value: string) {
       continue;
     }
     if (segment === "..") {
+      if (normalized.length === 0) {
+        throw new RetargetError("PACKAGE_INVALID", {
+          details: { path: value },
+          message: `Package resource escapes its root: ${value}`,
+        });
+      }
       normalized.pop();
       continue;
     }
     normalized.push(segment);
   }
-  return normalized.join("/");
+  return normalized.join("/").normalize("NFKC");
+}
+
+function normalizeResourceKey(value: string) {
+  return value.normalize("NFKC").toLocaleLowerCase("en-US");
 }
 
 function decodeResourceUri(uri: string) {

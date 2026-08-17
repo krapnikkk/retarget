@@ -72,7 +72,7 @@ export async function bindMotionClipToAvatar({
       structuralJSONBytes,
       assetPackage,
     },
-    { signal },
+    { bufferOwnership: "transfer", signal },
   );
   signal?.throwIfAborted();
   const solvedClip = await runRetargetJob(

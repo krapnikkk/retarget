@@ -109,6 +109,6 @@ export async function retargetRiggedGLTF({
       animationIndex,
       animationName,
     },
-    { signal },
+    { bufferOwnership: "transfer", signal },
   );
 }

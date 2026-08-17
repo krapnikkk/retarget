@@ -7,7 +7,6 @@ import {
   BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
   type BrowserInputPreparationResponse,
 } from "@/browser/input-preparation-protocol";
-import { collectArrayBufferTransfers } from "@/jobs/transferables";
 import { serializeWorkerError } from "./serialize-error";
 
 const workerScope = self as DedicatedWorkerGlobalScope;
@@ -42,7 +41,7 @@ workerScope.addEventListener("message", async (event: MessageEvent<unknown>) => 
       result,
     };
     assertBrowserInputPreparationResponse(response, request);
-    post(response, collectArrayBufferTransfers(result));
+    post(response);
   } catch (cause) {
     post({
       schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,

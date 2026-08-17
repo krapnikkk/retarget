@@ -12,12 +12,14 @@
 
 `runRetargetJob()` 默认使用 `bufferOwnership: "copy"`：先克隆任务，只转移
 Worker 拥有的副本，调用方缓冲区不会 detached。受信任且追求吞吐的调用方可显式选择
-`"transfer"`，并接受其输入缓冲区立即失效。transfer list 会递归收集并按缓冲区身份
-去重；成功、失败、取消、超时、克隆异常、`messageerror` 与进度回调异常统一进入同一
+`"transfer"`，并接受其输入缓冲区立即失效。transfer list 仅从各任务声明的字段生成并按
+缓冲区身份去重，不会遍历任意调用方对象来寻找缓冲区。库内高层流水线会转移刚从
+`File` 创建且自行拥有的缓冲区，同时保留调用方拥有的动作片段。成功、失败、取消、超时、克隆异常、`messageerror` 与进度回调异常统一进入同一
 Worker 清理路径。
 
-重定向消息使用协议 schema version `1`。双方都会校验版本、task/response 判别字段、
-已注册格式 ID、有界核心字段、进度值、已注册错误码和对应 task 的成功结果。未知 task
+重定向消息使用协议 schema version `1`。双方都会校验版本、task/response 精确字段、
+普通对象原型、已注册格式 ID、有界资源字典、进度值、已注册错误码和对应 task 的成功
+结果；客户端会在克隆请求前完成校验。未知 task
 或格式会 fail-closed，绝不会落入另一 importer、exporter 或验证分支。
 
 活动 Worker 路由为：

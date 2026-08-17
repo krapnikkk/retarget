@@ -53,6 +53,9 @@ Node jobs have no default file-size, output-size, estimated-memory, or elapsed-
 time ceiling. `RunNodeToolJobOptions.budget` remains an opt-in consumer policy;
 positive values are validated but not clamped to library-owned maxima. ZIP
 entry-count, expanded-byte, and compression-ratio defenses remain active.
+Inputs are copied into the Worker by default. A caller that will not reuse its
+input buffers may set `bufferOwnership: "transfer"`; only task-declared byte
+fields are transferred and detached.
 
 ```ts
 import { runNodeToolJob } from "3dretarget/node";

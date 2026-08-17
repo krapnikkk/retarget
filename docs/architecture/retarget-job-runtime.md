@@ -22,15 +22,19 @@ the solver/importer graph.
 `runRetargetJob()` uses `bufferOwnership: "copy"` by default: it clones the
 task first, transfers only the worker-owned clone, and leaves caller buffers
 attached. Trusted high-throughput callers may explicitly select `"transfer"`;
-that choice detaches their input buffers. Transfer lists are recursively
-collected and deduplicated. Success, failure, abort, timeout, clone errors,
+that choice detaches their input buffers. Transfer lists are derived from the
+declared fields of each task and deduplicated; the runtime never traverses an
+arbitrary caller object looking for buffers. Library pipelines transfer buffers
+they just created from `File` inputs, while preserving caller-owned clips.
+Success, failure, abort, timeout, clone errors,
 `messageerror`, and progress-callback failures all converge on the same Worker
 cleanup path.
 
 Retarget messages use protocol schema version `1`. Both sides validate the
-version, task/response discriminator, registered format IDs, bounded core
-fields, progress values, registered error codes, and the task-specific success
-result. Unknown task or format values fail closed and never fall through to a
+version, exact task/response fields, plain object prototypes, registered format
+IDs, bounded resource dictionaries, progress values, registered error codes,
+and the task-specific success result. Validation happens before the client
+clones a request. Unknown task or format values fail closed and never fall through to a
 different importer, exporter, or validation route.
 
 The active worker routes are:

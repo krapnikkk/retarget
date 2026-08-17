@@ -30,6 +30,9 @@
 
 Node 任务默认不设置文件大小、输出大小、估算内存或处理时间上限。`RunNodeToolJobOptions.budget` 保留为消费端可选策略；正值会被校验，但不会收紧到库拥有的上限。ZIP 条目数量、展开字节数与压缩比防护继续生效。
 
+输入默认复制到 Worker。确定不会复用输入缓冲区的调用方可以设置
+`bufferOwnership: "transfer"`；只有任务声明的字节字段会被转移并 detached。
+
 ```ts
 import { runNodeToolJob } from "3dretarget/node";
 

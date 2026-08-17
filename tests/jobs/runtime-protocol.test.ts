@@ -44,6 +44,66 @@ describe("retarget Worker runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
   });
 
+  it("rejects unknown fields and non-plain request prototypes", () => {
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "unknown-field",
+      extra: true,
+      task: {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+
+    const request = Object.create({ inherited: true }) as Record<string, unknown>;
+    Object.assign(request, {
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "bad-prototype",
+      task: {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+    });
+    expect(() => assertRetargetJobRequest(request)).toThrow(
+      expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }),
+    );
+  });
+
+  it("validates optional buffers and asset-package dictionaries", () => {
+    const resources = Object.create(null) as Record<string, ArrayBuffer>;
+    Object.defineProperty(resources, "__proto__", {
+      enumerable: true,
+      value: new ArrayBuffer(4),
+    });
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "bad-structural-json",
+      task: {
+        type: "inspect-humanoid-avatar",
+        formatId: "gltf-humanoid",
+        filename: "avatar.glb",
+        bytes: new ArrayBuffer(0),
+        structuralJSONBytes: new Uint8Array(8),
+      },
+    })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "valid-null-dictionary",
+      task: {
+        type: "convert-mmd-avatar",
+        filename: "avatar.pmx",
+        bytes: new ArrayBuffer(8),
+        assetPackage: {
+          primaryPath: "avatar.pmx",
+          resources,
+        },
+      },
+    })).not.toThrow();
+  });
+
   it("validates FBX and glTF action selection at the Worker boundary", () => {
     expect(() => assertRetargetJobRequest({
       schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,

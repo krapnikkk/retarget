@@ -214,7 +214,7 @@ export function readZipArchive(bytes: Uint8Array): ZipFileEntry[] {
     if (totalUncompressedBytes > DEFAULT_READ_OPTIONS.maxTotalUncompressedBytes) {
       throw new Error("ZIP archive exceeds the total expanded size limit.");
     }
-    const key = name.toLocaleLowerCase("en-US");
+    const key = archivePathKey(name);
     if (seenPaths.has(key)) {
       throw new Error(`ZIP archive contains a duplicate path: "${name}".`);
     }
@@ -341,7 +341,7 @@ export async function readZipBlobArchiveAsync(
     if (totalUncompressedBytes > limits.maxTotalUncompressedBytes) {
       throw new Error("ZIP archive exceeds the total expanded size limit.");
     }
-    const key = name.toLocaleLowerCase("en-US");
+    const key = archivePathKey(name);
     if (seenPaths.has(key)) {
       throw new Error(`ZIP archive contains a duplicate path: "${name}".`);
     }
@@ -467,7 +467,7 @@ function encodeZipOutputName(name: string, seenNames: Set<string>) {
   if (nameBytes.byteLength === 0 || nameBytes.byteLength > 0xffff) {
     throw new Error(`ZIP entry "${name}" name exceeds the ZIP32 limit.`);
   }
-  const key = normalized.toLocaleLowerCase("en-US");
+  const key = archivePathKey(normalized);
   if (seenNames.has(key)) {
     throw new Error(`ZIP output contains a duplicate path: "${normalized}".`);
   }
@@ -548,24 +548,34 @@ async function readBoundedStream(
   name: string,
 ) {
   const reader = stream.getReader();
-  const bytes = new Uint8Array(maxOutputBytes);
-  let offset = 0;
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const nextOffset = offset + value.byteLength;
-      if (nextOffset > maxOutputBytes) {
+      const nextByteLength = byteLength + value.byteLength;
+      if (nextByteLength > maxOutputBytes) {
         await reader.cancel(`ZIP entry ${name} exceeded its expanded size budget.`);
         throw new Error(`ZIP entry "${name}" exceeds its actual expanded size limit.`);
       }
-      bytes.set(value, offset);
-      offset = nextOffset;
+      chunks.push(value);
+      byteLength = nextByteLength;
     }
   } finally {
     reader.releaseLock();
   }
-  return offset === bytes.byteLength ? bytes : bytes.slice(0, offset);
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return bytes;
+}
+
+function archivePathKey(value: string) {
+  return value.normalize("NFKC").toLocaleLowerCase("en-US");
 }
 
 function validateLocalHeaderMetadata({

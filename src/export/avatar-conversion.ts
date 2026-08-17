@@ -59,7 +59,7 @@ export async function readAvatarAsGLBDocument({
         filename: avatarFile.name,
         assetPackage: await collectTransferableAssetPackage(avatarFile),
       },
-      { signal },
+      { bufferOwnership: "transfer", signal },
     );
     return io.readBinary(bytes);
   }

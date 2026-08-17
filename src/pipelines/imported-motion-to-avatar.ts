@@ -114,7 +114,7 @@ function createImportedMotionToAvatarPipeline(
           animationIndex,
           animationName,
         },
-        { signal },
+        { bufferOwnership: "transfer", signal },
       );
       signal?.throwIfAborted();
       const solvedClip = await bindMotionClipToAvatar({

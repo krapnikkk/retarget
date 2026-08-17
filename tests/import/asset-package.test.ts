@@ -9,6 +9,7 @@ import {
 } from "@/export/zip";
 import {
   createAssetResourceScope,
+  collectTransferableAssetPackage,
   getGLTFPackageResources,
   listAssetPackageEntries,
   prepareAssetDirectory,
@@ -32,6 +33,10 @@ describe("ZIP asset package preflight", () => {
     await expect(createZipArchiveBlob([
       { name: "../unsafe.bin", blob: new Blob() },
     ])).rejects.toThrow("unsafe path");
+    expect(() => createZipArchive([
+      { name: "café.bin", bytes: new Uint8Array([1]) },
+      { name: "cafe\u0301.bin", bytes: new Uint8Array([2]) },
+    ])).toThrow("duplicate path");
   });
 
   it("strictly validates stored ZIP archives in the synchronous reader", () => {
@@ -170,6 +175,59 @@ describe("ZIP asset package preflight", () => {
     expect(
       await listAssetPackageEntries(prepared.file)?.at(-1)?.blob.text(),
     ).toBe("CC0");
+  });
+
+  it("normalizes root resource queries and rejects package-root escapes", async () => {
+    const gltf = JSON.stringify({
+      asset: { version: "2.0" },
+      images: [{ uri: "texture%20name.png?v=1" }],
+    });
+    const archive = new File([
+      toArrayBuffer(createZipArchive([
+        { name: "model.gltf", bytes: new TextEncoder().encode(gltf) },
+        { name: "texture name.png", bytes: new Uint8Array([1, 2]) },
+      ])),
+    ], "root-resources.zip");
+    const prepared = await prepareAssetInput(archive, "avatar");
+
+    expect(prepared.report?.missingResources).toEqual([]);
+    expect(await readAssetPackageResource(
+      prepared.file,
+      "texture%20name.png?v=1",
+    )).toEqual(new Uint8Array([1, 2]));
+
+    const escaping = new File([
+      toArrayBuffer(createZipArchive([
+        {
+          name: "model.gltf",
+          bytes: new TextEncoder().encode(JSON.stringify({
+            asset: { version: "2.0" },
+            images: [{ uri: "../../../texture.png" }],
+          })),
+        },
+        { name: "texture.png", bytes: new Uint8Array([3]) },
+      ])),
+    ], "escaping-resource.zip");
+    await expect(prepareAssetInput(escaping, "avatar")).rejects.toMatchObject({
+      code: "PACKAGE_INVALID",
+    });
+  });
+
+  it("preserves special resource names in a null-prototype transfer dictionary", async () => {
+    const archive = new File([
+      toArrayBuffer(createZipArchive([
+        { name: "model.gltf", bytes: new TextEncoder().encode("{}") },
+        { name: "__proto__", bytes: new Uint8Array([7]) },
+      ])),
+    ], "special-resource.zip");
+    const prepared = await prepareAssetInput(archive, "avatar");
+    const transferable = await collectTransferableAssetPackage(prepared.file);
+
+    expect(Object.getPrototypeOf(transferable?.resources)).toBeNull();
+    expect(Object.hasOwn(transferable!.resources, "__proto__")).toBe(true);
+    expect(new Uint8Array(transferable!.resources.__proto__!)).toEqual(
+      new Uint8Array([7]),
+    );
   });
 
   it("range-reads ZIP input without materializing the whole archive", async () => {

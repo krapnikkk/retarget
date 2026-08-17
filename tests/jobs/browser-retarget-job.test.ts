@@ -69,6 +69,23 @@ describe("browser retarget worker boundary", () => {
     expect(PendingWorker.instances[0]?.terminated).toBe(true);
   });
 
+  it("rejects a pre-aborted task before reading or cloning it", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    const controller = new AbortController();
+    controller.abort();
+    const task = Object.defineProperty({}, "type", {
+      enumerable: true,
+      get() {
+        throw new Error("task was inspected");
+      },
+    });
+
+    await expect(runRetargetJob(task as never, {
+      signal: controller.signal,
+    })).rejects.toMatchObject({ name: "AbortError" });
+    expect(PendingWorker.instances).toHaveLength(0);
+  });
+
   it("does not assign a library-owned deadline by default", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();
@@ -203,9 +220,9 @@ describe("browser retarget worker boundary", () => {
   it("settles successful responses and terminates the worker", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const promise = runRetargetJob({
-      type: "export-motion",
-      formatId: "motion-json",
-      clip: {} as never,
+      type: "convert-mmd-avatar",
+      bytes: new ArrayBuffer(8),
+      filename: "avatar.pmx",
     });
     const worker = PendingWorker.instances[0]!;
     const request = worker.messages[0] as { jobId: string };
