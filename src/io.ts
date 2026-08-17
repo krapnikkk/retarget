@@ -8,8 +8,9 @@ export { importVRMA } from "./import/vrma";
 export function importGLTFAnimationBytes(
   bytes: Uint8Array,
   filename = "motion.glb",
+  options: { animationIndex?: number; animationName?: string } = {},
 ) {
-  return importGLTFAnimation(bytes, filename);
+  return importGLTFAnimation(bytes, filename, options);
 }
 
 export { exportBVH } from "./export/bvh";

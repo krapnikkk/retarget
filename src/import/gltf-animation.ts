@@ -1,4 +1,4 @@
-import { type Document, type Node } from "@gltf-transform/core";
+import { type Animation, type Document, type Node } from "@gltf-transform/core";
 import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
 import type { HumanoidBoneName, MotionTrack, MotionTrackPath } from "@/retarget";
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
@@ -14,34 +14,33 @@ import {
   assertInputWithinBudget,
 } from "./parse-budget";
 import { readGLTFAnimationTrack } from "./gltf-interpolation";
+import { RetargetError } from "@/retarget/errors";
 
 const SUPPORTED_TARGET_PATHS = new Set(["rotation", "translation"]);
+
+export type GLTFAnimationImportOptions = {
+  animationIndex?: number;
+  animationName?: string;
+  sourceFile?: File;
+  resources?: Record<string, Uint8Array<ArrayBuffer>>;
+};
 
 export async function importGLTFAnimation(
   bytes: Uint8Array,
   filename = "motion.glb",
-  sourceFile?: File,
-  animationName?: string,
-  providedResources?: Record<string, Uint8Array<ArrayBuffer>>,
+  options: GLTFAnimationImportOptions = {},
 ) {
   assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
     filename,
     section: "glTF animation",
   });
-  const document = await readGLTFDocument(bytes, sourceFile, providedResources);
+  const document = await readGLTFDocument(
+    bytes,
+    options.sourceFile,
+    options.resources,
+  );
   const animations = document.getRoot().listAnimations();
-  const animation = animationName
-    ? [...animations]
-        .reverse()
-        .find((candidate) => candidate.getName() === animationName)
-    : animations[0];
-  if (!animation) {
-    throw new Error(
-      animationName
-        ? `glTF file does not contain animation ${animationName}.`
-        : "glTF file does not contain an animation.",
-    );
-  }
+  const animation = selectGLTFAnimation(animations, options);
 
   const channels = animation.listChannels();
   assertCountWithinBudget(
@@ -117,6 +116,58 @@ export async function importGLTFAnimation(
     tracks,
     rootName: animation.getName() || "glTF animation",
   });
+}
+
+function selectGLTFAnimation(
+  animations: readonly Animation[],
+  options: GLTFAnimationImportOptions,
+) {
+  if (animations.length === 0) {
+    throw new RetargetError("GLTF_ANIMATION_PARSE_FAILED", {
+      message: "glTF file does not contain an animation.",
+    });
+  }
+  let selectedIndex = options.animationIndex;
+  if (options.animationName !== undefined) {
+    const matches = animations.flatMap((animation, index) =>
+      animation.getName() === options.animationName ? [index] : []
+    );
+    if (matches.length !== 1) {
+      throw new RetargetError("GLTF_ANIMATION_PARSE_FAILED", {
+        details: { animationName: options.animationName, matches: matches.length },
+        message: matches.length === 0
+          ? `glTF animation ${options.animationName} was not found.`
+          : `glTF animation name ${options.animationName} is ambiguous.`,
+      });
+    }
+    if (selectedIndex !== undefined && selectedIndex !== matches[0]) {
+      throw new RetargetError("GLTF_ANIMATION_PARSE_FAILED", {
+        message: "animationName and animationIndex select different glTF actions.",
+      });
+    }
+    selectedIndex = matches[0];
+  }
+  if (selectedIndex === undefined) {
+    if (animations.length !== 1) {
+      throw new RetargetError("GLTF_ANIMATION_PARSE_FAILED", {
+        details: { animationCount: animations.length },
+        message:
+          `glTF contains ${animations.length} animations; select animationName or animationIndex explicitly.`,
+      });
+    }
+    selectedIndex = 0;
+  }
+  if (
+    !Number.isInteger(selectedIndex) ||
+    selectedIndex < 0 ||
+    selectedIndex >= animations.length
+  ) {
+    throw new RetargetError("GLTF_ANIMATION_PARSE_FAILED", {
+      details: { animationIndex: selectedIndex },
+      message: `glTF animationIndex ${selectedIndex} is out of range.`,
+    });
+  }
+  return animations[selectedIndex]!;
 }
 
 function collectSourceRestTransforms(document: Document) {

@@ -2,6 +2,7 @@ import { Matrix4, Quaternion, Vector3 } from "three";
 import type { RigProfile } from "@/profiles";
 import { CANONICAL_AXIS_FRAME, createAxisCorrection } from "./coordinate-space";
 import type { HumanoidBoneName, MotionTrack, RetargetedMotionClip } from "./types";
+import { RetargetError } from "./errors";
 
 export const HUMANOID_TARGET_BINDING_REVISION = 1 as const;
 
@@ -53,7 +54,12 @@ export function bindCanonicalTracksToTargetRest(
       clip.metadata?.rootTranslationSpace === "offset-source-units" &&
       !(sourceRestHipsHeight && sourceRestHipsHeight > 0)
     ) {
-      continue;
+      throw new RetargetError("ROOT_MOTION_SCALE_UNRESOLVED", {
+        details: {
+          sourceKind: clip.source.kind,
+          sourceFilename: clip.source.filename,
+        },
+      });
     }
     const targetRestHipsHeight =
       target.restHipsHeight && target.restHipsHeight > 0

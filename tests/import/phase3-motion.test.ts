@@ -92,9 +92,7 @@ describe("Phase 3 motion importers", () => {
     const clip = await importGLTFAnimation(
       jsonBytes,
       "idle.gltf",
-      undefined,
-      undefined,
-      serialized.resources,
+      { resources: serialized.resources },
     );
 
     expect(Object.keys(serialized.resources)).toEqual(["buffer.bin"]);
@@ -133,6 +131,31 @@ describe("Phase 3 motion importers", () => {
         expect.objectContaining({ bone: "head", path: "rotation" }),
       ]),
     );
+  });
+
+  it("requires an explicit selection for multi-animation glTF inputs", async () => {
+    const document = createMinimalAnimatedDocument();
+    document.createAnimation("run");
+    const bytes = await new WebIO().writeBinary(document);
+
+    await expect(importGLTFAnimation(bytes, "actions.glb")).rejects.toMatchObject({
+      code: "GLTF_ANIMATION_PARSE_FAILED",
+    });
+    await expect(importGLTFAnimation(bytes, "actions.glb", {
+      animationIndex: 0,
+      animationName: "idle",
+    })).resolves.toMatchObject({ name: "actions" });
+  });
+
+  it("rejects ambiguous glTF animation names", async () => {
+    const document = createMinimalAnimatedDocument();
+    document.createAnimation("idle");
+
+    await expect(importGLTFAnimation(
+      await new WebIO().writeBinary(document),
+      "duplicate-actions.glb",
+      { animationName: "idle" },
+    )).rejects.toMatchObject({ code: "GLTF_ANIMATION_PARSE_FAILED" });
   });
 
   it("rejects malformed BVH frame values instead of shifting later channels", () => {
@@ -196,6 +219,15 @@ describe("Phase 3 motion importers", () => {
     expect(() => importVMD(truncated, "truncated.vmd")).toThrow(/truncated/);
   });
 
+  it("rejects sparse VMD frames before allocating a dense track", () => {
+    const sparse = createMinimalVMD();
+    new DataView(sparse.buffer).setUint32(54 + 15, 0xffff_ffff, true);
+
+    expect(() => importVMD(sparse, "sparse.vmd")).toThrow(
+      expect.objectContaining({ code: "PARSE_BUDGET_EXCEEDED" }),
+    );
+  });
+
   it("keeps distinct VMD source channels that map to the same canonical bone", () => {
     const clip = importVMD(createLayeredRootVMD(), "layered-root.vmd");
 
@@ -250,6 +282,37 @@ describe("Phase 3 motion importers", () => {
       await new WebIO().writeBinary(document),
       "zero-quaternion.glb",
     )).rejects.toMatchObject({ code: "GLTF_INVALID_OUTPUT" });
+  });
+
+  it("rejects non-finite CUBICSPLINE tangents", async () => {
+    const document = createMinimalAnimatedDocument("CUBICSPLINE");
+    const translations = document.getRoot().listAccessors().find(
+      (accessor) => accessor.getName() === "hips.translation",
+    )!;
+    const values = translations.getArray()!.slice();
+    values[7] = Number.NaN;
+    translations.setArray(values);
+
+    await expect(importGLTFAnimation(
+      await new WebIO().writeBinary(document),
+      "nan-tangent.glb",
+    )).rejects.toMatchObject({ code: "GLTF_INVALID_OUTPUT" });
+  });
+
+  it("fails closed when a CUBICSPLINE interval exceeds bounded refinement", async () => {
+    const document = createMinimalAnimatedDocument("CUBICSPLINE");
+    const translations = document.getRoot().listAccessors().find(
+      (accessor) => accessor.getName() === "hips.translation",
+    )!;
+    const values = translations.getArray()!.slice();
+    values[7] = 1_000_000;
+    values[10] = -1_000_000;
+    translations.setArray(values);
+
+    await expect(importGLTFAnimation(
+      await new WebIO().writeBinary(document),
+      "adversarial-cubic.glb",
+    )).rejects.toMatchObject({ code: "PARSE_BUDGET_EXCEEDED" });
   });
 
   it("preserves STEP transitions without expanding the whole clip to 60 FPS", async () => {

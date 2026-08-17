@@ -32,6 +32,7 @@
 | `TARGET_RIG_IDENTITY_MISSING` | 目标绑定/导出 | 角色导出收到未求解或缺少目标骨架身份的旧动作。 |
 | `TARGET_RIG_INVALID` | 目标绑定/导出 | 目标静止姿态证据无效或包含非有限数值。 |
 | `TARGET_RIG_MISMATCH` | 目标绑定/导出 | 提供的角色并非已求解动作记录的目标骨架。 |
+| `ROOT_MOTION_SCALE_UNRESOLVED` | 目标绑定 | 源单位 root motion 缺少可靠缩放证据，不能在不静默改变语义的情况下绑定。 |
 | `TARGET_MAPPING_EMPTY` | 求解 | 没有源动作轨道映射到所选目标；应修复骨架/profile 映射。 |
 | `TARGET_MAPPING_INSUFFICIENT` | 求解 | 求解轨道超出了声明的目标骨骼集合；必须拒绝结果。 |
 | `TARGET_REQUIRED_CHAIN_MISSING` | 求解 | 所选 preset 既未映射 hips，也未覆盖其目标链中的必需骨骼。 |

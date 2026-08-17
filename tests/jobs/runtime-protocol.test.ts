@@ -44,7 +44,7 @@ describe("retarget Worker runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
   });
 
-  it("validates FBX action selection at the Worker boundary", () => {
+  it("validates FBX and glTF action selection at the Worker boundary", () => {
     expect(() => assertRetargetJobRequest({
       schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
       jobId: "bad-action-selection",
@@ -65,6 +65,17 @@ describe("retarget Worker runtime protocol", () => {
         filename: "motion.fbx",
         bytes: new ArrayBuffer(8),
         animationName: "Walk",
+      },
+    })).not.toThrow();
+    expect(() => assertRetargetJobRequest({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "valid-gltf-action-selection",
+      task: {
+        type: "import-motion",
+        formatId: "gltf-animation",
+        filename: "motion.glb",
+        bytes: new ArrayBuffer(8),
+        animationIndex: 0,
       },
     })).not.toThrow();
   });

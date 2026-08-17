@@ -155,15 +155,19 @@ export function parseVMDDocument(bytes: Uint8Array): VMDDocument {
     };
   });
 
-  const maxFrame = Math.max(
-    0,
-    ...boneFrames.map((frame) => frame.frameNumber),
-    ...morphFrames.map((frame) => frame.frameNumber),
-    ...cameraFrames.map((frame) => frame.frameNumber),
-    ...lightFrames.map((frame) => frame.frameNumber),
-    ...selfShadowFrames.map((frame) => frame.frameNumber),
-    ...propertyFrames.map((frame) => frame.frameNumber),
-  );
+  let maxFrame = 0;
+  for (const frames of [
+    boneFrames,
+    morphFrames,
+    cameraFrames,
+    lightFrames,
+    selfShadowFrames,
+    propertyFrames,
+  ]) {
+    for (const frame of frames) {
+      maxFrame = Math.max(maxFrame, frame.frameNumber);
+    }
+  }
 
   return {
     signature: decodeVMDString(signatureBytes),

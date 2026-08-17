@@ -347,19 +347,48 @@ export function createSemiAutomaticBoneMap({
   sourceBones: ReadonlySet<HumanoidBoneName>;
   targetBones: ReadonlySet<HumanoidBoneName>;
 }) {
+  for (const [targetBone, sourceBone] of Object.entries(overrides)) {
+    if (!targetBones.has(targetBone as HumanoidBoneName)) {
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { sourceBone, targetBone },
+        message: `Manual target bone ${targetBone} is not present in the target rig.`,
+      });
+    }
+    if (
+      sourceBone !== "none" &&
+      (!(HUMANOID_BONES as readonly string[]).includes(sourceBone) ||
+        !sourceBones.has(sourceBone as HumanoidBoneName))
+    ) {
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { sourceBone, targetBone },
+        message: `Manual source bone ${sourceBone} is not present in the source motion.`,
+      });
+    }
+  }
+
   const map = new Map<HumanoidBoneName, HumanoidBoneName>();
+  const claimedSources = new Map<HumanoidBoneName, HumanoidBoneName>();
   for (const targetBone of targetBones) {
     const override = overrides[targetBone];
     if (override === "none") {
       continue;
     }
-    if (override && sourceBones.has(override)) {
-      map.set(targetBone, override);
-      continue;
+    const sourceBone = override && sourceBones.has(override)
+      ? override
+      : sourceBones.has(targetBone)
+        ? targetBone
+        : undefined;
+    if (!sourceBone) continue;
+    const existingTarget = claimedSources.get(sourceBone);
+    if (existingTarget) {
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { existingTarget, sourceBone, targetBone },
+        message:
+          `Source bone ${sourceBone} cannot drive both ${existingTarget} and ${targetBone}.`,
+      });
     }
-    if (sourceBones.has(targetBone)) {
-      map.set(targetBone, targetBone);
-    }
+    map.set(targetBone, sourceBone);
+    claimedSources.set(sourceBone, targetBone);
   }
 
   return map;
@@ -368,21 +397,26 @@ export function createSemiAutomaticBoneMap({
 export function createCustomChainConfigs(
   preset: CustomChainPreset,
 ): readonly HumanoidChainConfig[] {
-  if (preset === "upper-body") {
-    return HUMANOID_CHAIN_CONFIGS.filter(
-      (config) =>
-        config.id === "spine" ||
-        config.id === "leftArm" ||
-        config.id === "rightArm",
-    );
+  switch (preset) {
+    case "full-body":
+      return HUMANOID_CHAIN_CONFIGS;
+    case "upper-body":
+      return HUMANOID_CHAIN_CONFIGS.filter(
+        (config) =>
+          config.id === "spine" ||
+          config.id === "leftArm" ||
+          config.id === "rightArm",
+      );
+    case "lower-body":
+      return HUMANOID_CHAIN_CONFIGS.filter(
+        (config) => config.id === "leftLeg" || config.id === "rightLeg",
+      );
+    default:
+      throw new RetargetError("PROCESSING_OPTION_INVALID", {
+        details: { chainPreset: preset },
+        message: `Unknown custom chain preset: ${String(preset)}.`,
+      });
   }
-  if (preset === "lower-body") {
-    return HUMANOID_CHAIN_CONFIGS.filter(
-      (config) => config.id === "leftLeg" || config.id === "rightLeg",
-    );
-  }
-
-  return HUMANOID_CHAIN_CONFIGS;
 }
 
 function resolveOverrideProfiles(
@@ -610,24 +644,37 @@ function assertSufficientTargetMapping({
     });
   }
 
-  const coversAnyRequiredBone = REQUIRED_VRM_BONES.some((bone) =>
-    mappedTargets.has(bone)
+  const requiredGroups: readonly (readonly HumanoidBoneName[])[] =
+    chainPreset === "full-body"
+      ? [
+          ["hips"],
+          ["spine", "chest", "upperChest"],
+          ["leftUpperArm"],
+          ["rightUpperArm"],
+          ["leftUpperLeg"],
+          ["rightUpperLeg"],
+        ]
+      : chainPreset === "upper-body"
+        ? [
+            ["hips", "spine", "chest", "upperChest"],
+            ["leftUpperArm"],
+            ["rightUpperArm"],
+          ]
+        : [
+            ["hips"],
+            ["leftUpperLeg"],
+            ["rightUpperLeg"],
+          ];
+  const missingGroups = requiredGroups.filter((group) =>
+    !group.some((bone) => mappedTargets.has(bone))
   );
-  if (!mappedTargets.has("hips") && !coversAnyRequiredBone) {
-    throw new RetargetError("TARGET_MAPPING_INSUFFICIENT", {
-      details: { chainPreset, mappedTargets: [...mappedTargets] },
-    });
-  }
-
-  const selectedChains = createCustomChainConfigs(chainPreset);
-  const coversRequiredChain = selectedChains.some((chain) =>
-    chain.bones.some(
-      (bone) => REQUIRED_VRM_BONES.includes(bone) && mappedTargets.has(bone),
-    )
-  );
-  if (!mappedTargets.has("hips") && !coversRequiredChain) {
+  if (missingGroups.length > 0) {
     throw new RetargetError("TARGET_REQUIRED_CHAIN_MISSING", {
-      details: { chainPreset, mappedTargets: [...mappedTargets] },
+      details: {
+        chainPreset,
+        mappedTargets: [...mappedTargets],
+        missingGroups,
+      },
     });
   }
 }
@@ -683,7 +730,9 @@ function createCustomMappingReport({
     unmappedTargetBones: HUMANOID_BONES.filter(
       (bone) => targetBones.has(bone) && !mappedTargets.has(bone),
     ),
-    manualOverrides: Object.values(config.boneMap).filter(Boolean).length,
+    manualOverrides: Object.values(config.boneMap).filter(
+      (value) => value && value !== "none",
+    ).length,
     chainPreset: config.chainPreset,
     footCleanup: config.footCleanup,
   };

@@ -44,11 +44,28 @@ describe("avatar target binding", () => {
       profile: BVH_HUMANOID_PROFILE,
       tracks: [
         {
+          bone: "hips",
+          path: "translation",
+          times: [0, 1],
+          values: [0, 0, 0, 0, 0, 0],
+        },
+        {
           bone: "spine",
           path: "rotation",
           times: [0, 1],
           values: sourceValues,
         },
+        ...[
+          "leftUpperArm",
+          "rightUpperArm",
+          "leftUpperLeg",
+          "rightUpperLeg",
+        ].map((bone) => ({
+          bone: bone as "leftUpperArm" | "rightUpperArm" | "leftUpperLeg" | "rightUpperLeg",
+          path: "rotation" as const,
+          times: [0, 1],
+          values: [0, 0, 0, 1, 0, 0, 0, 1],
+        })),
       ],
     });
     const avatarFile = new File([await createMinimalHumanoidGLB()], "avatar.glb", {
@@ -154,9 +171,15 @@ async function createMinimalHumanoidGLB() {
   const rightUpperArm = document
     .createNode("rightUpperArm")
     .setTranslation([0.35, 1.35, 0]);
+  const leftUpperLeg = document
+    .createNode("leftUpperLeg")
+    .setTranslation([-0.1, 0.9, 0]);
+  const rightUpperLeg = document
+    .createNode("rightUpperLeg")
+    .setTranslation([0.1, 0.9, 0]);
 
   scene.addChild(hips);
-  hips.addChild(spine);
+  hips.addChild(spine).addChild(leftUpperLeg).addChild(rightUpperLeg);
   spine.addChild(head).addChild(leftUpperArm).addChild(rightUpperArm);
 
   return new WebIO().writeBinary(document);

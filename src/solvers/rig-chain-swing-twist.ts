@@ -491,8 +491,14 @@ function axialPosition(role: string) {
   return Number.isFinite(ordinal) ? (ordinal - 1) / 19 : null;
 }
 
-function sampleRotationTrack(track: RigMotionTrack, time: number) {
+export function sampleRotationTrack(track: RigMotionTrack, time: number) {
   const lastIndex = track.times.length - 1;
+  if (time <= track.times[0]!) {
+    return readQuaternion(track.values, 0);
+  }
+  if (time >= track.times[lastIndex]!) {
+    return readQuaternion(track.values, lastIndex);
+  }
   const rightIndex = lowerBound(track.times, time);
   const right = rightIndex < 0 ? lastIndex : rightIndex;
   const left = Math.max(0, right - 1);
@@ -506,8 +512,14 @@ function sampleRotationTrack(track: RigMotionTrack, time: number) {
   return new Quaternion().slerpQuaternions(start, end, alpha).normalize();
 }
 
-function sampleTranslationTrack(track: RigMotionTrack, time: number) {
+export function sampleTranslationTrack(track: RigMotionTrack, time: number) {
   const lastIndex = track.times.length - 1;
+  if (time <= track.times[0]!) {
+    return new Vector3().fromArray(track.values, 0);
+  }
+  if (time >= track.times[lastIndex]!) {
+    return new Vector3().fromArray(track.values, lastIndex * 3);
+  }
   const rightIndex = lowerBound(track.times, time);
   const right = rightIndex < 0 ? lastIndex : rightIndex;
   const left = Math.max(0, right - 1);

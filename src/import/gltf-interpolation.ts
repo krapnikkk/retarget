@@ -9,7 +9,8 @@ import {
 
 const CUBIC_TRANSLATION_ERROR_METERS = 0.0005;
 const CUBIC_ROTATION_ERROR_RADIANS = (0.1 * Math.PI) / 180;
-const MAX_ADAPTIVE_DEPTH = 20;
+const MAX_ADAPTIVE_DEPTH = 6;
+const MAX_CUBIC_SAMPLES_PER_SOURCE_INTERVAL = 2 ** MAX_ADAPTIVE_DEPTH + 1;
 const MIN_ADAPTIVE_INTERVAL_SECONDS = 1e-6;
 const STEP_TRANSITION_EPSILON_SECONDS = 1e-6;
 
@@ -43,13 +44,13 @@ export function readGLTFAnimationTrack({
       { filename, section },
     );
   }
-  const sourceTimes = readScalarAccessor(input, filename, section);
   assertCountWithinBudget(
-    sourceTimes.length,
+    input.getCount(),
     DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
     `${section} source samples`,
     { filename, section },
   );
+  const sourceTimes = readScalarAccessor(input, filename, section);
   validateTimes(sourceTimes, filename, section);
   if (sourceTimes.length === 0) {
     return { times: [], values: [], resampled: false };
@@ -84,6 +85,9 @@ export function readGLTFAnimationTrack({
       section,
       sourceCount: sourceTimes.length,
     });
+  }
+  if (cubic) {
+    validateAccessorElements(output, path, filename, section);
   }
 
   if (!cubic && !step) {
@@ -205,6 +209,28 @@ function readElements(
     }
   }
   return values;
+}
+
+function validateAccessorElements(
+  accessor: Accessor,
+  path: MotionTrackPath,
+  filename: string,
+  section: string,
+) {
+  const size = path === "rotation" ? 4 : 3;
+  const element: number[] = [];
+  for (let index = 0; index < accessor.getCount(); index += 1) {
+    accessor.getElement(index, element);
+    for (let component = 0; component < size; component += 1) {
+      if (!Number.isFinite(element[component])) {
+        throw new ParseDomainError(
+          "GLTF_INVALID_OUTPUT",
+          `glTF animation output ${index}.${component} is not finite`,
+          { filename, section },
+        );
+      }
+    }
+  }
 }
 
 function sampleCubicSpline(
@@ -330,7 +356,6 @@ function appendAdaptiveCubicInterval({
   });
   if (
     !exceedsError ||
-    depth >= MAX_ADAPTIVE_DEPTH ||
     duration <= MIN_ADAPTIVE_INTERVAL_SECONDS
   ) {
     assertCountWithinBudget(
@@ -342,6 +367,18 @@ function appendAdaptiveCubicInterval({
     times.push(rightTime);
     values.push(...rightValue);
     return;
+  }
+  if (depth >= MAX_ADAPTIVE_DEPTH) {
+    throw new ParseDomainError(
+      "PARSE_BUDGET_EXCEEDED",
+      "glTF cubic interpolation exceeds the per-interval format safety limit",
+      {
+        filename,
+        section,
+        declared: MAX_CUBIC_SAMPLES_PER_SOURCE_INTERVAL + 1,
+        limit: MAX_CUBIC_SAMPLES_PER_SOURCE_INTERVAL,
+      },
+    );
   }
   const middleTime = leftTime + duration / 2;
   const middleValue = sampleCubicSpline(output, sourceTimes, path, middleTime);

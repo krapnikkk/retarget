@@ -34,6 +34,7 @@ the stable code for support and telemetry.
 | `TARGET_RIG_IDENTITY_MISSING` | target bind/export | Avatar export received an unsolved or legacy clip without target-rig identity. |
 | `TARGET_RIG_INVALID` | target bind/export | Target rest-pose evidence is invalid or non-finite. |
 | `TARGET_RIG_MISMATCH` | target bind/export | The supplied avatar is not the rig recorded by the solved motion. |
+| `ROOT_MOTION_SCALE_UNRESOLVED` | target bind | Source-unit root motion has no reliable scale evidence and cannot be bound without silently changing semantics. |
 | `TARGET_MAPPING_EMPTY` | solve | No source tracks map to the selected target; fix the rig/profile mapping. |
 | `TARGET_MAPPING_INSUFFICIENT` | solve | Solved tracks escaped the declared target-bone set; reject the result. |
 | `TARGET_REQUIRED_CHAIN_MISSING` | solve | The selected preset maps neither hips nor a required bone in one of its target chains. |

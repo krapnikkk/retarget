@@ -81,7 +81,7 @@ describe("generic avatar canonical motion binding", () => {
     expect(reboundWorld.distanceTo(expectedWorld)).toBeLessThan(1e-6);
   });
 
-  it("omits unscaled root motion when the source unit is unknown", () => {
+  it("rejects unscaled root motion when the source unit is unknown", () => {
     const clip = createRetargetedMotionClipStub({
       vrmFile: { name: "avatar.glb" },
       fbxFile: { name: "motion.vmd" },
@@ -89,12 +89,12 @@ describe("generic avatar canonical motion binding", () => {
     clip.metadata = { rootTranslationSpace: "offset-source-units" };
     clip.tracks = [clip.tracks[0]!];
 
-    expect(
+    expect(() =>
       bindCanonicalTracksToTargetRest(clip, {
         bones: new Map([["hips", createRestTransform({})]]),
         restHipsHeight: 0.9,
       }),
-    ).toEqual([]);
+    ).toThrow(expect.objectContaining({ code: "ROOT_MOTION_SCALE_UNRESOLVED" }));
   });
 
   it("preserves root-relative source-unit offsets when rest-height evidence exists", () => {

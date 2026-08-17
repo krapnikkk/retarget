@@ -59,6 +59,12 @@ export function createRetargetedMotionClipStub({
         values: [0, 0, 0, 1, 0, 0.08, 0, 0.997, 0, 0, 0, 1],
       },
       {
+        bone: "spine",
+        path: "rotation",
+        times: [0, 1, duration],
+        values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
         bone: "leftUpperArm",
         path: "rotation",
         times: [0, 1, duration],
@@ -95,6 +101,18 @@ export function createRetargetedMotionClipStub({
           0,
           1,
         ],
+      },
+      {
+        bone: "leftUpperLeg",
+        path: "rotation",
+        times: [0, 1, duration],
+        values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
+        bone: "rightUpperLeg",
+        path: "rotation",
+        times: [0, 1, duration],
+        values: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
       },
     ],
     createdAt: new Date().toISOString(),

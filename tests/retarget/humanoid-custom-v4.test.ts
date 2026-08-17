@@ -84,7 +84,8 @@ describe("humanoid custom rig solver v4", () => {
       chainPreset: "upper-body",
       footCleanup: false,
       boneMap: {
-        leftHand: "rightUpperArm",
+        head: "none",
+        leftHand: "head",
       },
     });
 
@@ -152,24 +153,39 @@ describe("humanoid custom rig solver v4", () => {
   });
 
   it("maps against the loaded target rig before solving", () => {
+    const targetBones = [
+      "hips",
+      "spine",
+      "leftUpperArm",
+      "rightUpperArm",
+      "leftUpperLeg",
+      "rightUpperLeg",
+    ] as const;
     const targetSkeleton = {
       name: "loaded RPM avatar",
-      children: [{ name: "hips", bone: "hips" as const, children: [] }],
+      children: targetBones.map((bone) => ({ name: bone, bone, children: [] })),
     };
     const solved = solveHumanoidMotion({
       motion: createTestClip(),
       targetRig: {
         profile: READY_PLAYER_ME_PROFILE,
-        bones: new Set(["hips"] as const),
+        bones: new Set(targetBones),
         skeleton: targetSkeleton,
         restHipsHeight: 0.88,
       },
     });
 
-    expect(solved.tracks.map((track) => track.bone)).toEqual(["hips"]);
+    expect(solved.tracks.map((track) => track.bone)).toEqual([
+      "hips",
+      "spine",
+      "leftUpperArm",
+      "rightUpperArm",
+      "leftUpperLeg",
+      "rightUpperLeg",
+    ]);
     expect(solved.diagnostics?.profiles.target.id).toBe("ready-player-me");
     expect(solved.diagnostics?.skeletons.target).toBe(targetSkeleton);
-    expect(solved.diagnostics?.mapping.mappedTargetBones).toBe(1);
+    expect(solved.diagnostics?.mapping.mappedTargetBones).toBe(6);
     expect(solved.metadata?.targetHeight).toBe(0.88);
     expect(solved.processing.targetRigRevision).toContain("ready-player-me");
   });
@@ -178,7 +194,7 @@ describe("humanoid custom rig solver v4", () => {
     expect(() =>
       solveHumanoidMotion({
         motion: createTestClip(),
-        targetRig: createTargetRig(["head"]),
+        targetRig: createTargetRig(["leftIndexDistal"]),
       }),
     ).toThrow(expect.objectContaining({ code: "TARGET_MAPPING_EMPTY" }));
   });
@@ -191,7 +207,12 @@ describe("humanoid custom rig solver v4", () => {
         footCleanup: false,
         boneMap: {
           hips: "none",
+          spine: "none",
+          leftUpperArm: "none",
           rightUpperArm: "none",
+          leftUpperLeg: "none",
+          rightUpperLeg: "none",
+          head: "none",
           leftHand: "none",
         },
       }),
@@ -211,7 +232,7 @@ describe("humanoid custom rig solver v4", () => {
         motion,
         targetRig: createTargetRig(["leftIndexDistal"]),
       }),
-    ).toThrow(expect.objectContaining({ code: "TARGET_MAPPING_INSUFFICIENT" }));
+    ).toThrow(expect.objectContaining({ code: "TARGET_REQUIRED_CHAIN_MISSING" }));
   });
 
   it("requires mapped bones to cover the selected chain preset", () => {
@@ -244,7 +265,28 @@ describe("humanoid custom rig solver v4", () => {
       "rightLeg",
     ]);
   });
+
+  it("rejects invalid presets and manual mappings", () => {
+    expect(() => createCustomChainConfigs("typo" as never)).toThrow(
+      expect.objectContaining({ code: "PROCESSING_OPTION_INVALID" }),
+    );
+    expect(() => solveHumanoidCustomRigMotion(createTestClip(), {
+      ...DEFAULT_MAPPING,
+      boneMap: { leftHand: "leftLittleDistal" },
+    })).toThrow(expect.objectContaining({ code: "PROCESSING_OPTION_INVALID" }));
+    expect(() => solveHumanoidCustomRigMotion(createTestClip(), {
+      ...DEFAULT_MAPPING,
+      boneMap: { leftHand: "rightUpperArm" },
+    })).toThrow(expect.objectContaining({ code: "PROCESSING_OPTION_INVALID" }));
+  });
 });
+
+const DEFAULT_MAPPING = {
+  enabled: true,
+  chainPreset: "full-body" as const,
+  footCleanup: false,
+  boneMap: {},
+};
 
 function createTestClip() {
   return createImportedHumanoidMotionClip({
@@ -259,10 +301,40 @@ function createTestClip() {
         values: [0, 0, 0, 0, 0.1, 0, 0, 0, 0],
       },
       {
+        bone: "spine",
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
+        bone: "leftUpperArm",
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
         bone: "rightUpperArm",
         path: "rotation",
         times: [0, 1],
         values: [0, 0, 0, 1, 0.1, 0, 0, 0.995],
+      },
+      {
+        bone: "leftUpperLeg",
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
+        bone: "rightUpperLeg",
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
+      },
+      {
+        bone: "head",
+        path: "rotation",
+        times: [0, 1],
+        values: [0, 0, 0, 1, 0, 0, 0, 1],
       },
       {
         bone: "leftHand",

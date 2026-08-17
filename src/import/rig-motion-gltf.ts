@@ -144,12 +144,13 @@ function selectRigMotionAnimation(
   }
   let animationIndex = options.animationIndex;
   if (options.animationName !== undefined) {
-    const namedIndex = animations.findIndex(
-      (animation) => animation.getName() === options.animationName,
+    const matches = animations.flatMap((animation, index) =>
+      animation.getName() === options.animationName ? [index] : [],
     );
-    if (namedIndex < 0) {
+    if (matches.length !== 1) {
       throw new Error(`glTF animation ${options.animationName} was not found.`);
     }
+    const namedIndex = matches[0]!;
     if (animationIndex !== undefined && animationIndex !== namedIndex) {
       throw new Error("animationName and animationIndex select different actions.");
     }

@@ -143,9 +143,11 @@ async function executeTask(
               ? await importGLTFAnimation(
                   bytes,
                   task.filename,
-                  undefined,
-                  undefined,
-                  restoreGLTFResources(task.resources),
+                  {
+                    animationIndex: task.animationIndex,
+                    animationName: task.animationName,
+                    resources: restoreGLTFResources(task.resources),
+                  },
                 )
               : assertNever(task.formatId);
     deadline.checkpoint("parse");

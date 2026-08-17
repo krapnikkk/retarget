@@ -295,8 +295,8 @@ function assertResources(value: unknown, label: string) {
 
 function assertAnimationSelection(task: Extract<RetargetJobTask, { type: "import-motion" }>) {
   if (task.animationIndex === undefined && task.animationName === undefined) return;
-  if (!task.formatId.endsWith("fbx")) {
-    protocolError("Animation selection is only supported for FBX motion imports.");
+  if (!task.formatId.endsWith("fbx") && task.formatId !== "gltf-animation") {
+    protocolError("Animation selection is unsupported for this motion format.");
   }
   if (
     task.animationIndex !== undefined &&

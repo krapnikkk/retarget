@@ -29,6 +29,7 @@ type VMDChannel = VMDBoneBinding & {
 export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
 
 const VMD_BONE_MAP = createVMDBoneMap();
+const MAX_VMD_GENERATED_TRACK_SAMPLES = 1_000_000;
 
 export function importVMD(bytes: Uint8Array, filename = "motion.vmd") {
   assertInputWithinBudget(bytes.byteLength, DEFAULT_PARSE_BUDGET, {
@@ -126,35 +127,41 @@ function createVMDTracks(document: VMDDocument): MotionTrack[] {
     channelsByBone.set(binding.bone, byName);
   }
 
-  const sampleCount = [...channelsByBone.values()].reduce((total, byName) => {
-    const maxFrame = Math.max(
-      0,
-      ...[...byName.values()].flatMap((channel) =>
-        channel.frames.map((frame) => frame.frameNumber),
-      ),
-    );
-    return total + maxFrame + 1;
-  }, 0);
-  if (!Number.isSafeInteger(sampleCount)) {
-    throw new Error(
-      `VMD body motion sample count is not safely representable: ${sampleCount}.`,
-    );
-  }
-
-  const tracks: MotionTrack[] = [];
-  for (const [bone, channelsByName] of channelsByBone) {
+  let generatedSamples = 0;
+  const preparedChannels = [...channelsByBone].map(([bone, channelsByName]) => {
     const channels = [...channelsByName.values()]
       .map((channel) => ({
         ...channel,
         frames: sortAndDedupeFrames(channel.frames),
       }))
       .sort((left, right) => left.order - right.order);
-    const maxFrame = Math.max(
-      0,
-      ...channels.flatMap((channel) =>
-        channel.frames.map((frame) => frame.frameNumber),
-      ),
-    );
+    let maxFrame = 0;
+    for (const channel of channels) {
+      for (const frame of channel.frames) {
+        maxFrame = Math.max(maxFrame, frame.frameNumber);
+      }
+    }
+    const trackSamples = (maxFrame + 1) * (bone === "hips" ? 2 : 1);
+    generatedSamples += trackSamples;
+    if (
+      !Number.isSafeInteger(generatedSamples) ||
+      generatedSamples > MAX_VMD_GENERATED_TRACK_SAMPLES
+    ) {
+      throw new ParseDomainError(
+        "PARSE_BUDGET_EXCEEDED",
+        "VMD dense interpolation exceeds the format safety limit",
+        {
+          section: "bone tracks",
+          declared: generatedSamples,
+          limit: MAX_VMD_GENERATED_TRACK_SAMPLES,
+        },
+      );
+    }
+    return { bone, channels, maxFrame };
+  });
+
+  const tracks: MotionTrack[] = [];
+  for (const { bone, channels, maxFrame } of preparedChannels) {
     const times: number[] = [];
     const rotations: number[] = [];
     const translations: number[] = [];

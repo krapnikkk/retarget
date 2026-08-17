@@ -102,14 +102,20 @@ function createRangeOnlyAvatarFile() {
             hips: { node: 0 },
             leftUpperArm: { node: 1 },
             rightUpperArm: { node: 2 },
+            spine: { node: 3 },
+            leftUpperLeg: { node: 4 },
+            rightUpperLeg: { node: 5 },
           },
         },
       },
     },
     nodes: [
-      { name: "hips", translation: [0, 1, 0], children: [1, 2] },
+      { name: "hips", translation: [0, 1, 0], children: [1, 2, 3, 4, 5] },
       { name: "leftUpperArm" },
       { name: "rightUpperArm" },
+      { name: "spine" },
+      { name: "leftUpperLeg" },
+      { name: "rightUpperLeg" },
     ],
     buffers: [{ byteLength: 16 }],
   };
@@ -138,7 +144,14 @@ function createRangeOnlyAvatarFile() {
   return Object.assign(file, {
     rigSignature: inspectRawGLTFHumanoidRigSignature(
       json.nodes,
-      new Map([["hips", 0], ["leftUpperArm", 1], ["rightUpperArm", 2]]),
+      new Map([
+        ["hips", 0],
+        ["leftUpperArm", 1],
+        ["rightUpperArm", 2],
+        ["spine", 3],
+        ["leftUpperLeg", 4],
+        ["rightUpperLeg", 5],
+      ]),
       VRM_HUMANOID_PROFILE.id,
     ),
   });

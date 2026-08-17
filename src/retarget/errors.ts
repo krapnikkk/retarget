@@ -45,6 +45,7 @@ export const RETARGET_ERROR_CODES = [
   "TARGET_RIG_IDENTITY_MISSING",
   "TARGET_RIG_INVALID",
   "TARGET_RIG_MISMATCH",
+  "ROOT_MOTION_SCALE_UNRESOLVED",
   "TARGET_MAPPING_EMPTY",
   "TARGET_MAPPING_INSUFFICIENT",
   "TARGET_REQUIRED_CHAIN_MISSING",
@@ -104,6 +105,8 @@ export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   TARGET_RIG_IDENTITY_MISSING: "The solved motion does not identify its target rig.",
   TARGET_RIG_INVALID: "The target rig contains invalid rest-pose evidence.",
   TARGET_RIG_MISMATCH: "The export target differs from the solved motion target.",
+  ROOT_MOTION_SCALE_UNRESOLVED:
+    "Root motion uses source units but has no reliable source scale evidence.",
   TARGET_MAPPING_EMPTY: "No source motion tracks map to the target rig.",
   TARGET_MAPPING_INSUFFICIENT: "Mapped motion tracks do not belong to the target rig.",
   TARGET_REQUIRED_CHAIN_MISSING: "The mapping does not cover a required target chain.",
