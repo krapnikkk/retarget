@@ -139,10 +139,7 @@ export class PMXBinaryReader {
     budgetOverrides: Partial<ParseBudget> = {},
   ) {
     this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    this.budget = resolveParseBudget({
-      maxInputBytes: 200 * 1024 * 1024,
-      ...budgetOverrides,
-    });
+    this.budget = resolveParseBudget(budgetOverrides);
     if (bytes.byteLength > this.budget.maxInputBytes) {
       throw new ParseDomainError(
         "PARSE_BUDGET_EXCEEDED",
@@ -224,10 +221,21 @@ export class PMXBinaryReader {
     throw new Error(`PMX unsigned index size must be 1, 2, or 4; found ${size}.`);
   }
 
-  readCount({ max, label }: { max: number; label: string }) {
+  readCount({
+    max,
+    label,
+    minBytesPerItem,
+  }: {
+    max: number;
+    label: string;
+    minBytesPerItem?: number;
+  }) {
     const offset = this.offset;
     const count = this.readInt32();
-    return assertCountWithinBudget(count, max, label, {
+    const inputBound = minBytesPerItem === undefined
+      ? max
+      : Math.min(max, Math.floor(this.remaining / minBytesPerItem));
+    return assertCountWithinBudget(count, inputBound, label, {
       filename: this.filename,
       offset,
       section: "count",
@@ -237,15 +245,20 @@ export class PMXBinaryReader {
   readUnsignedCount({
     max,
     label,
+    minBytesPerItem,
     size = 4,
   }: {
     max: number;
     label: string;
+    minBytesPerItem?: number;
     size?: 2 | 4;
   }) {
     const offset = this.offset;
     const count = size === 2 ? this.readUint16() : this.readUint32();
-    return assertCountWithinBudget(count, max, label, {
+    const inputBound = minBytesPerItem === undefined
+      ? max
+      : Math.min(max, Math.floor(this.remaining / minBytesPerItem));
+    return assertCountWithinBudget(count, inputBound, label, {
       filename: this.filename,
       offset,
       section: "count",

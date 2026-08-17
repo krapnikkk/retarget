@@ -16,9 +16,6 @@ import { build as viteBuild } from "vite";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
-const sizeBaseline = JSON.parse(
-  readFileSync(path.join(root, "scripts/package-size-baseline.json"), "utf8"),
-);
 const publicSpecifiers = Object.keys(manifest.exports).map((subpath) =>
   subpath === "." ? manifest.name : `${manifest.name}/${subpath.slice(2)}`,
 );
@@ -43,11 +40,10 @@ for (const target of Object.values(manifest.exports)) {
     }
   }
 }
-for (const [relative, maxBytes] of Object.entries(sizeBaseline.entries)) {
-  const bytes = readFileSync(path.join(root, relative)).byteLength;
-  if (bytes > maxBytes) {
-    throw new Error(`${relative} is ${bytes} bytes; local baseline allows ${maxBytes}`);
-  }
+for (const relative of new Set(
+  Object.values(manifest.exports).map((target) => target.import),
+)) {
+  reportArtifactSize(relative);
 }
 
 const contractBoundaries = {
@@ -84,6 +80,13 @@ if (!existsSync(path.join(root, "dist/workers/input-preparation.worker.js"))) {
 if (!existsSync(path.join(root, "dist/workers/node-tooling.worker.js"))) {
   throw new Error("Missing bundled Node tooling worker");
 }
+for (const relative of [
+  "dist/workers/input-preparation.worker.js",
+  "dist/workers/retarget.worker.js",
+  "dist/workers/node-tooling.worker.js",
+]) {
+  reportArtifactSize(relative);
+}
 const browserEntry = readFileSync(path.join(root, "dist/browser/index.js"), "utf8");
 const workerReference = 'new URL("../workers/retarget.worker.js", import.meta.url)';
 if (!browserEntry.includes(workerReference)) {
@@ -117,11 +120,7 @@ try {
   const tarball = path.join(temporaryRoot, `${manifest.name}-${manifest.version}.tgz`);
   if (!existsSync(tarball)) throw new Error(`Missing ${path.basename(tarball)}`);
   const tarballBytes = statSync(tarball).size;
-  if (tarballBytes > sizeBaseline.packageTarballMaxBytes) {
-    throw new Error(
-      `${path.basename(tarball)} is ${tarballBytes} bytes; local baseline allows ${sizeBaseline.packageTarballMaxBytes}`,
-    );
-  }
+  console.log(`[info] packed tarball ${path.basename(tarball)}: ${tarballBytes} bytes`);
 
   writeFileSync(path.join(temporaryRoot, "package.json"), `${JSON.stringify({
     name: "3dretarget-package-smoke",
@@ -186,11 +185,6 @@ try {
   );
   if (!packedInputCode.includes("input-preparation.worker")) {
     throw new Error("Packed browser-input production bundle lost its Worker URL");
-  }
-  if (packedInputBytes > sizeBaseline.packedBrowserInputBundleMaxBytes) {
-    throw new Error(
-      `Packed browser-input production bundle is ${packedInputBytes} bytes; local baseline allows ${sizeBaseline.packedBrowserInputBundleMaxBytes}`,
-    );
   }
   console.log(
     `[ok] production-bundled packed browser input (${packedInputBytes} bytes) without unrelated format runtimes`,
@@ -329,6 +323,10 @@ try {
   console.log("[ok] type-checked packed consumer contract");
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
+}
+
+function reportArtifactSize(relative) {
+  console.log(`[info] package artifact ${relative}: ${statSync(path.join(root, relative)).size} bytes`);
 }
 
 function walkDeclarations(directory) {

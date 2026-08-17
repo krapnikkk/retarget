@@ -20,10 +20,8 @@ import {
   collectTransferableAssetPackage,
 } from "@/import/asset-package";
 import {
-  assertAvatarFileWithinLimit,
-  getAvatarEagerInputLimit,
   isRangeLoadableGLB,
-} from "@/jobs/asset-memory-policy";
+} from "@/jobs/asset-input-safety";
 import { readFileArrayBufferWithSignal } from "./read-file";
 import { readGLBStructuralJSONBytes } from "@/import/glb-range";
 
@@ -42,7 +40,6 @@ export async function bindMotionClipToAvatar({
   solveOptions?: RetargetSolveOptions;
   signal?: AbortSignal;
 }): Promise<TargetBoundSolvedHumanoidMotionClip> {
-  assertAvatarFileWithinLimit(avatarFile);
   signal?.throwIfAborted();
   const rangeLoadable = isRangeLoadableGLB(avatarFile);
   let structuralJSONBytes: ArrayBuffer | undefined;
@@ -59,7 +56,6 @@ export async function bindMotionClipToAvatar({
     ? new ArrayBuffer(0)
     : await readFileArrayBufferWithSignal(
         avatarFile,
-        getAvatarEagerInputLimit(avatarFile),
         "avatar",
         signal,
       );

@@ -3,7 +3,7 @@
 [简体中文](../zh-CN/checklists/resource-disposal.md)
 
 - [x] Terminate Workers on success, failure, cancellation, component teardown,
-      and deadline expiry; ignore stale job completions.
+      and configured deadline expiry; ignore stale job completions.
 - [x] Revoke object URLs and package registries when selection changes or unmounts.
 - [x] Dispose Three.js geometries, materials, textures, controls, mixers, and renderers.
 - [ ] Remove window/document/canvas listeners and disconnect observers.

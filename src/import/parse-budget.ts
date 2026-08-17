@@ -19,18 +19,18 @@ export type ParseBudget = {
 };
 
 export const DEFAULT_PARSE_BUDGET = {
-  maxInputBytes: 100 * 1024 * 1024,
-  maxTracks: 256,
-  maxSamplesPerTrack: 150_000,
-  maxTotalSamples: 4_000_000,
-  maxDurationSeconds: 20 * 60,
-  maxFps: 120,
-  maxStringBytes: 16 * 1024 * 1024,
-  maxVertices: 5_000_000,
-  maxIndices: 15_000_000,
-  maxMaterials: 100_000,
-  maxBones: 100_000,
-  maxMorphs: 100_000,
+  maxInputBytes: Number.MAX_SAFE_INTEGER,
+  maxTracks: Number.MAX_SAFE_INTEGER,
+  maxSamplesPerTrack: Number.MAX_SAFE_INTEGER,
+  maxTotalSamples: Number.MAX_SAFE_INTEGER,
+  maxDurationSeconds: Number.MAX_VALUE,
+  maxFps: Number.MAX_VALUE,
+  maxStringBytes: Number.MAX_SAFE_INTEGER,
+  maxVertices: Number.MAX_SAFE_INTEGER,
+  maxIndices: Number.MAX_SAFE_INTEGER,
+  maxMaterials: Number.MAX_SAFE_INTEGER,
+  maxBones: Number.MAX_SAFE_INTEGER,
+  maxMorphs: Number.MAX_SAFE_INTEGER,
 } as const satisfies ParseBudget;
 
 export type ParseErrorDetails = {

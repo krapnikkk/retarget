@@ -13,7 +13,7 @@ import type {
   BrowserInputSelection,
 } from "./input-preparation-types";
 
-export const BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION = 1;
+export const BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION = 2;
 
 const INPUT_PHASES = new Set<BrowserInputPreparationPhase>([
   "discover",
@@ -35,7 +35,7 @@ export type BrowserInputPreparationSource =
 export type BrowserInputPreparationRequest = {
   schemaVersion: typeof BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION;
   jobId: string;
-  deadlineMs: number;
+  deadlineMs?: number;
   task: {
     type: "prepare-browser-input";
     source: BrowserInputPreparationSource;
@@ -103,7 +103,11 @@ export function assertBrowserInputPreparationResponse(
     assertFailure(response.error);
     return;
   }
-  assertInputResult(response.result, request.task.role);
+  assertInputResult(
+    response.result,
+    request.task.role,
+    request.task.budget.maxEntries ?? Number.MAX_SAFE_INTEGER,
+  );
 }
 
 function assertFailure(value: unknown) {
@@ -118,7 +122,11 @@ function assertFailure(value: unknown) {
   assertBoundedString(error.message, "Input Worker failure message", 16_384);
 }
 
-function assertInputResult(value: unknown, role: AssetPackageRole) {
+function assertInputResult(
+  value: unknown,
+  role: AssetPackageRole,
+  maxEntries: number,
+) {
   const result = asRecord(value, "Input Worker success result");
   if (!(result.file instanceof File)) {
     protocolError("Input Worker success file must be a File.");
@@ -126,9 +134,9 @@ function assertInputResult(value: unknown, role: AssetPackageRole) {
   if (result.report !== null && !isRecord(result.report)) {
     protocolError("Input Worker success report must be an object or null.");
   }
-  if (isRecord(result.report)) assertPackageReport(result.report);
+  if (isRecord(result.report)) assertPackageReport(result.report, maxEntries);
   if (result.entries !== undefined) {
-    if (!Array.isArray(result.entries) || result.entries.length > 512) {
+    if (!Array.isArray(result.entries) || result.entries.length > maxEntries) {
       protocolError("Input Worker success entries are invalid.");
     }
     for (const entryValue of result.entries) {
@@ -233,7 +241,10 @@ function assertInputResult(value: unknown, role: AssetPackageRole) {
   }
 }
 
-function assertPackageReport(report: Record<string, unknown>) {
+function assertPackageReport(
+  report: Record<string, unknown>,
+  maxEntries: number,
+) {
   if (report.sourceKind !== "zip" && report.sourceKind !== "directory") {
     protocolError("Input Worker success report sourceKind is invalid.");
   }
@@ -247,7 +258,10 @@ function assertPackageReport(report: Record<string, unknown>) {
       true,
     );
   }
-  if (!Array.isArray(report.missingResources) || report.missingResources.length > 512) {
+  if (
+    !Array.isArray(report.missingResources) ||
+    report.missingResources.length > maxEntries
+  ) {
     protocolError("Input Worker report missingResources is invalid.");
   }
   for (const resource of report.missingResources) {

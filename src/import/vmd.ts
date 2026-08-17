@@ -26,7 +26,6 @@ type VMDChannel = VMDBoneBinding & {
   frames: VMDBoneFrame[];
 };
 
-const MAX_CANONICAL_SAMPLE_COUNT = 2_000_000;
 export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
 
 const VMD_BONE_MAP = createVMDBoneMap();
@@ -136,9 +135,9 @@ function createVMDTracks(document: VMDDocument): MotionTrack[] {
     );
     return total + maxFrame + 1;
   }, 0);
-  if (sampleCount > MAX_CANONICAL_SAMPLE_COUNT) {
+  if (!Number.isSafeInteger(sampleCount)) {
     throw new Error(
-      `VMD body motion requires ${sampleCount} canonical samples; the safe limit is ${MAX_CANONICAL_SAMPLE_COUNT}.`,
+      `VMD body motion sample count is not safely representable: ${sampleCount}.`,
     );
   }
 

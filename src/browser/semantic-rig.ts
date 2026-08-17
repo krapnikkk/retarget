@@ -2,11 +2,7 @@ import { Object3D, type Group } from "three";
 import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { createAssetResourceScope } from "@/import/asset-package";
 import { readGLTFDocument } from "@/import/gltf-document";
-import {
-  assertAvatarFileWithinLimit,
-  getAvatarEagerInputLimit,
-  isRangeLoadableGLB,
-} from "@/jobs/asset-memory-policy";
+import { isRangeLoadableGLB } from "@/jobs/asset-input-safety";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 import { loadStructuralGLBScene } from "@/browser/avatar-rig";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
@@ -39,7 +35,6 @@ export async function loadSemanticAvatarRig(
   file: File,
   options: RigInspectionOptions = {},
 ): Promise<LoadedSemanticRig> {
-  assertAvatarFileWithinLimit(file);
   if (isRangeLoadableGLB(file)) {
     const [{ document }, scene] = await Promise.all([
       readGLTFStructuralDocument(file),
@@ -67,7 +62,6 @@ export async function loadSemanticAvatarRig(
   const bytes = new Uint8Array(
     await readFileArrayBufferWithSignal(
       file,
-      getAvatarEagerInputLimit(file),
       "avatar",
     ),
   );

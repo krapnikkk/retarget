@@ -13,11 +13,7 @@ import {
   storeAssetPackageContext,
   type StoredAssetPackageEntry,
 } from "./asset-package-memory";
-import {
-  MAX_MOTION_FILE_BYTES,
-  MAX_RANGE_LOADABLE_AVATAR_BYTES,
-  assertInputByteLength,
-} from "@/jobs/asset-memory-policy";
+import { assertInputByteLength } from "@/jobs/asset-input-safety";
 import { readBlobArrayBufferWithSignal } from "@/browser/read-file";
 import { DEFAULT_PARSE_BUDGET } from "./parse-budget";
 import { RetargetError } from "@/retarget/errors";
@@ -81,7 +77,10 @@ type ResolvedAssetPreparationLimits = {
 
 const AVATAR_EXTENSIONS = [".vrm", ".glb", ".gltf", ".fbx", ".pmx", ".pmd"];
 const MOTION_EXTENSIONS = [".vrma", ".glb", ".gltf", ".fbx", ".bvh", ".vmd"];
-const MAX_DIRECTORY_ENTRIES = 512;
+const MAX_ARCHIVE_ENTRIES = 512;
+const MAX_ARCHIVE_ENTRY_BYTES = 256 * 1024 * 1024;
+const MAX_ARCHIVE_EXPANDED_BYTES = 512 * 1024 * 1024;
+const UNBOUNDED_INPUT_LIMIT = Number.MAX_SAFE_INTEGER;
 
 export async function prepareAssetInput(
   file: File,
@@ -92,7 +91,7 @@ export async function prepareAssetInput(
     return { file, report: null } as const;
   }
 
-  const resolvedLimits = resolveAssetPreparationLimits(role, limits);
+  const resolvedLimits = resolveAssetPreparationLimits("zip", limits);
   assertInputByteLength(
     file.size,
     resolvedLimits.maxCompressedBytes,
@@ -148,7 +147,7 @@ export async function prepareAssetDirectory(
   limits: AssetPreparationLimits = {},
 ) {
   const entries: PreparedAssetPackageEntry[] = [];
-  const resolvedLimits = resolveAssetPreparationLimits(role, limits);
+  const resolvedLimits = resolveAssetPreparationLimits("directory", limits);
   const state = {
     discoveredEntries: 0,
     expandedBytes: 0,
@@ -214,18 +213,6 @@ async function prepareAssetEntries(
     limits.maxRetainedBytes,
     `retained-package:${sourceName}`,
   );
-  if (
-    !limits.selectPrimary &&
-    role === "avatar" &&
-    !/\.(?:glb|vrm)$/i.test(primary.name) &&
-    expandedBytes > 200 * 1024 * 1024
-  ) {
-    throw new RetargetError("FILE_TOO_LARGE", {
-      details: { expandedBytes, primaryPath: primary.name },
-      message: "Only GLB and VRM avatar packages can use the segmented large-asset path.",
-    });
-  }
-
   const primaryFile = new File([primary.blob], primary.name.split("/").at(-1)!, {
     type: inferMimeType(primary.name),
   });
@@ -342,7 +329,6 @@ export async function readAssetPackageResource(file: File, uri: string) {
     ? new Uint8Array(
         await readBlobArrayBufferWithSignal(
           resource,
-          getMaxPackageBytes("avatar"),
           `resource:${uri}`,
         ),
       )
@@ -375,8 +361,6 @@ export async function collectTransferableAssetPackage(
   const context = getAssetPackageContext<AssetPackageReport>(file);
   if (!context) return undefined;
   const resources: Record<string, ArrayBuffer> = {};
-  let transferredBytes = 0;
-  const maxTransferredBytes = MAX_MOTION_FILE_BYTES;
   for (const entry of context.entries.values()) {
     if (
       normalizeResourcePath(entry.name).toLowerCase() ===
@@ -385,15 +369,8 @@ export async function collectTransferableAssetPackage(
       continue;
     }
     signal?.throwIfAborted();
-    transferredBytes += entry.blob.size;
-    assertInputByteLength(
-      transferredBytes,
-      maxTransferredBytes,
-      `resources:${context.report.sourceName}`,
-    );
     resources[entry.name] = await readBlobArrayBufferWithSignal(
       entry.blob,
-      maxTransferredBytes,
       `resource:${entry.name}`,
       signal,
     );
@@ -449,22 +426,13 @@ export async function getGLTFPackageResources(
   signal?: AbortSignal,
 ) {
   const resources: Record<string, Uint8Array<ArrayBuffer>> = {};
-  let transferredBytes = 0;
-  const maxTransferredBytes = MAX_MOTION_FILE_BYTES;
   for (const uri of collectGLTFExternalUris(json)) {
     const resource = resolveAssetPackageResource(file, uri);
     if (resource) {
       signal?.throwIfAborted();
-      transferredBytes += resource.size;
-      assertInputByteLength(
-        transferredBytes,
-        maxTransferredBytes,
-        `resources:${file.name}`,
-      );
       resources[uri] = new Uint8Array(
         await readBlobArrayBufferWithSignal(
           resource,
-          maxTransferredBytes,
           `resource:${uri}`,
           signal,
         ),
@@ -547,8 +515,9 @@ async function collectMissingPrimaryResources(
     const primaryBytes = new Uint8Array(
       await readBlobArrayBufferWithSignal(
         primary.blob,
-        maxBytes,
         `package-primary:${primary.name}`,
+        undefined,
+        maxBytes,
       ),
     );
     const json = JSON.parse(new TextDecoder().decode(primaryBytes)) as Record<
@@ -560,8 +529,9 @@ async function collectMissingPrimaryResources(
     const primaryBytes = new Uint8Array(
       await readBlobArrayBufferWithSignal(
         primary.blob,
-        maxBytes,
         `package-primary:${primary.name}`,
+        undefined,
+        maxBytes,
       ),
     );
     referencedUris = collectPMXTextureUris(primaryBytes);
@@ -569,8 +539,9 @@ async function collectMissingPrimaryResources(
     const primaryBytes = new Uint8Array(
       await readBlobArrayBufferWithSignal(
         primary.blob,
-        maxBytes,
         `package-primary:${primary.name}`,
+        undefined,
+        maxBytes,
       ),
     );
     referencedUris = collectPMDTextureUris(primaryBytes);
@@ -588,9 +559,7 @@ async function collectMissingPrimaryResources(
 }
 
 function collectPMXTextureUris(bytes: Uint8Array) {
-  const reader = new PMXBinaryReader(bytes, "package PMX", {
-    maxInputBytes: getMaxPackageBytes("avatar"),
-  });
+  const reader = new PMXBinaryReader(bytes, "package PMX");
   const { config } = readPMXHeader(reader);
   const {
     additionalUvCount,
@@ -653,9 +622,7 @@ function collectPMXTextureUris(bytes: Uint8Array) {
 }
 
 function collectPMDTextureUris(bytes: Uint8Array) {
-  const reader = new PMXBinaryReader(bytes, "package PMD", {
-    maxInputBytes: getMaxPackageBytes("avatar"),
-  });
+  const reader = new PMXBinaryReader(bytes, "package PMD");
   if (reader.readAscii(3) !== "Pmd") {
     throw new Error("PMD header is invalid.");
   }
@@ -716,41 +683,44 @@ function isUsefulPath(value: string) {
   return !path.startsWith("__MACOSX/") && !/(?:^|\/)\.DS_Store$/i.test(path);
 }
 
-function getMaxPackageBytes(role: AssetPackageRole) {
-  return role === "avatar"
-    ? MAX_RANGE_LOADABLE_AVATAR_BYTES
-    : 100 * 1024 * 1024;
-}
-
-function resolveDirectoryLimit(value: number | undefined, maximum: number) {
-  if (value === undefined || !Number.isFinite(value) || value < 0) {
-    return maximum;
+function resolveDirectoryLimit(value: number | undefined, fallback: number) {
+  if (value === undefined) {
+    return fallback;
   }
-  return Math.min(Math.floor(value), maximum);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new RetargetError("PROCESSING_OPTION_INVALID", {
+      details: { value },
+      message: "Asset preparation limits must be positive safe integers.",
+    });
+  }
+  return value;
 }
 
 function resolveAssetPreparationLimits(
-  role: AssetPackageRole,
+  sourceKind: AssetPackageSourceKind,
   limits: AssetPreparationLimits,
 ): ResolvedAssetPreparationLimits {
-  const maximumBytes = getMaxPackageBytes(role);
+  const archive = sourceKind === "zip";
   return {
-    maxEntries: resolveDirectoryLimit(limits.maxEntries, MAX_DIRECTORY_ENTRIES),
+    maxEntries: resolveDirectoryLimit(
+      limits.maxEntries,
+      archive ? MAX_ARCHIVE_ENTRIES : UNBOUNDED_INPUT_LIMIT,
+    ),
     maxCompressedBytes: resolveDirectoryLimit(
       limits.maxCompressedBytes,
-      maximumBytes,
+      UNBOUNDED_INPUT_LIMIT,
     ),
     maxExpandedBytes: resolveDirectoryLimit(
       limits.maxExpandedBytes ?? limits.maxTotalBytes,
-      maximumBytes,
+      archive ? MAX_ARCHIVE_EXPANDED_BYTES : UNBOUNDED_INPUT_LIMIT,
     ),
     maxSingleEntryBytes: resolveDirectoryLimit(
       limits.maxSingleEntryBytes,
-      maximumBytes,
+      archive ? MAX_ARCHIVE_ENTRY_BYTES : UNBOUNDED_INPUT_LIMIT,
     ),
     maxRetainedBytes: resolveDirectoryLimit(
       limits.maxRetainedBytes,
-      maximumBytes,
+      archive ? MAX_ARCHIVE_EXPANDED_BYTES : UNBOUNDED_INPUT_LIMIT,
     ),
     selectPrimary: limits.selectPrimary,
   };

@@ -7,7 +7,6 @@ import {
   type PreparedAssetPackageEntry,
   type ReadableDirectoryHandle,
 } from "@/import/asset-package";
-import { assertInputByteLength } from "@/jobs/asset-memory-policy";
 import { createProcessingDeadline } from "@/processing-budget";
 import { RetargetError, isRetargetError } from "@/retarget/errors";
 import { inspectImportContent } from "@/adapters/probe";
@@ -77,11 +76,6 @@ export async function executeBrowserInputPreparation(
       const file = source.kind === "file"
         ? source.file
         : await source.handle.getFile();
-      assertInputByteLength(
-        file.size,
-        budget.maxCompressedBytes,
-        `browser-input:${file.name}`,
-      );
       if (await isZipAssetPackage(file)) {
         progress("unpack", 0.28);
       }
@@ -98,8 +92,6 @@ export async function executeBrowserInputPreparation(
       role,
       budget.maxProbeBytes,
     );
-    enforceLargeSingleFilePolicy(prepared.file, selection);
-
     progress("resolve", 0.88);
     const entries = prepared.report
       ? listAssetPackageEntries(prepared.file)?.map((entry) => ({
@@ -216,24 +208,4 @@ function createCandidateFile(entry: PreparedAssetPackageEntry) {
     entry.name.replace(/\\/g, "/").split("/").at(-1) ?? "input",
     { type: entry.blob.type },
   );
-}
-
-function enforceLargeSingleFilePolicy(
-  file: File,
-  selection: BrowserInputSelection,
-) {
-  if (
-    selection.role === "avatar" &&
-    selection.container !== "gltf" &&
-    file.size > 200 * 1024 * 1024
-  ) {
-    throw new RetargetError("FILE_TOO_LARGE", {
-      details: {
-        byteLength: file.size,
-        container: selection.container,
-        maxBytes: 200 * 1024 * 1024,
-      },
-      message: "Only content-verified glTF/GLB avatars can use the large range-loadable input path.",
-    });
-  }
 }

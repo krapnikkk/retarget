@@ -1,5 +1,3 @@
-export const DEFAULT_MAX_PARENT_DEPTH = 512;
-
 export type ParentGraphEdge<TId> = {
   childId: TId;
   parentId: TId;
@@ -21,13 +19,13 @@ export type ParentGraphValidationResult<TId> =
 export function validateParentGraph<TId>({
   nodeIds,
   edges,
-  maxDepth = DEFAULT_MAX_PARENT_DEPTH,
+  maxDepth,
 }: {
   nodeIds: Iterable<TId>;
   edges: Iterable<ParentGraphEdge<TId>>;
   maxDepth?: number;
 }): ParentGraphValidationResult<TId> {
-  if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+  if (maxDepth !== undefined && (!Number.isInteger(maxDepth) || maxDepth < 0)) {
     throw new Error("Parent graph maxDepth must be a non-negative integer.");
   }
 
@@ -106,7 +104,11 @@ export function validateParentGraph<TId>({
       const nodeId = path[index]!;
       baseDepth += 1;
       settledDepth.set(nodeId, baseDepth);
-      if (baseDepth > maxDepth && !reportedDepthExceeded) {
+      if (
+        maxDepth !== undefined &&
+        baseDepth > maxDepth &&
+        !reportedDepthExceeded
+      ) {
         issues.push({
           code: "depth-exceeded",
           nodeId,
@@ -159,8 +161,8 @@ export function collectParentChain<T>(
   getParent: (value: T) => T | null | undefined,
   options: { label?: string; maxDepth?: number } = {},
 ): T[] {
-  const maxDepth = options.maxDepth ?? DEFAULT_MAX_PARENT_DEPTH;
-  if (!Number.isInteger(maxDepth) || maxDepth < 0) {
+  const { maxDepth } = options;
+  if (maxDepth !== undefined && (!Number.isInteger(maxDepth) || maxDepth < 0)) {
     throw new Error("Parent chain maxDepth must be a non-negative integer.");
   }
   const chain: T[] = [];
@@ -169,7 +171,7 @@ export function collectParentChain<T>(
     if (visited.has(current)) {
       throw new Error(`${options.label ?? "Parent chain"} contains a cycle.`);
     }
-    if (chain.length >= maxDepth) {
+    if (maxDepth !== undefined && chain.length >= maxDepth) {
       throw new Error(
         `${options.label ?? "Parent chain"} exceeds depth limit ${maxDepth}.`,
       );

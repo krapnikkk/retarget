@@ -73,8 +73,7 @@ const MORPH_FRAME_BYTES = 23;
 const CAMERA_FRAME_BYTES = 61;
 const LIGHT_FRAME_BYTES = 28;
 const SELF_SHADOW_FRAME_BYTES = 9;
-const MAX_VMD_DOCUMENT_BYTES = 100 * 1024 * 1024;
-const MAX_VMD_SECTION_FRAMES = 2_000_000;
+const MAX_VMD_FORMAT_FRAME_COUNT = 0xffff_ffff;
 
 export function parseVMDDocument(bytes: Uint8Array): VMDDocument {
   preflightVMDDocument(bytes);
@@ -183,11 +182,6 @@ export function parseVMDDocument(bytes: Uint8Array): VMDDocument {
 }
 
 function preflightVMDDocument(bytes: Uint8Array) {
-  if (bytes.byteLength > MAX_VMD_DOCUMENT_BYTES) {
-    throw new Error(
-      `VMD document exceeds the ${MAX_VMD_DOCUMENT_BYTES}-byte safe limit.`,
-    );
-  }
   if (bytes.byteLength < SIGNATURE_BYTES + MODEL_NAME_BYTES + 4) {
     throw new Error("VMD document is too small.");
   }
@@ -197,7 +191,6 @@ function preflightVMDDocument(bytes: Uint8Array) {
   }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let offset = SIGNATURE_BYTES + MODEL_NAME_BYTES;
-  let totalFrames = 0;
   for (const [label, recordBytes] of [
     ["bone", BONE_FRAME_BYTES],
     ["morph", MORPH_FRAME_BYTES],
@@ -207,10 +200,6 @@ function preflightVMDDocument(bytes: Uint8Array) {
   ] as const) {
     ensureVMDRange(bytes, offset, 4, `${label} count`);
     const count = view.getUint32(offset, true);
-    totalFrames += count;
-    if (count > MAX_VMD_SECTION_FRAMES || totalFrames > MAX_VMD_SECTION_FRAMES) {
-      throw new Error(`VMD ${label} frame count exceeds the safe limit.`);
-    }
     offset += 4;
     const sectionBytes = count * recordBytes;
     ensureVMDRange(bytes, offset, sectionBytes, `${label} frames`);
@@ -218,13 +207,6 @@ function preflightVMDDocument(bytes: Uint8Array) {
   }
   ensureVMDRange(bytes, offset, 4, "property count");
   const propertyCount = view.getUint32(offset, true);
-  totalFrames += propertyCount;
-  if (
-    propertyCount > MAX_VMD_SECTION_FRAMES ||
-    totalFrames > MAX_VMD_SECTION_FRAMES
-  ) {
-    throw new Error("VMD property frame count exceeds the safe limit.");
-  }
   offset += 4;
   for (let frame = 0; frame < propertyCount; frame += 1) {
     ensureVMDRange(bytes, offset, 9, "property frame");
@@ -424,8 +406,8 @@ function validateBoneFrame(frame: VMDBoneFrame) {
 }
 
 function validateFrameCount(count: number, label: string) {
-  if (!Number.isInteger(count) || count < 0 || count > MAX_VMD_SECTION_FRAMES) {
-    throw new Error(`VMD ${label} frame count exceeds the safe limit.`);
+  if (!Number.isInteger(count) || count < 0 || count > MAX_VMD_FORMAT_FRAME_COUNT) {
+    throw new Error(`VMD ${label} frame count exceeds the uint32 format limit.`);
   }
 }
 

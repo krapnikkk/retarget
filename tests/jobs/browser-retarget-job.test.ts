@@ -69,6 +69,25 @@ describe("browser retarget worker boundary", () => {
     expect(PendingWorker.instances[0]?.terminated).toBe(true);
   });
 
+  it("does not assign a library-owned deadline by default", async () => {
+    vi.stubGlobal("Worker", PendingWorker);
+    const controller = new AbortController();
+    const promise = runRetargetJob(
+      {
+        type: "inspect-rigged-gltf",
+        bytes: new ArrayBuffer(8),
+        filename: "rig.glb",
+      },
+      { signal: controller.signal },
+    );
+
+    expect(PendingWorker.instances[0]?.messages[0]).toMatchObject({
+      deadlineMs: undefined,
+    });
+    controller.abort();
+    await expect(promise).rejects.toMatchObject({ name: "AbortError" });
+  });
+
   it("copies glTF buffers by default before transferring worker-owned clones", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();

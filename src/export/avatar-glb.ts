@@ -17,7 +17,6 @@ import {
 } from "@/retarget";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
 import { HUMANOID_RIG_PROFILES } from "@/profiles";
-import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export type AvatarExportInput = {
@@ -69,7 +68,6 @@ export async function exportBakedVRM(
     new Uint8Array(
       await readFileArrayBufferWithSignal(
         avatarFile,
-        getAvatarEagerInputLimit(avatarFile),
         "avatar",
         signal,
       ),

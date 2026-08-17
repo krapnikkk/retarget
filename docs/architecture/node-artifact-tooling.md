@@ -4,7 +4,7 @@
 
 `3dretarget/node` exposes `runNodeToolJob` as the coarse Node authoring and
 validation boundary. The runner starts the packed Node tooling Worker and never
-falls back to in-process execution. An `AbortSignal` or the shared deadline
+falls back to in-process execution. An `AbortSignal` or an optional caller deadline
 terminates the Worker, including while synchronous parsers or writers are busy.
 
 ## Contract
@@ -43,11 +43,16 @@ separately.
 
 ## Ownership
 
-The library owns authoring semantics, bounds, rig inspection, validation, and
+The library owns authoring semantics, format-safety bounds, rig inspection, validation, and
 diagnostics. Consumers own directory traversal, filesystem writes, catalog
 schemas, slugs, publication flags, attribution policy, lock layout, cleanup, and
 release publication. Generic ZIP creation/reading remains internal and is used
 only behind format-specific bundle operations.
+
+Node jobs have no default file-size, output-size, estimated-memory, or elapsed-
+time ceiling. `RunNodeToolJobOptions.budget` remains an opt-in consumer policy;
+positive values are validated but not clamped to library-owned maxima. ZIP
+entry-count, expanded-byte, and compression-ratio defenses remain active.
 
 ```ts
 import { runNodeToolJob } from "3dretarget/node";

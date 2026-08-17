@@ -1,11 +1,5 @@
 import type { RigRecipe } from "@/rigs";
-import {
-  assertAvatarFileWithinLimit,
-  assertMotionFileWithinLimit,
-  getAvatarEagerInputLimit,
-  isRangeLoadableGLB,
-  MAX_MOTION_FILE_BYTES,
-} from "@/jobs/asset-memory-policy";
+import { isRangeLoadableGLB } from "@/jobs/asset-input-safety";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
 import { inspectGLTFRig } from "@/rigs";
@@ -62,8 +56,6 @@ export async function retargetRiggedGLTF({
   animationName?: string;
   signal?: AbortSignal;
 }) {
-  assertMotionFileWithinLimit(motionFile);
-  assertAvatarFileWithinLimit(avatarFile);
   signal?.throwIfAborted();
   const targetOptions = {
     familyOverride: recipe?.family ?? "auto",
@@ -82,7 +74,6 @@ export async function retargetRiggedGLTF({
   } else {
     targetBytes = await readFileArrayBufferWithSignal(
       avatarFile,
-      getAvatarEagerInputLimit(avatarFile),
       "avatar",
       signal,
     );
@@ -95,7 +86,6 @@ export async function retargetRiggedGLTF({
   signal?.throwIfAborted();
   const motionBytes = await readFileArrayBufferWithSignal(
     motionFile,
-    MAX_MOTION_FILE_BYTES,
     "motion",
     signal,
   );

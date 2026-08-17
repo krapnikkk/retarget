@@ -22,16 +22,7 @@ import {
 } from "@/import/asset-package";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
 import { disposeObject } from "@/resources/dispose-three";
-import {
-  assertAvatarFileWithinLimit,
-  getAvatarEagerInputLimit,
-} from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
-import {
-  NODE_PEAK_MEMORY_LIMIT_BYTES,
-  assertMemoryEstimateWithinBudget,
-  estimateMMDConversionMemory,
-} from "@/jobs/memory-budget";
 
 export async function readAvatarAsGLBDocument({
   avatarFile,
@@ -44,13 +35,11 @@ export async function readAvatarAsGLBDocument({
   io: WebIO;
   signal?: AbortSignal;
 }): Promise<Document> {
-  assertAvatarFileWithinLimit(avatarFile);
   if (shouldReadAsGLB(avatarFile, avatarFormatId)) {
     return readGLTFDocument(
       io,
       new Uint8Array(await readFileArrayBufferWithSignal(
         avatarFile,
-        getAvatarEagerInputLimit(avatarFile),
         "avatar",
         signal,
       )),
@@ -64,7 +53,6 @@ export async function readAvatarAsGLBDocument({
         type: "convert-mmd-avatar",
         bytes: await readFileArrayBufferWithSignal(
           avatarFile,
-          getAvatarEagerInputLimit(avatarFile),
           "avatar",
           signal,
         ),
@@ -128,7 +116,6 @@ async function parseFBXAvatarObject(
 }> {
   const bytes = await readFileArrayBufferWithSignal(
     file,
-    getAvatarEagerInputLimit(file),
     "avatar",
     signal,
   );
@@ -247,20 +234,15 @@ export type ParsedMMDBone = {
   };
 };
 
-export type MMDConversionOptions = {
-  maxPeakBytes?: number;
-};
-
 export function convertMMDModelToGLBDocument(
   bytes: Uint8Array,
   filename = "avatar.pmx",
   resolveResource?: (uri: string) => Uint8Array | null,
-  options: MMDConversionOptions = {},
 ) {
   const sourceFormat = filename.toLowerCase().endsWith(".pmd") ? "pmd" : "pmx";
   const parsed = sourceFormat === "pmd"
-    ? parsePMD(bytes, options)
-    : parsePMX(bytes, options);
+    ? parsePMD(bytes)
+    : parsePMX(bytes);
   return createMMDGLBDocument(parsed, sourceFormat, resolveResource);
 }
 
@@ -599,10 +581,7 @@ function inferImageMimeType(filename: string) {
   return null;
 }
 
-export function parsePMX(
-  bytes: Uint8Array,
-  options: MMDConversionOptions = {},
-): ParsedMMDModel {
+export function parsePMX(bytes: Uint8Array): ParsedMMDModel {
   const reader = new PMXBinaryReader(bytes);
   const { config } = readPMXHeader(reader);
   const { encoding, additionalUvCount, vertexIndexSize, textureIndexSize, boneIndexSize } = config;
@@ -616,12 +595,8 @@ export function parsePMX(
   const vertexCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxVertices,
     label: "PMX vertices",
+    minBytesPerItem: 1,
   });
-  assertMemoryEstimateWithinBudget(
-    estimateMMDConversionMemory(bytes.byteLength, vertexCount),
-    options.maxPeakBytes ?? NODE_PEAK_MEMORY_LIMIT_BYTES,
-    "PMX conversion",
-  );
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
   const uvs = new Float32Array(vertexCount * 2);
@@ -641,6 +616,7 @@ export function parsePMX(
   const indexCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxIndices,
     label: "PMX indices",
+    minBytesPerItem: vertexIndexSize,
   });
   const indices = new Uint32Array(indexCount);
   for (let index = 0; index < indexCount; index += 1) {
@@ -652,6 +628,7 @@ export function parsePMX(
   const textureCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxMaterials,
     label: "PMX textures",
+    minBytesPerItem: 4,
   });
   const textures: string[] = [];
   for (let index = 0; index < textureCount; index += 1) {
@@ -661,6 +638,7 @@ export function parsePMX(
   const materialCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxMaterials,
     label: "PMX materials",
+    minBytesPerItem: 1,
   });
   const materials: ParsedMMDMaterial[] = [];
   for (let index = 0; index < materialCount; index += 1) {
@@ -709,6 +687,7 @@ export function parsePMX(
   const boneCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxBones,
     label: "PMX bones",
+    minBytesPerItem: 1,
   });
   const bones: ParsedMMDBone[] = [];
   for (let index = 0; index < boneCount; index += 1) {
@@ -752,6 +731,7 @@ export function parsePMX(
       const linkCount = reader.readCount({
         max: DEFAULT_PARSE_BUDGET.maxBones,
         label: "PMX IK links",
+        minBytesPerItem: 1,
       });
       const links: NonNullable<ParsedMMDBone["ik"]>["links"] = [];
       for (let link = 0; link < linkCount; link += 1) {
@@ -797,10 +777,7 @@ export function parsePMX(
   return { bones, indices, joints, materials, name, normals, positions, textures, uvs, weights };
 }
 
-function parsePMD(
-  bytes: Uint8Array,
-  options: MMDConversionOptions = {},
-): ParsedMMDModel {
+function parsePMD(bytes: Uint8Array): ParsedMMDModel {
   const reader = new PMXBinaryReader(bytes);
   if (reader.readAscii(3) !== "Pmd") {
     throw new Error("PMD header is invalid.");
@@ -812,12 +789,8 @@ function parsePMD(
   const vertexCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxVertices,
     label: "PMD vertices",
+    minBytesPerItem: 38,
   });
-  assertMemoryEstimateWithinBudget(
-    estimateMMDConversionMemory(bytes.byteLength, vertexCount),
-    options.maxPeakBytes ?? NODE_PEAK_MEMORY_LIMIT_BYTES,
-    "PMD conversion",
-  );
   const positions = new Float32Array(vertexCount * 3);
   const normals = new Float32Array(vertexCount * 3);
   const uvs = new Float32Array(vertexCount * 2);
@@ -841,6 +814,7 @@ function parsePMD(
   const indexCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxIndices,
     label: "PMD indices",
+    minBytesPerItem: 2,
   });
   const indices = new Uint32Array(indexCount);
   for (let index = 0; index < indexCount; index += 1) {
@@ -852,6 +826,7 @@ function parsePMD(
   const materialCount = reader.readCount({
     max: DEFAULT_PARSE_BUDGET.maxMaterials,
     label: "PMD materials",
+    minBytesPerItem: 1,
   });
   const materials: ParsedMMDMaterial[] = [];
   const textures: string[] = [];
@@ -895,6 +870,7 @@ function parsePMD(
   const boneCount = reader.readUnsignedCount({
     max: DEFAULT_PARSE_BUDGET.maxBones,
     label: "PMD bones",
+    minBytesPerItem: 39,
     size: 2,
   });
   const bones: ParsedMMDBone[] = [];
@@ -917,9 +893,6 @@ function parsePMD(
 
   if (reader.remaining >= 2) {
     const ikCount = reader.readUint16();
-    if (ikCount > 100_000) {
-      throw new Error(`PMD IK count is invalid: ${ikCount}.`);
-    }
     for (let index = 0; index < ikCount; index += 1) {
       const ikBoneIndex = reader.readUint16();
       const targetIndex = reader.readUint16();

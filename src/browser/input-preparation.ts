@@ -121,12 +121,14 @@ export async function prepareBrowserAssetInput(
       }
       succeed(createPreparedResult(file, report, selection));
     };
-    timeout = globalThis.setTimeout(() => {
-      fail(new RetargetError("PROCESSING_DEADLINE_EXCEEDED", {
-        details: { limit: budget.maxElapsedMs, phase: "input-worker" },
-        message: "Browser input preparation exceeded its processing deadline.",
-      }));
-    }, budget.maxElapsedMs);
+    if (budget.maxElapsedMs !== undefined) {
+      timeout = globalThis.setTimeout(() => {
+        fail(new RetargetError("PROCESSING_DEADLINE_EXCEEDED", {
+          details: { limit: budget.maxElapsedMs, phase: "input-worker" },
+          message: "Browser input preparation exceeded its processing deadline.",
+        }));
+      }, budget.maxElapsedMs);
+    }
     signal?.addEventListener("abort", abort, { once: true });
     worker.addEventListener("error", onError);
     worker.addEventListener("message", onMessage);

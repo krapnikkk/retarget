@@ -132,7 +132,7 @@ describe("browser input preparation worker", () => {
     expect(result.report?.missingResources).toEqual(["missing.bin"]);
   });
 
-  it("owns bounded directory traversal after the host supplies a handle", async () => {
+  it("owns directory traversal after the host supplies a handle", async () => {
     const budget = resolveBrowserInputPreparationBudget("motion");
     const handle = directory("motion-project", [
       fileHandle("walk.data", BVH),
@@ -177,15 +177,22 @@ describe("browser input preparation worker", () => {
     ).rejects.toMatchObject({ code: "FILE_TOO_LARGE" });
   });
 
-  it("rejects invalid budget overrides instead of silently widening them", () => {
+  it("rejects invalid limits while allowing callers to choose larger policies", () => {
     expect(() =>
       resolveBrowserInputPreparationBudget("motion", { maxEntries: 0 }),
     ).toThrow(expect.objectContaining({ code: "PROCESSING_OPTION_INVALID" }));
-    expect(
-      resolveBrowserInputPreparationBudget("motion", {
-        maxCompressedBytes: Number.MAX_SAFE_INTEGER,
-      }).maxCompressedBytes,
-    ).toBe(resolveBrowserInputPreparationBudget("motion").maxCompressedBytes);
+    const resolved = resolveBrowserInputPreparationBudget("motion", {
+      maxEntries: 1024,
+      maxElapsedMs: 600_000,
+    });
+    expect(resolved.maxCompressedBytes).toBeUndefined();
+    expect(resolved.maxEntries).toBe(1024);
+    expect(resolved.maxElapsedMs).toBe(600_000);
+    expect(resolveBrowserInputPreparationBudget("motion")).toMatchObject({
+      maxEntries: undefined,
+      maxCompressedBytes: undefined,
+      maxElapsedMs: undefined,
+    });
   });
 });
 
@@ -298,7 +305,11 @@ describe("browser input preparation runtime protocol", () => {
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
     expect(() => assertBrowserInputPreparationRequest({
       ...preparedRequest,
-      deadlineMs: preparedRequest.deadlineMs + 1,
+      deadlineMs: 11,
+      task: {
+        ...preparedRequest.task,
+        budget: { ...preparedRequest.task.budget, maxElapsedMs: 10 },
+      },
     })).toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
     expect(() => assertBrowserInputPreparationResponse({
       schemaVersion: BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,

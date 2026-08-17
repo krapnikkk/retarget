@@ -19,13 +19,13 @@
 | `GLTF_ANIMATION_PARSE_FAILED` | 导入 | glTF 动画通道或访问器无效。 |
 | `UNSUPPORTED_FORMAT` | 探测/路由 | 没有基于证据的适配器支持所选输入或流程。 |
 | `WEBGL_UNAVAILABLE` | 预览 | 浏览器无法创建所需 WebGL 上下文；处理仍可能继续。 |
-| `FILE_TOO_LARGE` | 字节预算 | 输入或可传输资源在读取前已超过字节上限。 |
+| `FILE_TOO_LARGE` | 显式字节策略 | 输入或可传输资源超过调用方显式限制或压缩包安全边界。 |
 | `PACKAGE_INVALID` | 包 | ZIP/包路径、展开内容、依赖或入口不安全/无效。 |
 | `RETARGET_FAILED` | 求解/绑定 | 源到目标求解或目标局部绑定失败。 |
 | `EXPORT_FAILED` | 导出/验证 | 序列化或导出后验证失败。 |
-| `PARSE_*` | 解析器 | 计数、长度、数值或截断违反有界解析契约。 |
-| `BVH_*`、`GLTF_*`、`VRMA_DUPLICATE_TRACK` | 格式解析 | 有界解析已定位到稳定、格式特定的违规。 |
-| `PROCESSING_*` | 处理预算 | 动作结构、时长、FPS、选项、期限或输出工作量超过限制。 |
+| `PARSE_*` | 解析器 | 计数、长度、数值或截断违反格式安全要求或调用方显式限制。 |
+| `BVH_*`、`GLTF_*`、`VRMA_DUPLICATE_TRACK` | 格式解析 | 解析已定位到稳定、格式特定的违规。 |
+| `PROCESSING_*` | 处理安全/策略 | 动作结构或选项无效、生成运算不安全，或任务超过调用方显式期限/限制。 |
 | `WORKER_UNAVAILABLE` | 平台隔离 | 所需浏览器或 Node Worker 不可用；公开隔离路径不会改为内联执行。 |
 | `WORKER_PROTOCOL_INVALID` | Worker 边界 | 请求或响应未通过协议版本、判别字段、字段或结果校验。 |
 | `RETARGET_JOB_FAILED` | Worker | 未知错误跨越 Worker 边界，且没有更具体的已注册错误码。 |

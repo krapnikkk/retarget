@@ -1,7 +1,4 @@
-import {
-  DEFAULT_PROCESSING_BUDGET,
-  ProcessingBudgetError,
-} from "@/processing-budget";
+import { ProcessingBudgetError } from "@/processing-budget";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "./types";
 import type {
   RetargetJobProgress,
@@ -25,7 +22,7 @@ export type RunRetargetJobOptions = {
 export async function runRetargetJob<TTask extends RetargetJobTask>(
   task: TTask,
   {
-    deadlineMs = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
+    deadlineMs,
     onProgress,
     signal,
     bufferOwnership = "copy",
@@ -107,16 +104,18 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
       }
       succeed(response.result as RetargetJobResult<TTask>);
     };
-    timeout = globalThis.setTimeout(() => {
-      fail(
-        new ProcessingBudgetError({
-          code: "PROCESSING_DEADLINE_EXCEEDED",
-          limit: deadlineMs,
-          message: "retarget worker exceeded its deadline",
-          phase: "worker",
-        }),
-      );
-    }, deadlineMs);
+    if (deadlineMs !== undefined) {
+      timeout = globalThis.setTimeout(() => {
+        fail(
+          new ProcessingBudgetError({
+            code: "PROCESSING_DEADLINE_EXCEEDED",
+            limit: deadlineMs,
+            message: "retarget worker exceeded its deadline",
+            phase: "worker",
+          }),
+        );
+      }, deadlineMs);
+    }
     signal?.addEventListener("abort", abort, { once: true });
     worker.addEventListener("error", onError);
     worker.addEventListener("message", onMessage);
@@ -147,7 +146,7 @@ export function createRetargetWorker(jobId: string) {
 export async function runRetargetJobInline<TTask extends RetargetJobTask>(
   task: TTask,
   {
-    deadlineMs = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
+    deadlineMs,
     onProgress,
     signal,
   }: RunRetargetJobOptions = {},

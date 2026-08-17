@@ -2,7 +2,7 @@
 
 [English](../../architecture/node-artifact-tooling.md)
 
-`3dretarget/node` 将 `runNodeToolJob` 作为粗粒度 Node 资源生成与验证边界。运行器启动打包后的 Node tooling Worker，且不会回退到进程内执行。`AbortSignal` 或共享期限会终止 Worker，即使同步解析器或写入器仍在运行也能取消。
+`3dretarget/node` 将 `runNodeToolJob` 作为粗粒度 Node 资源生成与验证边界。运行器启动打包后的 Node tooling Worker，且不会回退到进程内执行。`AbortSignal` 或调用方可选的截止时间会终止 Worker，即使同步解析器或写入器仍在运行也能取消。
 
 ## 契约
 
@@ -26,7 +26,9 @@
 
 ## 所有权
 
-功能库负责生成语义、预算、骨架检查、验证和诊断。消费端负责目录遍历、文件系统写入、目录 schema、slug、发布标志、署名策略、锁文件布局、清理和发布。通用 ZIP 创建/读取保持内部，仅由格式专属 bundle 操作使用。
+功能库负责生成语义、格式安全边界、骨架检查、验证和诊断。消费端负责目录遍历、文件系统写入、目录 schema、slug、发布标志、署名策略、锁文件布局、清理和发布。通用 ZIP 创建/读取保持内部，仅由格式专属 bundle 操作使用。
+
+Node 任务默认不设置文件大小、输出大小、估算内存或处理时间上限。`RunNodeToolJobOptions.budget` 保留为消费端可选策略；正值会被校验，但不会收紧到库拥有的上限。ZIP 条目数量、展开字节数与压缩比防护继续生效。
 
 ```ts
 import { runNodeToolJob } from "3dretarget/node";

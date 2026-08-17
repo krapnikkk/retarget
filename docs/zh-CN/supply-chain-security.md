@@ -7,7 +7,7 @@
 每次受控发布前，本地发布操作方必须记录：
 
 - `pnpm install --frozen-lockfile`；
-- `pnpm verify`，包括类型检查、固定资源、完整测试套件、正确性覆盖率、包体积限制、打包入口安装以及打包浏览器 Worker 请求/结果冒烟测试；
+- `pnpm verify`，包括类型检查、固定资源、完整测试套件、正确性覆盖率、包体积诊断、打包入口安装以及打包浏览器 Worker 请求/结果冒烟测试；
 - 对固定认证用例运行 `pnpm verify:ecosystem`；
 - `pnpm audit --prod` 及生产依赖许可证清单；
 - 在已提交的发布回执中记录 tarball 文件名、字节数、SHA-256、包版本和验证结果。

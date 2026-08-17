@@ -8,7 +8,6 @@ import {
 } from "@/import/rig-motion-gltf";
 import { readGLTFDocument } from "@/import/gltf-document";
 import { importFBXHumanoidMotionBytes } from "@/import/fbx-motion";
-import { MAX_GLB_STRUCTURAL_JSON_BYTES } from "@/import/glb-range";
 import {
   ACTORCORE_PROFILE,
   GENERIC_FBX_HUMANOID_PROFILE,
@@ -29,7 +28,6 @@ import { assertValidParentGraph } from "@/core/parent-graph";
 import { createTransferableAssetPackageResolver } from "@/import/asset-package";
 import {
   assertMotionProcessingBudget,
-  assertOutputBytes,
   assertRigMotionProcessingBudget,
   createProcessingDeadline,
   DEFAULT_PROCESSING_BUDGET,
@@ -41,13 +39,7 @@ import type {
   SerializedRigInspection,
 } from "./types";
 import { serializeRigInspection } from "./serialize-rig-inspection";
-import {
-  MAX_MOTION_FILE_BYTES,
-  assertInputByteLength,
-  getAvatarEagerInputLimit,
-} from "./asset-memory-policy";
 import { assertRetargetJobRequest } from "./runtime-protocol";
-import { BROWSER_PEAK_MEMORY_LIMIT_BYTES } from "./memory-budget";
 
 export type RetargetJobReporter = (
   phase: RetargetJobPhase,
@@ -74,7 +66,7 @@ async function executeTask(
   report: RetargetJobReporter,
   deadline: ReturnType<typeof createProcessingDeadline>,
 ) {
-  assertTaskInputBudgets(task);
+  assertTaskInputSafety(task);
   if (task.type === "inspect-humanoid-avatar") {
     report("parse", 0.08);
     const { inspectHumanoidAvatarBytes } = await import(
@@ -98,12 +90,10 @@ async function executeTask(
       new Uint8Array(task.bytes),
       task.filename,
       resolveResource,
-      { maxPeakBytes: BROWSER_PEAK_MEMORY_LIMIT_BYTES },
     );
     deadline.checkpoint("convert-mmd-avatar");
     report("export", 0.78);
     const bytes = await new WebIO().writeBinary(document);
-    assertOutputBytes(bytes.byteLength);
     return bytes;
   }
 
@@ -259,7 +249,6 @@ async function executeTask(
     report("export", 0.15);
     const bytes = await exportMotion(task);
     deadline.checkpoint("export");
-    assertOutputBytes(bytes.byteLength);
     return bytes;
   }
 
@@ -312,80 +301,30 @@ async function executeTask(
   return assertNever(task);
 }
 
-function assertTaskInputBudgets(task: RetargetJobTask) {
-  if (task.type === "import-motion") {
-    assertInputByteLength(
-      task.bytes.byteLength,
-      MAX_MOTION_FILE_BYTES,
-      `motion:${task.filename}`,
-    );
-    assertResourceBudgets(task.resources, task.filename);
-    return;
-  }
+function assertTaskInputSafety(task: RetargetJobTask) {
   if (
     task.type === "convert-mmd-avatar" ||
     task.type === "inspect-rigged-gltf" ||
     task.type === "inspect-humanoid-avatar"
   ) {
-    assertInputByteLength(
-      task.bytes.byteLength,
-      getAvatarEagerInputLimit({ name: task.filename, size: task.bytes.byteLength }),
-      `avatar:${task.filename}`,
-    );
     if (task.type === "inspect-humanoid-avatar" && task.structuralJSONBytes) {
       if (task.bytes.byteLength !== 0) {
         throw createRetargetError("TARGET_RIG_INVALID");
       }
-      assertInputByteLength(
-        task.structuralJSONBytes.byteLength,
-        MAX_GLB_STRUCTURAL_JSON_BYTES,
-        `avatar-structure:${task.filename}`,
-      );
     }
-    assertResourceGroupsBudgets(
-      task.type === "convert-mmd-avatar"
-        ? [task.assetPackage?.resources]
-        : task.type === "inspect-humanoid-avatar"
-          ? [task.resources, task.assetPackage?.resources]
-          : [task.resources],
-      task.filename,
-    );
     return;
   }
   if (task.type === "retarget-rigged-gltf") {
-    assertInputByteLength(
-      task.motionBytes.byteLength,
-      MAX_MOTION_FILE_BYTES,
-      `motion:${task.motionFilename}`,
-    );
-    if (task.targetBytes) {
-      assertInputByteLength(
-        task.targetBytes.byteLength,
-        getAvatarEagerInputLimit({
-          name: task.targetFilename,
-          size: task.targetBytes.byteLength,
-        }),
-        `avatar:${task.targetFilename}`,
-      );
-    }
-    assertResourceBudgets(task.motionResources, task.motionFilename);
-    assertResourceBudgets(task.targetResources, task.targetFilename);
     if (task.targetInspection) {
       assertSerializedRigInspection(task.targetInspection);
     }
     return;
   }
   if (task.type === "validate-motion-export") {
-    assertInputByteLength(
-      task.bytes.byteLength,
-      MAX_MOTION_FILE_BYTES,
-      `motion-export:${task.formatId}`,
-    );
     assertMotionProcessingBudget(task.expected);
     return;
   }
   if (task.type === "validate-avatar-export") {
-    assertOutputBytes(task.bytes.byteLength);
     assertMotionProcessingBudget(task.expected);
   }
 }
@@ -555,45 +494,6 @@ function sortTopologyConflicts(
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function assertResourceGroupsBudgets(
-  groups: ReadonlyArray<Readonly<Record<string, ArrayBuffer>> | undefined>,
-  owner: string,
-) {
-  let total = 0;
-  for (const resources of groups) {
-    assertResourceBudgets(resources, owner);
-    for (const bytes of Object.values(resources ?? {})) {
-      total += bytes.byteLength;
-      assertInputByteLength(
-        total,
-        MAX_MOTION_FILE_BYTES,
-        `resources:${owner}`,
-      );
-    }
-  }
-}
-
-function assertResourceBudgets(
-  resources: Readonly<Record<string, ArrayBuffer>> | undefined,
-  owner: string,
-) {
-  if (!resources) return;
-  let total = 0;
-  for (const [name, bytes] of Object.entries(resources)) {
-    assertInputByteLength(
-      bytes.byteLength,
-      MAX_MOTION_FILE_BYTES,
-      `resource:${owner}:${name}`,
-    );
-    total += bytes.byteLength;
-    assertInputByteLength(
-      total,
-      MAX_MOTION_FILE_BYTES,
-      `resources:${owner}`,
-    );
-  }
 }
 
 function restoreGLTFResources(

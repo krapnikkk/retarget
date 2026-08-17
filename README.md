@@ -4,7 +4,7 @@
 
 `3dretarget` is a consumer-neutral motion-retargeting library. It provides
 bounded format probing, source normalization, canonical motion, rig inspection,
-target solving, semantic validation, export, processing budgets, and a
+target solving, semantic validation, export, format-safety validation, and a
 cancellable browser Worker runtime plus isolated Node artifact tooling.
 
 Version `0.4.0` is distributed as a locally packed, controlled preview. The
@@ -19,7 +19,7 @@ This repository owns:
 
 - reusable `Source -> Canonical -> Target` behavior;
 - serializable public contracts and platform-specific adapters;
-- correctness, security, resource-budget, and compatibility evidence;
+- correctness, security, diagnostics, and compatibility evidence;
 - reproducible fixtures and certification manifests.
 
 It does not own product UI, application state, catalogs, analytics, hosting, or

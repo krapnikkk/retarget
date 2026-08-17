@@ -18,11 +18,6 @@ import { exportVMD } from "./vmd";
 import { exportVRMA } from "./vrma";
 import { createZipArchive, createZipArchiveBlob } from "./zip";
 import {
-  getAvatarEagerInputLimit,
-  MAX_MOTION_FILE_BYTES,
-  assertInputByteLength,
-} from "@/jobs/asset-memory-policy";
-import {
   readBlobArrayBufferWithSignal,
   readFileArrayBufferWithSignal,
 } from "@/browser/read-file";
@@ -57,7 +52,6 @@ export async function exportPairedAvatarMotionZip({
   const avatarBytes = new Uint8Array(
     await readFileArrayBufferWithSignal(
       avatarFile,
-      getAvatarEagerInputLimit(avatarFile),
       "avatar",
     ),
   );
@@ -81,22 +75,12 @@ export async function exportPairedAvatarMotionZip({
     baseName,
     getMotionExtension(motionFormat),
   );
-  const packageByteLength = packageEntries.reduce(
-    (total, entry) => total + entry.blob.size,
-    0,
-  );
-  assertInputByteLength(
-    packageByteLength,
-    MAX_MOTION_FILE_BYTES,
-    `resources:${avatarFile.name}`,
-  );
   const sourceEntries = await Promise.all(
     packageEntries.map(async (entry) => ({
       name: entry.name,
       bytes: new Uint8Array(
         await readBlobArrayBufferWithSignal(
           entry.blob,
-          MAX_MOTION_FILE_BYTES,
           `resource:${entry.name}`,
         ),
       ),

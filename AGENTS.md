@@ -11,8 +11,10 @@ deployment, or downstream release cycle.
 - Keep `Source -> Canonical -> Target` explicit. Importers normalize source
   evidence; exporters must not reinterpret the source or bind to another rig.
 - File names and extensions are hints. Importers require bounded content probes.
-- Treat files as untrusted. Preserve byte/processing budgets, cancellation,
-  Worker isolation, and structured public error codes.
+- Treat files as untrusted. Preserve format-safety bounds, archive-bomb
+  protection, cancellation, Worker isolation, and structured public error
+  codes. Product-specific file-size, elapsed-time, and memory policies belong
+  to consumers and require observed evidence before entering library defaults.
 - Parsing, solving, validation, and export must not depend on product UI,
   application state, routes, localization, catalogs, or preview scenes.
 - A certification case requires structural reload, semantic comparison, and

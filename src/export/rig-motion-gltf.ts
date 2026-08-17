@@ -7,7 +7,6 @@ import {
 } from "@/rig-motion";
 import { readGLTFDocument } from "@/import/gltf-document";
 import { validateRigMotionDocumentSemantics } from "@/validation/rig-motion-world-semantic-oracle";
-import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export async function exportRigMotionGLTF(motion: RigMotionV2) {
@@ -36,7 +35,6 @@ export async function exportAnimatedRigGLB({
   const bytes = new Uint8Array(
     await readFileArrayBufferWithSignal(
       avatarFile,
-      getAvatarEagerInputLimit(avatarFile),
       "avatar",
       signal,
     ),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { createImportedHumanoidMotionClip } from "@/import/humanoid-motion";
 import { BVH_HUMANOID_PROFILE } from "@/profiles";
-import { LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES } from "@/jobs/asset-memory-policy";
+import { LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES } from "@/jobs/asset-input-safety";
 import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {

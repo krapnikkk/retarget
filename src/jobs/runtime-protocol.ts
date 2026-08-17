@@ -84,11 +84,10 @@ export function assertRetargetJobRequest(
   assertBoundedString(request.jobId, "Worker request jobId", 128);
   if (
     request.deadlineMs !== undefined &&
-    (!Number.isFinite(request.deadlineMs) ||
-      (request.deadlineMs as number) <= 0 ||
-      (request.deadlineMs as number) > 300_000)
+    (!Number.isSafeInteger(request.deadlineMs) ||
+      (request.deadlineMs as number) <= 0)
   ) {
-    protocolError("Worker request deadlineMs must be within 1..300000ms.");
+    protocolError("Worker request deadlineMs must be a positive safe integer.");
   }
   const task = asRecord(request.task, "Worker request task");
   if (typeof task.type !== "string" || !TASK_TYPES.has(task.type as never)) {
@@ -288,9 +287,6 @@ function assertResources(value: unknown, label: string) {
   if (value === undefined) return;
   const resources = asRecord(value, label);
   const entries = Object.entries(resources);
-  if (entries.length > 512) {
-    protocolError(`${label} contains too many entries.`);
-  }
   for (const [uri, bytes] of entries) {
     assertBoundedString(uri, `${label} URI`, 4096);
     assertArrayBuffer(bytes, `${label}[${JSON.stringify(uri)}]`);
@@ -306,7 +302,7 @@ function assertAnimationSelection(task: Extract<RetargetJobTask, { type: "import
     task.animationIndex !== undefined &&
     (!Number.isInteger(task.animationIndex) ||
       task.animationIndex < 0 ||
-      task.animationIndex > 1_000_000)
+      task.animationIndex > Number.MAX_SAFE_INTEGER)
   ) {
     protocolError("import-motion.animationIndex is invalid.");
   }

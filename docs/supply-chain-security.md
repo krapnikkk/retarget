@@ -11,7 +11,7 @@ Before every controlled release, the local release operator must record:
 
 - `pnpm install --frozen-lockfile`;
 - `pnpm verify`, including type checking, fixtures, the complete test suite,
-  correctness coverage, package-size limits, packed-entry installation, and
+  correctness coverage, package-size diagnostics, packed-entry installation, and
   the packed browser Worker request/result smoke test;
 - `pnpm verify:ecosystem` for the pinned certified case;
 - `pnpm audit --prod` and a production dependency license inventory;

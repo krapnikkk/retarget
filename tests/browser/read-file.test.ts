@@ -1,14 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { readBlobArrayBufferWithSignal } from "@/browser/read-file";
 
-describe("bounded browser file reads", () => {
+describe("browser file reads", () => {
+  it("does not impose a default product-size ceiling", async () => {
+    const source = new Uint8Array([1, 2, 3, 4, 5]);
+    const result = await readBlobArrayBufferWithSignal(
+      new Blob([source]),
+      "fixture",
+    );
+
+    expect(result.byteLength).toBe(source.byteLength);
+  });
+
   it("returns an exact-sized buffer without retaining streamed chunks", async () => {
     const source = new Uint8Array([1, 2, 3, 4, 5]);
 
     const result = await readBlobArrayBufferWithSignal(
       new Blob([source]),
-      16,
       "fixture",
+      undefined,
+      16,
     );
 
     expect(result.byteLength).toBe(source.byteLength);
@@ -21,9 +32,9 @@ describe("bounded browser file reads", () => {
 
     await expect(readBlobArrayBufferWithSignal(
       new Blob([new Uint8Array([1])]),
-      16,
       "fixture",
       controller.signal,
+      16,
     )).rejects.toMatchObject({ name: "AbortError" });
   });
 });

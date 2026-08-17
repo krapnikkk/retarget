@@ -37,7 +37,8 @@ registry publication promise.
 
 Worker tasks are discriminated messages. `RetargetJobResult<TTask>` maps every
 task to its result type, public failures use the single `RetargetErrorCode`
-registry, and transferable inputs remain bounded before they reach parsing.
+registry, and transferable inputs retain structural validation before parsing.
+Product-specific byte and time limits are opt-in consumer policy.
 Avatar exporters accept `TargetBoundSolvedHumanoidMotionClip`, whose target rig
 signature prevents a solved clip from being silently rebound to another rig.
 
@@ -45,7 +46,7 @@ Internal parsers, scene/document objects, raw target-binding transforms, ZIP
 helpers, and individual format adapters are not public shortcuts. A new use
 case must first earn a coarse contract rather than exporting an internal file.
 
-`scripts/verify-package.mjs` enforces declaration boundaries, size baselines,
+`scripts/verify-package.mjs` enforces declaration boundaries, reports artifact sizes,
 tarball installation and imports, a strict TypeScript consumer compile, the
 relative browser Worker URLs, a production bundle of the packed browser-input
 entry with runtime/module deny lists, and request/result execution through the

@@ -18,7 +18,7 @@ export type ProcessingBudget = {
   maxTotalSamples: number;
   maxGeneratedValues: number;
   maxOutputBytes: number;
-  softDeadlineMs: number;
+  softDeadlineMs?: number;
 };
 
 export const DEFAULT_PROCESSING_BUDGET = {
@@ -27,9 +27,8 @@ export const DEFAULT_PROCESSING_BUDGET = {
   maxFrames: DEFAULT_PARSE_BUDGET.maxSamplesPerTrack,
   maxTracks: DEFAULT_PARSE_BUDGET.maxTracks,
   maxTotalSamples: DEFAULT_PARSE_BUDGET.maxTotalSamples,
-  maxGeneratedValues: 12_000_000,
-  maxOutputBytes: 256 * 1024 * 1024,
-  softDeadlineMs: 45_000,
+  maxGeneratedValues: Number.MAX_SAFE_INTEGER,
+  maxOutputBytes: Number.MAX_SAFE_INTEGER,
 } as const satisfies ProcessingBudget;
 
 export class ProcessingBudgetError extends RetargetError {
@@ -202,11 +201,12 @@ export function assertOutputBytes(
 }
 
 export function createProcessingDeadline(
-  deadlineMs: number = DEFAULT_PROCESSING_BUDGET.softDeadlineMs,
+  deadlineMs?: number,
 ) {
-  const startedAt = performance.now();
+  const startedAt = deadlineMs === undefined ? undefined : performance.now();
   return {
     checkpoint(phase: string) {
+      if (deadlineMs === undefined || startedAt === undefined) return;
       const elapsed = performance.now() - startedAt;
       if (elapsed > deadlineMs) {
         throw new ProcessingBudgetError({

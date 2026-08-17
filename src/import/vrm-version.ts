@@ -1,16 +1,12 @@
 export type VRMVersion = "0.x" | "1.0" | "unknown";
 
 const GLB_HEADER_BYTES = 20;
-const MAX_TEXT_GLTF_BYTES = 64 * 1024 * 1024;
 
 export async function detectVRMVersionFromFile(file: Blob): Promise<VRMVersion> {
   const prefix = new Uint8Array(
     await file.slice(0, Math.min(GLB_HEADER_BYTES, file.size)).arrayBuffer(),
   );
   if (new TextDecoder().decode(prefix).trimStart().startsWith("{")) {
-    if (file.size > MAX_TEXT_GLTF_BYTES) {
-      return "unknown";
-    }
     return detectVRMVersion(new Uint8Array(await file.arrayBuffer()));
   }
   if (prefix.byteLength < GLB_HEADER_BYTES) {

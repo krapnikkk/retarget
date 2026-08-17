@@ -1,6 +1,5 @@
 import type { AssetPackageRole } from "@/import/asset-package";
 import { RetargetError } from "@/retarget/errors";
-import { DEFAULT_BROWSER_INPUT_PREPARATION_BUDGETS } from "./input-preparation-budget";
 import {
   BROWSER_INPUT_PREPARATION_PROTOCOL_VERSION,
   type BrowserInputPreparationRequest,
@@ -10,13 +9,11 @@ import type { BrowserInputPreparationBudget } from "./input-preparation-types";
 const INPUT_ROLES = new Set<AssetPackageRole>(["avatar", "motion"]);
 const INPUT_SOURCE_KINDS = new Set(["file", "file-handle", "directory-handle"]);
 const BUDGET_KEYS = [
-  "maxProbeBytes",
   "maxEntries",
   "maxCompressedBytes",
   "maxExpandedBytes",
   "maxSingleEntryBytes",
   "maxRetainedBytes",
-  "maxElapsedMs",
 ] as const satisfies readonly (keyof BrowserInputPreparationBudget)[];
 
 export function assertBrowserInputPreparationRequest(
@@ -27,11 +24,9 @@ export function assertBrowserInputPreparationRequest(
     protocolError("Input Worker request schemaVersion is unsupported.");
   }
   assertBoundedString(request.jobId, "Input Worker request jobId", 128);
-  assertPositiveInteger(
-    request.deadlineMs,
-    "Input Worker request deadlineMs",
-    300_000,
-  );
+  if (request.deadlineMs !== undefined) {
+    assertPositiveInteger(request.deadlineMs, "Input Worker request deadlineMs");
+  }
   const task = asRecord(request.task, "Input Worker request task");
   if (task.type !== "prepare-browser-input") {
     protocolError("Input Worker request task discriminator is unsupported.");
@@ -40,14 +35,19 @@ export function assertBrowserInputPreparationRequest(
     protocolError("Input Worker request role is unsupported.");
   }
   const budget = asRecord(task.budget, "Input Worker request budget");
-  const maximums = DEFAULT_BROWSER_INPUT_PREPARATION_BUDGETS[
-    task.role as AssetPackageRole
-  ];
+  assertPositiveInteger(
+    budget.maxProbeBytes,
+    "Input Worker request budget.maxProbeBytes",
+  );
   for (const key of BUDGET_KEYS) {
+    if (budget[key] !== undefined) {
+      assertPositiveInteger(budget[key], `Input Worker request budget.${key}`);
+    }
+  }
+  if (budget.maxElapsedMs !== undefined) {
     assertPositiveInteger(
-      budget[key],
-      `Input Worker request budget.${key}`,
-      maximums[key],
+      budget.maxElapsedMs,
+      "Input Worker request budget.maxElapsedMs",
     );
   }
   if (request.deadlineMs !== budget.maxElapsedMs) {
@@ -82,12 +82,10 @@ function assertInputSource(value: unknown) {
 function assertPositiveInteger(
   value: unknown,
   label: string,
-  maximum: number,
 ) {
   if (
     !Number.isSafeInteger(value) ||
-    (value as number) <= 0 ||
-    (value as number) > maximum
+    (value as number) <= 0
   ) {
     protocolError(`${label} must be a bounded integer.`);
   }

@@ -47,12 +47,12 @@ export type BrowserInputPreparationProgress = {
 
 export type BrowserInputPreparationBudget = {
   maxProbeBytes: number;
-  maxEntries: number;
-  maxCompressedBytes: number;
-  maxExpandedBytes: number;
-  maxSingleEntryBytes: number;
-  maxRetainedBytes: number;
-  maxElapsedMs: number;
+  maxEntries?: number;
+  maxCompressedBytes?: number;
+  maxExpandedBytes?: number;
+  maxSingleEntryBytes?: number;
+  maxRetainedBytes?: number;
+  maxElapsedMs?: number;
 };
 
 export type BrowserInputSelectionStatus =

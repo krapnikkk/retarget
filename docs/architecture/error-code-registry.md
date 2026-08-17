@@ -21,13 +21,13 @@ the stable code for support and telemetry.
 | `GLTF_ANIMATION_PARSE_FAILED` | import | glTF animation channels or accessors are invalid. |
 | `UNSUPPORTED_FORMAT` | probe/routing | No evidence-backed adapter supports the selected input/workflow. |
 | `WEBGL_UNAVAILABLE` | preview | Browser cannot create the required WebGL context; processing may still be possible. |
-| `FILE_TOO_LARGE` | byte budget | An input or transferable resource exceeds its pre-read byte limit. |
+| `FILE_TOO_LARGE` | configured byte policy | An input or transferable resource exceeds an explicit caller limit or an archive-safety bound. |
 | `PACKAGE_INVALID` | package | ZIP/package paths, expansion, dependencies, or entrypoint are unsafe/invalid. |
 | `RETARGET_FAILED` | solve/bind | Source-to-target solve or target-local binding failed. |
 | `EXPORT_FAILED` | export/validate | Serialization or post-export validation failed. |
-| `PARSE_*` | parser | Counts, lengths, numbers, or truncation violate the bounded parser contract. |
-| `BVH_*`, `GLTF_*`, `VRMA_DUPLICATE_TRACK` | parser domain | Bounded parsing succeeded far enough to identify a stable format-specific violation. |
-| `PROCESSING_*` | processing budget | Clip shape, duration, FPS, options, deadline, or output work exceeds a processing limit. |
+| `PARSE_*` | parser | Counts, lengths, numbers, or truncation violate format safety or an explicit caller limit. |
+| `BVH_*`, `GLTF_*`, `VRMA_DUPLICATE_TRACK` | parser domain | Parsing identified a stable format-specific violation. |
+| `PROCESSING_*` | processing safety/policy | Clip shape or options are invalid, generated arithmetic is unsafe, or work exceeds an explicit caller deadline/limit. |
 | `WORKER_UNAVAILABLE` | platform isolation | The required browser or Node Worker is unavailable; isolated public paths do not run the job inline. |
 | `WORKER_PROTOCOL_INVALID` | Worker boundary | A request or response failed protocol version, discriminator, field, or result validation. |
 | `RETARGET_JOB_FAILED` | Worker | An unexpected failure crossed the Worker boundary without a more specific registered code. |

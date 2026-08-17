@@ -19,7 +19,6 @@ import {
   importRigMotionDocument,
   listRigMotionActions,
 } from "@/import/rig-motion-gltf";
-import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 export type AssetValidationKind = "character" | "motion";
@@ -419,7 +418,6 @@ async function readGLBDocument(file: File) {
     new Uint8Array(
       await readFileArrayBufferWithSignal(
         file,
-        getAvatarEagerInputLimit(file),
         "avatar",
       ),
     ),

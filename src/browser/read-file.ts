@@ -1,25 +1,28 @@
-import {
-  assertFileWithinLimit,
-  assertInputByteLength,
-} from "@/jobs/asset-memory-policy";
+import { assertInputByteLength } from "@/jobs/asset-input-safety";
 
 export async function readFileArrayBufferWithSignal(
   file: File,
-  maxBytes: number,
   role: "motion" | "avatar" | "resource",
   signal?: AbortSignal,
+  maxBytes?: number,
 ) {
-  assertFileWithinLimit(file, maxBytes, role);
-  return readBlobArrayBufferWithSignal(file, maxBytes, `${role}:${file.name}`, signal);
+  return readBlobArrayBufferWithSignal(
+    file,
+    `${role}:${file.name}`,
+    signal,
+    maxBytes,
+  );
 }
 
 export async function readBlobArrayBufferWithSignal(
   blob: Blob,
-  maxBytes: number,
   label: string,
   signal?: AbortSignal,
+  maxBytes?: number,
 ) {
-  assertInputByteLength(blob.size, maxBytes, label);
+  if (maxBytes !== undefined) {
+    assertInputByteLength(blob.size, maxBytes, label);
+  }
   signal?.throwIfAborted();
   const reader = blob.stream().getReader();
   const bytes = new Uint8Array(blob.size);
@@ -30,8 +33,11 @@ export async function readBlobArrayBufferWithSignal(
       const { done, value } = await reader.read();
       if (done) break;
       const nextOffset = offset + value.byteLength;
-      if (nextOffset > blob.size || nextOffset > maxBytes) {
-        assertInputByteLength(nextOffset, Math.min(blob.size, maxBytes), label);
+      if (nextOffset > blob.size) {
+        assertInputByteLength(nextOffset, blob.size, label);
+      }
+      if (maxBytes !== undefined && nextOffset > maxBytes) {
+        assertInputByteLength(nextOffset, maxBytes, label);
       }
       bytes.set(value, offset);
       offset = nextOffset;

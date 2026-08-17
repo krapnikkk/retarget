@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_NODE_TOOL_BUDGET } from "@/node-tooling/budget";
+import {
+  DEFAULT_NODE_TOOL_BUDGET,
+  resolveNodeToolBudget,
+} from "@/node-tooling/budget";
 import { executeNodeToolTask } from "@/node-tooling/execute";
 import type { NodeToolTask } from "@/node-tooling/types";
 
@@ -13,6 +16,17 @@ const RIG_MOTION_FIXTURE = path.resolve(
 );
 
 describe("Node tooling contract", () => {
+  it("keeps resource policy opt-in and does not clamp caller values", () => {
+    expect(DEFAULT_NODE_TOOL_BUDGET.softDeadlineMs).toBeUndefined();
+    expect(resolveNodeToolBudget({
+      maxArchiveEntries: 1024,
+      softDeadlineMs: 600_000,
+    })).toMatchObject({
+      maxArchiveEntries: 1024,
+      softDeadlineMs: 600_000,
+    });
+  });
+
   it("authors byte-stable VRM artifacts from explicit deterministic inputs", async () => {
     const canonicalGLBBytes = fixtureBytes(CHARACTER_FIXTURE);
     const task = {

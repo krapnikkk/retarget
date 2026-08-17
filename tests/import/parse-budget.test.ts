@@ -5,8 +5,8 @@ import {
   readPMXHeader,
 } from "@/parsers/pmx-binary";
 
-describe("binary parse budgets", () => {
-  it("rejects negative and oversized PMX counts with domain context", () => {
+describe("binary parse safety", () => {
+  it("rejects negative and input-impossible PMX counts with domain context", () => {
     const negative = new Uint8Array(4);
     new DataView(negative.buffer).setInt32(0, -1, true);
 
@@ -18,17 +18,14 @@ describe("binary parse budgets", () => {
     ).toThrow(/PMX vertices must be a non-negative safe integer.*file=negative\.pmx/);
 
     const oversized = new Uint8Array(4);
-    new DataView(oversized.buffer).setInt32(
-      0,
-      DEFAULT_PARSE_BUDGET.maxVertices + 1,
-      true,
-    );
+    new DataView(oversized.buffer).setInt32(0, 1, true);
     expect(() =>
       new PMXBinaryReader(oversized, "oversized.pmx").readCount({
         max: DEFAULT_PARSE_BUDGET.maxVertices,
         label: "PMX vertices",
+        minBytesPerItem: 1,
       }),
-    ).toThrow(/declared=5000001, limit=5000000/);
+    ).toThrow(/declared=1, limit=0/);
   });
 
   it("rejects truncated reads and invalid PMX index widths", () => {

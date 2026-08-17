@@ -5,7 +5,6 @@ const CHUNK_HEADER_BYTES = 8;
 const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
 const GLB_MAGIC = 0x46546c67;
-export const MAX_GLB_STRUCTURAL_JSON_BYTES = 64 * 1024 * 1024;
 
 export type GLBRangeInfo = {
   json: Record<string, unknown>;
@@ -93,10 +92,9 @@ async function readGLBJSONChunk(blob: Blob, signal?: AbortSignal) {
   if (
     jsonType !== JSON_CHUNK_TYPE ||
     jsonByteLength <= 0 ||
-    jsonByteLength > MAX_GLB_STRUCTURAL_JSON_BYTES ||
     GLB_HEADER_BYTES + CHUNK_HEADER_BYTES + jsonByteLength > declaredByteLength
   ) {
-    throw new Error("GLB JSON chunk is invalid or exceeds the range-read limit.");
+    throw new Error("GLB JSON chunk is invalid.");
   }
   const jsonBytes = await readBlobRange(
     blob,
@@ -126,9 +124,9 @@ export async function readBlobRange(
   return new Uint8Array(
     await readBlobArrayBufferWithSignal(
       blob.slice(offset, offset + byteLength),
-      byteLength,
       `glb-range:${offset}+${byteLength}`,
       signal,
+      byteLength,
     ),
   );
 }

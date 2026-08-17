@@ -18,7 +18,7 @@ import {
   importRigMotionDocument,
   listRigMotionActions,
 } from "@/import/rig-motion-gltf";
-import { assertInputByteLength } from "@/jobs/asset-memory-policy";
+import { assertInputByteLength } from "@/jobs/asset-input-safety";
 import {
   DEFAULT_PROCESSING_BUDGET,
   assertOutputBytes,

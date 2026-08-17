@@ -21,7 +21,7 @@ export type NodeToolBudget = {
   maxArchiveEntryBytes: number;
   maxArchiveExpandedBytes: number;
   maxArchiveCompressionRatio: number;
-  softDeadlineMs: number;
+  softDeadlineMs?: number;
 };
 
 export type NodeRigInspectionOptions = {

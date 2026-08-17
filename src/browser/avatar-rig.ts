@@ -36,10 +36,8 @@ import {
   type AssetResourceScope,
 } from "@/import/asset-package";
 import {
-  assertAvatarFileWithinLimit,
-  getAvatarEagerInputLimit,
   isRangeLoadableGLB,
-} from "@/jobs/asset-memory-policy";
+} from "@/jobs/asset-input-safety";
 import { readFileArrayBufferWithSignal } from "./read-file";
 import { readGLTFRigMetadata } from "@/import/glb-range";
 import type { TargetBoneRestTransform } from "@/retarget/target-binding";
@@ -84,7 +82,6 @@ export async function loadCanonicalAvatarRig(
   preferredFormat?: AvatarFormatId | null,
   options: LoadCanonicalAvatarRigOptions = {},
 ): Promise<LoadedAvatarRig> {
-  assertAvatarFileWithinLimit(file);
   options.signal?.throwIfAborted();
   const adapter = await findAvatarImportAdapter(
     file,
@@ -125,7 +122,6 @@ export async function loadCanonicalAvatarRig(
         root: createMixamoFBXLoader(resources.manager).parse(
           await readFileArrayBufferWithSignal(
             file,
-            getAvatarEagerInputLimit(file),
             "avatar",
             options.signal,
           ),
@@ -375,7 +371,6 @@ async function loadVRMRig(
       createVRMLoader(resources.manager),
       await readFileArrayBufferWithSignal(
         file,
-        getAvatarEagerInputLimit(file),
         "avatar",
         signal,
       ),
@@ -517,7 +512,6 @@ function collectBoneRestTransforms(
 async function readGLTFLoaderInput(file: File, signal?: AbortSignal) {
   const arrayBuffer = await readFileArrayBufferWithSignal(
     file,
-    getAvatarEagerInputLimit(file),
     "avatar",
     signal,
   );

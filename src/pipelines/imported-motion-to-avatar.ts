@@ -14,7 +14,6 @@ import {
 } from "@/adapters/motion";
 import { createRetargetError } from "@/retarget";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
-import { MAX_MOTION_FILE_BYTES } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 import { collectTransferableGLTFResources } from "@/import/gltf-document";
 
@@ -145,7 +144,6 @@ function createImportedMotionToAvatarPipeline(
 
       const motionBytes = await readFileArrayBufferWithSignal(
         motionFile,
-        MAX_MOTION_FILE_BYTES,
         "motion",
         signal,
       );

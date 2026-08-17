@@ -14,7 +14,7 @@ permissions.
 
 The host owns the user gesture and obtains a `File`, readable file handle, or
 readable directory handle. After the host supplies that value, the library
-owns bounded traversal, ZIP expansion, primary-file selection, path
+owns safe traversal, ZIP expansion, primary-file selection, path
 normalization, sidecar resolution, adapter selection, Worker isolation, and
 resource disposal.
 
@@ -41,46 +41,50 @@ Package primary selection applies the same rule across ZIP and directory
 entries. It rejects zero or multiple content-verified primaries instead of
 guessing from filenames.
 
-## Budgets
+## Safety limits and caller policy
 
-The stable budget fields are:
+The stable policy fields are:
 
 | Field | Meaning |
 | --- | --- |
 | `maxProbeBytes` | Total bounded evidence window used to select an input |
-| `maxEntries` | Maximum traversed or archived entries |
+| `maxEntries` | Optional maximum traversed or archived entries |
 | `maxCompressedBytes` | Maximum compressed/archive input bytes |
 | `maxExpandedBytes` | Maximum total expanded bytes |
 | `maxSingleEntryBytes` | Maximum bytes retained by one entry |
 | `maxRetainedBytes` | Maximum total Blob-backed package bytes retained |
-| `maxElapsedMs` | Worker deadline for the preparation job |
+| `maxElapsedMs` | Optional caller-selected Worker deadline |
 
-Callers may lower limits. Values above the library ceiling are clamped; zero,
-negative, non-integer, and non-finite limits fail with
-`PROCESSING_OPTION_INVALID`. File and declared archive sizes are checked before
-large reads or decompression.
+Only `maxProbeBytes` has a general default. The library does not impose
+product-specific file-size, retained-byte, directory-entry, or elapsed-time
+ceilings. All other fields are optional caller policy; positive safe-integer
+values are accepted without being clamped. Explicit caller limits fail with
+`PROCESSING_OPTION_INVALID` when malformed and are checked before large reads
+or decompression. Content probes remain bounded. ZIP inputs independently
+retain archive-bomb defaults for entry count, expanded entry/total bytes, and
+compression ratio, plus path and declared-range defenses.
 
 ## Worker and progress
 
 Browser preparation runs in the dedicated packed Worker at
-`dist/workers/input-preparation.worker.js`. That Worker contains bounded
-discovery, probing, archive/package handling, and transferable construction;
+`dist/workers/input-preparation.worker.js`. That Worker contains isolated
+discovery, bounded probing, archive/package handling, and transferable construction;
 it does not share the retarget solver or format parser runtime graph. The
 retarget Worker remains a separate operation boundary.
 
-Preparation messages use schema version `1`. Both sides validate request and
+Preparation messages use schema version `2`. Both sides validate request and
 response discriminators, job identity, role, budgets, progress, registered
 error codes, and success-result structure. Malformed messages fail closed with
 `WORKER_PROTOCOL_INVALID`. Creation failures use `WORKER_UNAVAILABLE`, and
 untrusted preparation never silently falls back to the main thread.
-`AbortSignal`, deadlines, `messageerror`, clone errors, and progress-callback
+`AbortSignal`, configured deadlines, `messageerror`, clone errors, and progress-callback
 failures all terminate the active Worker through the same cleanup path.
 
 The package gate installs the packed tarball into a temporary consumer, builds
 `3dretarget/browser/input` with a production bundler, and checks the emitted
 code plus source-module evidence. The entry and its Worker must exclude MMD,
-VMD, Ammo, FBX loader, and full retarget-job markers, while independent size
-baselines cover the input surface, Worker, and consumer bundle.
+VMD, Ammo, FBX loader, and full retarget-job markers. Artifact, tarball, and
+consumer-bundle byte sizes are reported as diagnostics rather than hard gates.
 
 Progress uses the dedicated phase union:
 
@@ -95,8 +99,8 @@ inner primary can be probed.
 ## Resource lifecycle
 
 Prepared packages retain Blob-backed entries so existing loaders can resolve
-relative sidecars. `collectTransferable()` creates the bounded, serializable
-resource payload used by later Worker jobs. `dispose()` releases the package
+relative sidecars. `collectTransferable()` creates the serializable resource
+payload used by later Worker jobs. `dispose()` releases the package
 context, is idempotent, and prevents later transferable collection.
 
 ## Public example

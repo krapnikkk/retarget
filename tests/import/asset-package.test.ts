@@ -382,6 +382,18 @@ describe("ZIP asset package preflight", () => {
       prepareAssetDirectory(directory, "motion", { maxTotalBytes: 4 }),
     ).rejects.toThrow("local processing limit");
   });
+
+  it("does not impose a default selected-folder entry policy", async () => {
+    const directory = createDirectoryHandle("large-project", [
+      createFileHandle("walk.bvh", new TextEncoder().encode("HIERARCHY")),
+      ...Array.from({ length: 512 }, (_, index) =>
+        createFileHandle(`notes/${index}.txt`, new Uint8Array([index % 256]))),
+    ]);
+
+    const prepared = await prepareAssetDirectory(directory, "motion");
+
+    expect(prepared.report.entryCount).toBe(513);
+  });
 });
 
 describe("VRM version detection", () => {

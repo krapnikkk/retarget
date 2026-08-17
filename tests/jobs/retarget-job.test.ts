@@ -58,12 +58,27 @@ describe("retarget job runtime", () => {
     );
   });
 
-  it("rejects unbounded solve requests before creating sample arrays", () => {
+  it("does not reject large finite solve requests using product policy", () => {
     expect(() =>
       assertRetargetSolveBudget({
         boneCount: 53,
         duration: 1_200,
         fps: 120,
+        options: {
+          armOffsetDegrees: 0,
+          heightScale: 1,
+          rootMotion: true,
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  it("still rejects requests whose generated counts are not safely representable", () => {
+    expect(() =>
+      assertRetargetSolveBudget({
+        boneCount: Number.MAX_SAFE_INTEGER,
+        duration: Number.MAX_VALUE,
+        fps: Number.MAX_VALUE,
         options: {
           armOffsetDegrees: 0,
           heightScale: 1,

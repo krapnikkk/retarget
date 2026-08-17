@@ -14,7 +14,7 @@ import {
 import { MMD_EXPORT_BONE_NAMES } from "./bone-naming";
 import { assertGeneratedExportBudget } from "@/processing-budget";
 
-const MAX_EXPORTED_VMD_KEYFRAMES = 2_000_000;
+const MAX_EXPORTED_VMD_KEYFRAMES = 0xffff_ffff;
 
 export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array> {
   const validation = validateMotionClip(clip);
@@ -31,7 +31,7 @@ export async function exportVMD(clip: RetargetedMotionClip): Promise<Uint8Array>
   const keyframeCount = bones.length * frameCount;
   if (keyframeCount > MAX_EXPORTED_VMD_KEYFRAMES) {
     throw new Error(
-      `VMD export requires ${keyframeCount} bone keyframes; the safe limit is ${MAX_EXPORTED_VMD_KEYFRAMES}.`,
+      `VMD export requires ${keyframeCount} bone keyframes; the format limit is ${MAX_EXPORTED_VMD_KEYFRAMES}.`,
     );
   }
   assertGeneratedExportBudget({

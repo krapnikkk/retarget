@@ -47,7 +47,7 @@ describe("range-loaded large GLB and VRM assets", () => {
     expect(source.fullReads).toBe(0);
   });
 
-  it("does not fall back to a whole-file read for oversized textual input", async () => {
+  it("does not reject large textual input using a library-owned size policy", async () => {
     let fullReads = 0;
     const file = {
       size: 100 * 1024 * 1024,
@@ -56,12 +56,12 @@ describe("range-loaded large GLB and VRM assets", () => {
       },
       async arrayBuffer() {
         fullReads += 1;
-        throw new Error("Whole-file reads are forbidden.");
+        return new TextEncoder().encode('{"asset":{"version":"2.0"}}').buffer;
       },
     } as unknown as Blob;
 
     await expect(detectVRMVersionFromFile(file)).resolves.toBe("unknown");
-    expect(fullReads).toBe(0);
+    expect(fullReads).toBe(1);
   });
 });
 

@@ -12,7 +12,6 @@ import {
   assertCountWithinBudget,
   assertInputWithinBudget,
 } from "./parse-budget";
-import { DEFAULT_MAX_PARENT_DEPTH } from "@/core/parent-graph";
 
 type BVHChannel = {
   nodeName: string;
@@ -215,12 +214,8 @@ function parseHierarchy(hierarchy: string, filename: string) {
 
   const parseNode = (
     parentWorldOffset: readonly [number, number, number],
-    depth: number,
     expectedKind: "ROOT" | "JOINT" | "child",
   ) => {
-    if (depth > DEFAULT_MAX_PARENT_DEPTH) {
-      fail(`BVH hierarchy exceeds ${DEFAULT_MAX_PARENT_DEPTH} levels`);
-    }
     const kind = take();
     const endSite = kind === "End";
     if (endSite) {
@@ -283,7 +278,7 @@ function parseHierarchy(hierarchy: string, filename: string) {
           `BVH node "${nodeName}" must declare OFFSET before children`,
         );
         const worldOffset = addOffset(parentWorldOffset, currentOffset);
-        parseNode(worldOffset, depth + 1, "child");
+        parseNode(worldOffset, "child");
         continue;
       }
       if (token === "ROOT") fail("BVH hierarchy must contain exactly one ROOT");
@@ -302,7 +297,7 @@ function parseHierarchy(hierarchy: string, filename: string) {
   };
 
   if (tokens[index]?.toUpperCase() === "HIERARCHY") index += 1;
-  parseNode([0, 0, 0], 0, "ROOT");
+  parseNode([0, 0, 0], "ROOT");
   if (index !== tokens.length) {
     fail(`BVH hierarchy contains trailing token ${tokens[index]}`);
   }

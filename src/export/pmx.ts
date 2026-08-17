@@ -24,7 +24,6 @@ import { resolveExportBoneName } from "./bone-naming";
 import { convertMMDModelToGLBDocument } from "./avatar-conversion";
 import { collectHumanoidNodes } from "./avatar-glb";
 import { createGLTFHumanoidRigSignature } from "./gltf-target-binding";
-import { getAvatarEagerInputLimit } from "@/jobs/asset-memory-policy";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";
 
 type PMXLayout = {
@@ -77,7 +76,6 @@ export async function exportAnimatedPMX({ avatarFile, clip }: AvatarExportInput)
   const pmxBytes = new Uint8Array(
     await readFileArrayBufferWithSignal(
       avatarFile,
-      getAvatarEagerInputLimit(avatarFile),
       "avatar",
     ),
   );
@@ -191,8 +189,9 @@ function collectFrameOffsets(
   }
 
   const frameCount = Math.max(2, Math.ceil(clip.duration * PMX_MORPH_FPS) + 1);
-  if (frameCount * mappedBones.length > 2_000_000) {
-    throw new Error("PMX pose-morph export exceeds the 2,000,000-offset safe limit.");
+  const offsetCount = frameCount * mappedBones.length;
+  if (!Number.isSafeInteger(offsetCount) || offsetCount > 0x7fff_ffff) {
+    throw new Error("PMX pose-morph export exceeds the signed 32-bit format limit.");
   }
   const frames: BoneFrameOffset[][] = [];
   for (let frame = 0; frame < frameCount; frame += 1) {

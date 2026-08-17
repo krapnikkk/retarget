@@ -1,10 +1,7 @@
-const MAX_TRANSFER_WALK_OBJECTS = 100_000;
-
 export function collectArrayBufferTransfers(value: unknown): ArrayBuffer[] {
   const transfers = new Set<ArrayBuffer>();
   const visited = new WeakSet<object>();
   const pending: unknown[] = [value];
-  let visitedObjects = 0;
 
   while (pending.length > 0) {
     const current = pending.pop();
@@ -19,10 +16,6 @@ export function collectArrayBufferTransfers(value: unknown): ArrayBuffer[] {
     }
     if (visited.has(current)) continue;
     visited.add(current);
-    visitedObjects += 1;
-    if (visitedObjects > MAX_TRANSFER_WALK_OBJECTS) {
-      throw new Error("Transferable graph exceeds the traversal budget.");
-    }
     if (current instanceof Map) {
       for (const [key, entry] of current) pending.push(key, entry);
       continue;

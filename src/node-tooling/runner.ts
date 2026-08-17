@@ -32,6 +32,7 @@ export async function runNodeToolJob<TTask extends NodeToolTask>(
   const request: NodeToolWorkerRequest = { jobId, budget, task };
   return new Promise<NodeToolJobResult<TTask>>((resolve) => {
     let settled = false;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     let worker: Worker;
     try {
       worker = new Worker(
@@ -46,22 +47,24 @@ export async function runNodeToolJob<TTask extends NodeToolTask>(
     const finish = (result: NodeToolJobResult<TTask>) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      if (timeout !== undefined) clearTimeout(timeout);
       options.signal?.removeEventListener("abort", abort);
       void worker.terminate();
       resolve(result);
     };
     const abort = () => finish(failure(jobId, cancellationError()));
-    const timeout = setTimeout(() => {
-      finish(
-        failure(jobId, {
-          name: "ProcessingBudgetError",
-          code: "PROCESSING_DEADLINE_EXCEEDED",
-          message: "Node tooling worker exceeded its processing deadline.",
-          details: { limit: budget.softDeadlineMs, phase: "worker" },
-        }),
-      );
-    }, budget.softDeadlineMs);
+    if (budget.softDeadlineMs !== undefined) {
+      timeout = setTimeout(() => {
+        finish(
+          failure(jobId, {
+            name: "ProcessingBudgetError",
+            code: "PROCESSING_DEADLINE_EXCEEDED",
+            message: "Node tooling worker exceeded its processing deadline.",
+            details: { limit: budget.softDeadlineMs, phase: "worker" },
+          }),
+        );
+      }, budget.softDeadlineMs);
+    }
 
     options.signal?.addEventListener("abort", abort, { once: true });
     worker.on("message", (response: NodeToolWorkerResponse) => {

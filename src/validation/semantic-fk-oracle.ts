@@ -8,7 +8,6 @@ import type { HumanoidSemanticRestPose } from "./semantic-motion";
 
 const BASE_SAMPLE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
 const FIXED_RANDOM_SAMPLE_COUNT = 8;
-const MAX_SEMANTIC_SAMPLE_TIMES = 20_000;
 
 export type SemanticSampledPose = Partial<
   Record<
@@ -97,11 +96,6 @@ export function createSemanticSampleTimes({
   }
 
   const output = [...times].sort((left, right) => left - right);
-  if (output.length > MAX_SEMANTIC_SAMPLE_TIMES) {
-    throw new Error(
-      `Semantic validation requires ${output.length} sample times; limit is ${MAX_SEMANTIC_SAMPLE_TIMES}.`,
-    );
-  }
   return output;
 }
 

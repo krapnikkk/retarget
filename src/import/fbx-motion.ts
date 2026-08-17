@@ -18,7 +18,6 @@ import {
   type HumanoidBoneName,
 } from "@/retarget";
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
-import { assertMotionFileWithinLimit } from "@/jobs/asset-memory-policy";
 import {
   DEFAULT_PARSE_BUDGET,
   assertInputWithinBudget,
@@ -45,7 +44,6 @@ export async function importFBXHumanoidMotion({
   animationIndex?: number;
   animationName?: string;
 }) {
-  assertMotionFileWithinLimit(file);
   return importFBXHumanoidMotionBytes({
     bytes: await file.arrayBuffer(),
     filename: file.name,

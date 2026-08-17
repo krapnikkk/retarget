@@ -3,13 +3,13 @@
 [简体中文](../zh-CN/architecture/retarget-job-runtime.md)
 
 Browser-local processing still treats uploaded files as untrusted input. The
-job runtime applies one processing budget after parser-level byte budgets and
-before any operation that can multiply frames, tracks, or output bytes.
+job runtime validates format ranges, safe integer arithmetic, and serializable
+protocol structure without imposing a product-specific resource policy.
 
 ## Worker boundary
 
 `src/workers/retarget.worker.ts` runs one isolated job per Worker. The browser
-client terminates that Worker on abort or deadline, so cancellation stops CPU
+client terminates that Worker on abort or a caller-selected deadline, so cancellation stops CPU
 work instead of merely suppressing a stale callback. Requests and
 results use structured messages with a job id, progress phase, error code, and
 transferable `ArrayBuffer` payloads.
@@ -45,28 +45,27 @@ export bytes -> structural reload -> semantic comparison
 Text glTF with package-relative resources remains on the main thread because
 its package URL registry is document-owned. The dedicated Mixamo solver also
 remains on the main thread because Three.js scene graphs and AnimationMixers
-cannot be safely structured-cloned. It is guarded by the same solve budget
-before sample arrays are allocated. Avatar authoring still uses the existing
+cannot be safely structured-cloned. Its generated counts are checked for safe
+integer overflow before sample arrays are allocated. Avatar authoring still uses the existing
 format-specific path; its independent reload and semantic validation run in a
 Worker when the output is an in-memory byte array.
 
-## Default hard limits
+## Safety checks and opt-in policy
 
-The limits in `src/jobs/processing-budget.ts` are derived from the shared
-parser budget and are intentionally centralized:
+The library no longer rejects work using default file-size, duration, FPS,
+sample-count, estimated-memory, output-byte, or elapsed-time ceilings. Those
+thresholds varied by device and product without observed failure evidence.
 
-- duration: 20 minutes;
-- FPS: 1 through 120;
-- generated frames per track: 150,000;
-- total source or generated bone samples: 4,000,000;
-- generated scalar values: 12,000,000;
-- output bytes: 256 MiB;
-- per-job deadline: 45 seconds.
+`src/processing-budget.ts` remains the shared implementation for format-safe
+finite values, safe integer multiplication, and explicit caller limits. A
+caller may opt into `deadlineMs` or platform-specific Node/browser limits;
+positive safe-integer values are accepted without a library ceiling.
 
-`heightScale`, `armOffsetDegrees`, and `playbackSpeed` must also be finite and
-within product ranges. VMD and BVH exporters calculate their expanded frame and
-byte cost before allocating the output. These limits are not assurance claims;
-they only bound resource use.
+`heightScale`, `armOffsetDegrees`, and `playbackSpeed` remain finite and within
+their semantic domains. VMD and BVH exporters still calculate expanded counts
+before allocation so overflow and explicitly configured limits fail
+deterministically. Worker isolation, cancellation, structured failures, and
+resource cleanup remain mandatory.
 
 Preview scheduling, cameras, WebGL lifecycle, and presentation remain consumer
 responsibilities. They may consume canonical or validated SDK results but do
