@@ -2,7 +2,7 @@
   "artifact": {
     "byteLength": 684560,
     "filename": "quaternius-walk-studio-mannequin.animated.glb",
-    "sha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7"
+    "sha256": "171bd29bb8b7b7582876ecdbe2eef2b9c18cecaa1e72b64987c7ed79fd3d3eec"
   },
   "caseId": "quaternius-walk-gltf-to-studio-mannequin-glb",
   "inputs": {
@@ -24,7 +24,7 @@
   ],
   "runtimes": {
     "blender": {
-      "artifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7",
+      "artifactSha256": "171bd29bb8b7b7582876ecdbe2eef2b9c18cecaa1e72b64987c7ed79fd3d3eec",
       "buildHash": "fbe6228777e7",
       "checks": {
         "actionCount": 1,
@@ -32,7 +32,7 @@
         "animationFrameStart": 0,
         "armatureCount": 1,
         "boneCount": 65,
-        "changedPoseValues": 976,
+        "changedPoseValues": 978,
         "meshCount": 2,
         "sampleFrames": [
           0,
@@ -45,7 +45,7 @@
       "version": "5.2.0 LTS"
     },
     "godot": {
-      "artifactSha256": "0639ef1927f4fd2b96136423f3259ae577938891d771025a27221cd9ea24c2c7",
+      "artifactSha256": "171bd29bb8b7b7582876ecdbe2eef2b9c18cecaa1e72b64987c7ed79fd3d3eec",
       "buildHash": "a13da4feb8d8aefc283c3763d33a2f170a18d541",
       "checks": {
         "animationLengthSeconds": 1.33333301544189,
