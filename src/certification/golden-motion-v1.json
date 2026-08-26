@@ -68,7 +68,7 @@
       },
       "ecosystemReceipt": {
         "path": "src/certification/receipts/quaternius-walk-gltf-to-studio-mannequin-glb.json",
-        "sha256": "9b693ea93f49849f494cfb4a2c976cf9906053837d099f9e2d0219d1d92d4649",
+        "sha256": "3b720b6cdc89aa16af82c0f309db0cdb1cf19d50eea20fd13382fd79d289c7f6",
         "requiredRuntimes": ["blender", "godot"]
       }
     },
