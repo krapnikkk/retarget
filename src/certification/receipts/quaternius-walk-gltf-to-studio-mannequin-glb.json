@@ -52,8 +52,8 @@
         "animationName": "quaternius-walk_animation",
         "animationPlayerCount": 1,
         "boneCount": 65,
-        "changedPoseValues": 516,
         "meshCount": 1,
+        "poseChanged": true,
         "sampleTimes": [
           0,
           0.666666507720947,
@@ -65,7 +65,6 @@
       "diagnostics": {
         "animationLengthSeconds": 1.33333301544189,
         "animationName": "quaternius-walk_animation",
-        "changedPoseValues": 516,
         "trackCount": 52,
         "trackPaths": [
           "StudioMannequin_Armature/Skeleton3D:head",
