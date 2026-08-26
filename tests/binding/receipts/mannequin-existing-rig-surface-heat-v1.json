@@ -343,8 +343,8 @@
         "animationName": "walk",
         "animationPlayerCount": 1,
         "boneCount": 52,
-        "changedPoseValues": 419,
         "meshCount": 1,
+        "poseChanged": true,
         "sampleTimes": [
           0,
           0.666666507720947,
@@ -356,7 +356,6 @@
       "diagnostics": {
         "animationLengthSeconds": 1.33333301544189,
         "animationName": "walk",
-        "changedPoseValues": 419,
         "trackCount": 52,
         "trackPaths": [
           "Skeleton3D:hips_2",
