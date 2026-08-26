@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "caseId": "mannequin-existing-rig-surface-heat-v1",
+  "observedAt": "2026-08-26T17:39:46.468Z",
+  "harness": "tests/binding/browser/main.js",
+  "status": "passed",
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36",
+  "secureContext": true,
+  "checks": [
+    "native Worker skinning keeps the main thread responsive",
+    "JSON restoration, Node/browser byte equality and five-pose deformation oracle",
+    "running cancellation, hard deadline, copy and transfer ownership",
+    "generated target accepts canonical motion and exports validated animation",
+    "Three.js import and animated vertex deformation",
+    "WebGL preview rendered",
+    "all workers terminated; unavailable Worker fails closed"
+  ],
+  "artifactSha256": "fe3c122089e81785618281cabc59d4fee573c5cebda80db5a15d19e0a5bedc7c",
+  "workersCreated": 10,
+  "workersTerminated": 10,
+  "builtArtifacts": {
+    "dist/browser/index.js": "ad1cba5aa273f5f9792f2a0fb8314eb9ff733f55b2d1e256bbee40ce876a5ba9",
+    "dist/workers/retarget.worker.js": "77653509a88c849d51d7019b0ebf0525d6a89f4398e5f436f72328e6d66e8856"
+  }
+}
