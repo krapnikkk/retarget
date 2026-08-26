@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "package": "3dretarget",
+  "version": "0.7.0",
+  "channel": "local-controlled-preview",
+  "sourceCommit": "2e0781b70208704603aed2d8be322d38cad29df7",
+  "artifact": {
+    "filename": "3dretarget-0.7.0.tgz",
+    "byteLength": 1597804,
+    "sha256": "83585a585e767a06a40745ab2b5e6dd94e7ea4fe97dc097236b87a446aa03582",
+    "trackedByGit": false,
+    "reproducibleRepack": "passed",
+    "containsLicense": true,
+    "containsThirdPartyNotices": true
+  },
+  "toolchain": {
+    "node": "24.11.1",
+    "pnpm": "10.24.0"
+  },
+  "verification": {
+    "frozenInstall": "passed",
+    "verify": {
+      "status": "passed",
+      "testFiles": 57,
+      "tests": 403,
+      "correctnessTestFiles": 21,
+      "correctnessTests": 175,
+      "branchCoveragePercent": 78.55,
+      "packedPublicEntries": 7,
+      "packedBrowserWorkerSmoke": "passed",
+      "packedNodeToolingSmoke": "passed",
+      "packedHumanoidBindingSmoke": "passed",
+      "packedConsumerTypecheck": "passed",
+      "packedBrowserInputProductionBundle": "passed",
+      "packedBrowserInputBundleBytes": 96140,
+      "inputPreparationWorkerIsolation": "passed"
+    },
+    "ecosystem": {
+      "status": "passed",
+      "blender": "5.2.0 LTS",
+      "godot": "4.7.1-stable (official)",
+      "certifiedArtifactSha256": "171bd29bb8b7b7582876ecdbe2eef2b9c18cecaa1e72b64987c7ed79fd3d3eec"
+    },
+    "humanoidBinding": {
+      "status": "passed",
+      "profile": "humanoid-binding-v1",
+      "bareLandmarkArtifactSha256": "f5bf469de31f11c1a85f5940477a4e94da656ee5709e04b06d4c536e6b88ea17",
+      "existingRigArtifactSha256": "1a87575d4f520a557250d3f6b472ab3733254843c51c8be1316cf4f62b726012",
+      "blender": "5.2.0 LTS",
+      "godot": "4.7.1-stable (official)",
+      "nativeChromium": "151.0.0.0",
+      "nativeChromiumArtifactSha256": "fe3c122089e81785618281cabc59d4fee573c5cebda80db5a15d19e0a5bedc7c",
+      "nativeWorkersCreated": 10,
+      "nativeWorkersTerminated": 10
+    },
+    "productionAudit": "no-known-vulnerabilities",
+    "productionDependencyCount": 30,
+    "productionLicenseExpressions": [
+      "Apache-2.0",
+      "MIT"
+    ]
+  }
+}
