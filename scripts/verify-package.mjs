@@ -12,7 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { build as viteBuild } from "vite";
+import { build as viteBuild, createServer } from "vite";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8"));
@@ -282,9 +282,21 @@ try {
     cwd: temporaryRoot,
     stdio: "inherit",
   });
+  const fixtureServer = await createServer({ root, configFile: false, server: { middlewareMode: true },
+    appType: "custom", resolve: { alias: { "@": path.join(root, "src") } } });
+  try {
+    const { bindingFixture } = await fixtureServer.ssrLoadModule("/tests/binding/fixtures.ts");
+    const fixture = await bindingFixture();
+    writeFileSync(path.join(temporaryRoot, "binding-input.glb"), new Uint8Array(fixture.bytes));
+    writeFileSync(path.join(temporaryRoot, "binding-joints.json"), JSON.stringify(fixture.joints));
+  } finally { await fixtureServer.close(); }
+  writeFileSync(path.join(temporaryRoot, "binding-smoke.mjs"), readFileSync(path.join(root, "scripts/package-smoke/humanoid-binding.mjs")));
+  execFileSync(process.execPath, [path.join(temporaryRoot, "binding-smoke.mjs")], { cwd: temporaryRoot, stdio: "inherit" });
   writeFileSync(path.join(temporaryRoot, "smoke.ts"), [
     'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "3dretarget";',
     'import { importBVH, importGLTFAnimationBytes } from "3dretarget/io";',
+    'import { processHumanoidBinding } from "3dretarget/io";',
+    'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "3dretarget";',
     'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "3dretarget/node";',
     'import { getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline } from "3dretarget/browser";',
     'import { prepareBrowserAssetInput, type BrowserInputSelection } from "3dretarget/browser/input";',
@@ -305,6 +317,11 @@ try {
     'void clip;',
     'const inferredJob = runRetargetJob({ type: "import-motion", formatId: "bvh", filename: "typing.bvh", bytes: new ArrayBuffer(0) });',
     'inferredJob.then((result) => { const duration: number = result.duration; void duration; });',
+    'const bindingBytes = new ArrayBuffer(0);',
+    'processHumanoidBinding(bindingBytes, { operation: "fit", pose: "t-pose", forward: "+z" }).then((snapshot: HumanoidBindingSnapshot) => {',
+    '  runRetargetJob({ type: "humanoid-binding", bytes: bindingBytes, command: { operation: "export", snapshot, expectedRevision: snapshot.revision } }).then((output: HumanoidBindingExport) => { const bytes: Uint8Array = output.bytes; void bytes; });',
+    '  runNodeToolJob({ type: "humanoid-binding", bytes: bindingBytes, command: { operation: "skin", snapshot, expectedRevision: snapshot.revision } }).then((value) => { if (value.ok) { const next: HumanoidBindingSnapshot = value.result; void next; } });',
+    '});',
     'const preparedInput = prepareBrowserAssetInput(new File([], "renamed.input"), { role: "motion", budget: { maxProbeBytes: 4096 }, onProgress: ({ phase }) => { const stablePhase: "discover" | "read" | "probe" | "unpack" | "resolve" | "complete" = phase; void stablePhase; } });',
     'preparedInput.then((prepared) => { const selection: BrowserInputSelection = prepared.selection; prepared.dispose(); void selection; });',
     '',

@@ -1,4 +1,5 @@
 import { Quaternion } from "three";
+import { skinFirstNodeIndices } from "@/core/skin-node-order";
 import type {
   RetargetedMotionClip,
   TargetBoundSolvedHumanoidMotionClip,
@@ -391,7 +392,8 @@ function resolveRawHumanoidNodeIndices(
       }
     }
   }
-  for (const [index, node] of nodes.entries()) {
+  for (const index of skinFirstNodeIndices(json, nodes)) {
+    const node = nodes[index];
     const name = typeof node.name === "string" ? node.name : "";
     const bone = aliases.get(normalizeBoneAlias(name));
     if (bone && !result.has(bone)) {

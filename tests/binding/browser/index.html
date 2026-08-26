@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humanoid binding browser verification</title>
+<style>
+body { max-width: 960px; margin: 36px auto; padding: 0 24px; font: 16px/1.5 system-ui; color: #182635; background: #f4f6f8; }
+button { padding: 12px 20px; font: inherit; cursor: pointer; } pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+canvas { width: 480px; max-width: 100%; } #status { font-weight: 600; }
+</style>
+<h1>Humanoid binding — real browser checks</h1>
+<p>Built public API, native module Workers, CC0 fixture. Local only; experimental geometric baseline.</p>
+<button id="run">Run browser checks</button>
+<p id="status" role="status">Ready</p>
+<p id="progress"></p>
+<div id="preview"></div>
+<pre id="report"></pre>
+<script type="module" src="./main.js"></script>
+</html>

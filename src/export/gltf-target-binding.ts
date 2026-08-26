@@ -5,6 +5,7 @@ import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertHumanoidTargetIdentity,
   createHumanoidRigSignature,
+  readBindingRigRevision,
   type HumanoidBoneName,
   type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
@@ -72,6 +73,8 @@ export function createGLTFHumanoidRigSignature(
         parentBone,
         worldPosition: node.getWorldTranslation(),
         worldQuaternion: node.getWorldRotation(),
+        bindingRevision: readBindingRigRevision(node.getExtras()),
+        worldScale: node.getWorldScale(),
       };
     }),
   );

@@ -20,6 +20,7 @@ import { convertMMDModelToGLBDocument } from "@/export/avatar-conversion";
 import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
 import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
 import { resolveProfileBoneName } from "@/import/humanoid-motion";
+import { skinFirstNodeIndices } from "@/core/skin-node-order";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
 import { isTextGLTF, readGLTFDocument } from "@/import/gltf-document";
 import { createTransferableAssetPackageResolver } from "@/import/asset-package";
@@ -34,6 +35,7 @@ import {
   REQUIRED_VRM_BONES,
   HUMANOID_BONES,
   createHumanoidRigSignature,
+  readBindingRigRevision,
   createRetargetError,
   isHumanoidBoneName,
   type HumanoidBoneName,
@@ -282,7 +284,8 @@ function collectRawHumanoidNodeIndices(
       }
     }
   }
-  for (const [index, node] of nodes.entries()) {
+  for (const index of skinFirstNodeIndices(json, nodes)) {
+    const node = nodes[index];
     if (typeof node.name !== "string") continue;
     const bone = aliases.get(normalizeBoneAlias(node.name));
     if (bone && !result.has(bone)) result.set(bone, index);
@@ -455,6 +458,8 @@ function createObjectRigSignature(
         parentBone,
         worldPosition: [position.x, position.y, position.z],
         worldQuaternion: [rotation.x, rotation.y, rotation.z, rotation.w],
+        bindingRevision: readBindingRigRevision(object.userData),
+        worldScale: object.getWorldScale(new Vector3()).toArray(),
       };
     }),
   );

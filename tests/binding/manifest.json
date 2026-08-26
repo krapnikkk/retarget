@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "profile": "humanoid-binding-v1",
+  "algorithm": "surface-heat-v1",
+  "iterations": 32,
+  "source": {
+    "path": "tests/fixtures/certification/golden-motion/characters/studio-mannequin-male/studio-mannequin-male.glb",
+    "sha256": "cb67d0ade736bb4a6c915a93a3efcfc0aefe0a3774faf11a573465690c79d0c6",
+    "license": "CC0-1.0",
+    "creator": "Quaternius",
+    "sourceUrl": "https://quaternius.com/packs/universalanimationlibrary.html"
+  },
+  "motion": {
+    "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.animation.glb",
+    "sha256": "d822f2801e2bae22f5780d86c69cb6cef722df99352fbb5ad24e7c4622d233d8",
+    "license": "CC0-1.0",
+    "creator": "Quaternius",
+    "sourceUrl": "https://quaternius.itch.io/universal-animation-library"
+  },
+  "qualityLimits": { "rmsHeight": 0.03, "p95Height": 0.08, "maxHeight": 0.20 },
+  "cases": [
+    { "id": "mannequin-landmark-surface-heat-v1", "path": "bare-landmark" },
+    { "id": "mannequin-existing-rig-surface-heat-v1", "path": "existing-rig" }
+  ]
+}

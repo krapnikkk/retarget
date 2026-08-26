@@ -22,6 +22,7 @@ const rules = [
   {
     sourceLayers: [
       "core",
+      "binding",
       "profiles",
       "retarget",
       "rig-motion",

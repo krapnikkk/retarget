@@ -39,6 +39,10 @@ Worker tasks are discriminated messages. `RetargetJobResult<TTask>` maps every
 task to its result type, public failures use the single `RetargetErrorCode`
 registry, and transferable inputs retain structural validation before parsing.
 Product-specific byte and time limits are opt-in consumer policy.
+The experimental [humanoid binding](humanoid-binding.md) task separates fitting,
+rig/weight editing, skinning, validation and GLB export. It shares versioned
+byte/JSON snapshots across browser and Node isolation; trusted tools can use
+the explicit `processHumanoidBinding` inline IO operation.
 Avatar exporters accept `TargetBoundSolvedHumanoidMotionClip`, whose target rig
 signature prevents a solved clip from being silently rebound to another rig.
 

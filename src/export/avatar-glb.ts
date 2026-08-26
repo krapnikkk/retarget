@@ -115,7 +115,9 @@ export function collectHumanoidNodes(document: Document) {
     }
   }
 
-  for (const node of document.getRoot().listNodes()) {
+  const allNodes = document.getRoot().listNodes();
+  const activeJoints = new Set(allNodes.flatMap((node) => node.getSkin()?.listJoints() ?? []));
+  for (const node of [...allNodes.filter((node) => activeJoints.has(node)), ...allNodes]) {
     const bone = aliases.get(normalizeBoneAlias(node.getName()));
     if (bone && !nodesByBone.has(bone)) {
       nodesByBone.set(bone, node);

@@ -27,6 +27,8 @@ if (!certificationCase) {
 }
 
 const mode = process.argv[2];
+const binding = process.argv.includes("--binding");
+const bindingManifest = binding ? readJSON(path.join(root, "tests/binding/manifest.json")) : undefined;
 if (mode !== "--check" && mode !== "--update") {
   throw new Error("Use --check or --update.");
 }
@@ -36,7 +38,12 @@ const godot = findGodot();
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), "3dretarget-ecosystem-"));
 
 try {
-  const artifactPath = path.join(temporaryRoot, pins.artifactFilename);
+  if (binding) runPnpm(["exec", "vitest", "run", "tests/binding/ecosystem.test.ts"], {
+    ...process.env, RETARGET_BINDING_ARTIFACT_DIR: temporaryRoot,
+  });
+  for (const caseId of binding ? bindingManifest.cases.map((entry) => entry.id) : [pins.caseId]) {
+  const artifactPath = path.join(temporaryRoot, binding ? `${caseId}.animated.glb` : pins.artifactFilename);
+  if (!binding) {
   runPnpm(
     ["exec", "vitest", "run", "tests/certification/generate-ecosystem-artifact.test.ts"],
     {
@@ -44,6 +51,7 @@ try {
       RETARGET_ECOSYSTEM_ARTIFACT_PATH: artifactPath,
     },
   );
+  }
   const artifactBytes = readFileSync(artifactPath);
   const artifactSha256 = sha256(artifactBytes);
 
@@ -60,6 +68,7 @@ try {
       blenderResultPath,
       pins.blender.version,
       pins.blender.buildHash,
+      ...(binding ? ["--require-deformation"] : []),
     ],
     inheritedExecutionOptions(),
   );
@@ -108,7 +117,12 @@ try {
     }
   }
 
-  const receipt = {
+  const receipt = binding ? {
+    schemaVersion: 1, caseId,
+    evidence: readJSON(path.join(temporaryRoot, `${caseId}.evidence.json`)),
+    requiredRuntimes: ["blender", "godot"],
+    runtimes: { blender: blenderResult, godot: godotResult }, status: "passed",
+  } : {
     schemaVersion: 1,
     caseId: certificationCase.id,
     pipeline: {
@@ -138,22 +152,23 @@ try {
     status: "passed",
   };
   const serialized = stableJSON(receipt);
-  const receiptPath = path.join(root, ...pins.receiptPath.split("/"));
+  const relativeReceiptPath = binding ? `tests/binding/receipts/${caseId}.json` : pins.receiptPath;
+  const receiptPath = path.join(root, ...relativeReceiptPath.split("/"));
 
   if (mode === "--update") {
     mkdirSync(path.dirname(receiptPath), { recursive: true });
     writeFileSync(receiptPath, serialized);
     console.log(
-      `[updated] ${pins.receiptPath} sha256=${sha256(Buffer.from(serialized))}`,
+      `[updated] ${relativeReceiptPath} sha256=${sha256(Buffer.from(serialized))}`,
     );
   } else {
     if (!existsSync(receiptPath)) {
-      throw new Error(`Missing pinned ecosystem receipt ${pins.receiptPath}`);
+      throw new Error(`Missing pinned ecosystem receipt ${relativeReceiptPath}`);
     }
     const current = readFileSync(receiptPath, "utf8");
     if (current !== serialized) {
       throw new Error(
-        `Pinned ecosystem receipt is stale; run pnpm update:ecosystem-receipt.`,
+        `Pinned ecosystem receipt is stale; run pnpm ${binding ? "update:binding:ecosystem" : "update:ecosystem-receipt"}.`,
       );
     }
     console.log(
@@ -161,8 +176,13 @@ try {
     );
     console.log(`[ok] artifact sha256=${artifactSha256}`);
   }
+  }
 } finally {
-  rmSync(temporaryRoot, { recursive: true, force: true });
+  const resolvedTemporary = path.resolve(temporaryRoot);
+  if (path.dirname(resolvedTemporary) !== path.resolve(tmpdir()) || !path.basename(resolvedTemporary).startsWith("3dretarget-ecosystem-")) {
+    throw new Error("Refusing to remove an unexpected ecosystem temporary directory.");
+  }
+  rmSync(resolvedTemporary, { recursive: true, force: true });
 }
 
 function runPnpm(args, env) {

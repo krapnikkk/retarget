@@ -86,6 +86,11 @@ async function executeTask(
   processingBudget: ProcessingBudget,
 ) {
   assertTaskInputSafety(task, processingBudget);
+  if (task.type === "humanoid-binding") {
+    const { executeHumanoidBinding } = await import("@/pipelines/humanoid-binding");
+    return executeHumanoidBinding(task.bytes, task.command, { parseBudget, processingBudget }, report,
+      (phase) => deadline.checkpoint(phase));
+  }
   if (task.type === "inspect-humanoid-avatar") {
     report("parse", 0.08);
     const { inspectHumanoidAvatarBytes } = await import(

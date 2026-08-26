@@ -6,6 +6,8 @@ import type {
 } from "@/formats";
 import { RETARGET_ERROR_CODES, RetargetError } from "@/retarget/errors";
 import { HUMANOID_BONES } from "@/retarget/types";
+import { assertHumanoidBindingTask, validateBindingSnapshot } from "@/binding/contracts";
+import type { HumanoidBindingSnapshot } from "@/binding/types";
 import {
   assertMotionProcessingBudget,
   assertOutputBytes,
@@ -27,6 +29,7 @@ import {
 } from "./types";
 
 const TASK_TYPES = new Set<RetargetJobTask["type"]>([
+  "humanoid-binding",
   "inspect-humanoid-avatar",
   "convert-mmd-avatar",
   "inspect-rigged-gltf",
@@ -192,6 +195,9 @@ export function assertRetargetJobResponse(
 
 function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
   switch (task.type) {
+    case "humanoid-binding":
+      assertHumanoidBindingTask(task);
+      return;
     case "inspect-humanoid-avatar":
       assertExactKeys(task, [
         "type",
@@ -377,6 +383,21 @@ function assertTaskResult(
 ) {
   try {
     switch (task.type) {
+      case "humanoid-binding": {
+        const value = asRecord(result, "humanoid-binding result");
+        if (task.command.operation === "inspect") {
+          if (value.schemaVersion !== 1 || !isRecord(value.asset) || !isRecord(value.bounds) || !Array.isArray(value.diagnostics)) protocolError("Invalid binding inspection.");
+        } else if (task.command.operation === "export") {
+          if (!(value.bytes instanceof Uint8Array) || typeof value.rigRevision !== "string" ||
+            value.snapshotRevision !== task.command.expectedRevision || !isRecord(value.validation) || value.validation.ok !== true) protocolError("Invalid binding export.");
+          assertOutputBytes(value.bytes.byteLength, budget);
+        } else if (task.command.operation === "validate") {
+          if (typeof value.ok !== "boolean" || !isRecord(value.structural) || !isRecord(value.semantic)) protocolError("Invalid binding validation.");
+        } else {
+          validateBindingSnapshot(value as HumanoidBindingSnapshot);
+        }
+        return;
+      }
       case "convert-mmd-avatar":
       case "export-motion":
         if (!(result instanceof Uint8Array)) {
@@ -399,7 +420,9 @@ function assertTaskResult(
       }
       case "inspect-humanoid-avatar": {
         const record = asRecord(result, "inspect-humanoid-avatar result");
-        assertBoundedString(record.rigSignature, "avatar rigSignature", 1024);
+        // humanoid-rest-v1 retains canonical per-bone evidence, not a short
+        // hash. Bound by the role count and serialized transform/revision size.
+        assertBoundedString(record.rigSignature, "avatar rigSignature", HUMANOID_BONES.length * 512 + 1024);
         if (!Array.isArray(record.bones) || !isRecord(record.skeleton)) {
           protocolError("inspect-humanoid-avatar result is invalid.");
         }

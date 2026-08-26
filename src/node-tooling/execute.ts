@@ -105,6 +105,17 @@ async function executeTask(
   diagnostics: NodeToolDiagnostic[],
   report: NodeToolReporter,
 ): Promise<unknown> {
+  if (task.type === "humanoid-binding") {
+    const { executeHumanoidBinding } = await import("@/pipelines/humanoid-binding");
+    return executeHumanoidBinding(task.bytes, task.command, {
+      parseBudget: { maxInputBytes: budget.maxInputBytes,
+        ...(budget.maxVertices === undefined ? {} : { maxVertices: budget.maxVertices }),
+        ...(budget.maxIndices === undefined ? {} : { maxIndices: budget.maxIndices }) },
+      processingBudget: { maxOutputBytes: budget.maxOutputBytes,
+        ...(budget.maxGeneratedValues === undefined ? {} : { maxGeneratedValues: budget.maxGeneratedValues }) },
+    }, (phase, progress) => report(phase === "solve" || phase === "refine" || phase === "export" ? "author" : phase, progress),
+    (phase) => deadline.checkpoint(phase));
+  }
   if (task.type === "inspect-rigged-gltf") {
     report("parse", 0.12);
     const document = await readTaskGLTF(task.bytes, task.resources);
@@ -243,6 +254,9 @@ async function executeTask(
 
 function validateTaskInputs(task: NodeToolTask, budget: NodeToolBudget) {
   let totalInputBytes = 0;
+  if (task.type === "humanoid-binding" && task.command.operation === "validate" && task.command.outputBytes !== task.bytes) {
+    totalInputBytes += task.command.outputBytes.byteLength;
+  }
   if ("bytes" in task) {
     assertInputByteLength(
       task.bytes.byteLength,
@@ -250,6 +264,7 @@ function validateTaskInputs(task: NodeToolTask, budget: NodeToolBudget) {
       `node-tool:${task.type}`,
     );
     totalInputBytes += task.bytes.byteLength;
+    assertInputByteLength(totalInputBytes, budget.maxInputBytes, `node-tool:${task.type}:combined-input`);
   }
   if ("canonicalGLBBytes" in task) {
     assertInputByteLength(

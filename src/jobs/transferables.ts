@@ -16,6 +16,10 @@ export function collectRetargetTaskTransfers(
   ) => addResources(assetPackage?.resources);
 
   switch (task.type) {
+    case "humanoid-binding":
+      add(task.bytes);
+      if (task.command.operation === "validate") add(task.command.outputBytes);
+      break;
     case "inspect-humanoid-avatar":
       add(task.bytes);
       add(task.structuralJSONBytes);
@@ -53,6 +57,8 @@ export function collectRetargetResultTransfers(
   task: RetargetJobTask,
   result: unknown,
 ): ArrayBuffer[] {
+  if (task.type === "humanoid-binding" && result && typeof result === "object" && "bytes" in result &&
+    result.bytes instanceof Uint8Array && result.bytes.buffer instanceof ArrayBuffer) return [result.bytes.buffer];
   if (
     (task.type === "convert-mmd-avatar" || task.type === "export-motion") &&
     result instanceof Uint8Array &&

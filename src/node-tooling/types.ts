@@ -1,4 +1,5 @@
 import type { CapabilityAssurance } from "@/formats";
+import type { HumanoidBindingTask, HumanoidBindingResult } from "@/binding/types";
 import type { RigMotionAction } from "@/import/rig-motion-gltf";
 import type {
   RetargetErrorCode,
@@ -15,6 +16,9 @@ import type {
 } from "@/jobs/types";
 
 export type NodeToolBudget = {
+  maxVertices?: number;
+  maxIndices?: number;
+  maxGeneratedValues?: number;
   maxInputBytes: number;
   maxOutputBytes: number;
   maxArchiveEntries: number;
@@ -102,6 +106,7 @@ export type NodeRigMotionImportResult = {
 };
 
 export type NodeToolTask =
+  | HumanoidBindingTask
   | {
       type: "inspect-rigged-gltf";
       bytes: ArrayBuffer;
@@ -152,7 +157,8 @@ export type NodeToolTask =
     };
 
 export type NodeToolTaskResult<TTask extends NodeToolTask> =
-  TTask extends { type: "inspect-rigged-gltf" }
+  TTask extends HumanoidBindingTask ? HumanoidBindingResult<TTask["command"]>
+  : TTask extends { type: "inspect-rigged-gltf" }
     ? { inspection: SerializedRigInspection; actions: RigMotionAction[] }
     : TTask extends { type: "import-rig-motion-gltf" }
       ? NodeRigMotionImportResult

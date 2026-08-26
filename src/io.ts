@@ -1,4 +1,6 @@
 import { importGLTFAnimation } from "./import/gltf-animation";
+export { processHumanoidBinding } from "./pipelines/humanoid-binding";
+export type * from "./binding/types";
 
 export { importBVH } from "./import/bvh";
 export { importFBXHumanoidMotionBytes } from "./import/fbx-motion";

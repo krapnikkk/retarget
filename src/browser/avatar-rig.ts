@@ -5,6 +5,7 @@ import {
   Matrix4,
   Object3D,
   Quaternion,
+  SkinnedMesh,
   Vector3,
 } from "three";
 import type { VRM, VRMHumanBoneName } from "@pixiv/three-vrm";
@@ -26,11 +27,13 @@ import {
   REQUIRED_VRM_BONES,
   createRetargetError,
   createHumanoidRigSignature,
+  readBindingRigRevision,
   isHumanoidBoneName,
   type HumanoidBoneName,
   type RetargetSkeletonNode,
 } from "@/retarget";
 import { resolveProfileBoneName } from "@/import/humanoid-motion";
+import { skinFirstNodeIndices } from "@/core/skin-node-order";
 import {
   createAssetResourceScope,
   type AssetResourceScope,
@@ -231,6 +234,7 @@ export async function loadStructuralGLBScene(
   const nodes = nodesJSON.map((node, index) => {
     const object = new Bone();
     object.name = typeof node.name === "string" ? node.name : `node-${index}`;
+    if (node.extras && typeof node.extras === "object") object.userData = structuredClone(node.extras);
     applyGLTFNodeTransform(object, node);
     return object;
   });
@@ -298,7 +302,9 @@ function collectStructuralHumanoidBones(
     }
   }
   if (bones.size === 0) {
-    for (const object of nodes) {
+    const rawNodes = Array.isArray(json.nodes) ? json.nodes as Record<string, unknown>[] : [];
+    for (const index of skinFirstNodeIndices(json, rawNodes)) {
+      const object = nodes[index];
       const bone = resolveProfileBoneName(profile, object.name);
       if (bone && !bones.has(bone)) bones.set(bone, object);
     }
@@ -435,6 +441,13 @@ function loadObjectRig({
   const bones = new Map<HumanoidBoneName, Object3D>();
   root.updateMatrixWorld(true);
   root.traverse((object) => {
+    if (!(object instanceof SkinnedMesh)) return;
+    for (const joint of object.skeleton.bones) {
+      const bone = resolveProfileBoneName(profile, joint.name);
+      if (bone && !bones.has(bone)) bones.set(bone, joint);
+    }
+  });
+  root.traverse((object) => {
     const bone = resolveProfileBoneName(profile, object.name);
     if (bone && !bones.has(bone)) {
       bones.set(bone, object);
@@ -520,6 +533,8 @@ function createObjectRigSignature(
         parentBone,
         worldPosition: [position.x, position.y, position.z],
         worldQuaternion: [rotation.x, rotation.y, rotation.z, rotation.w],
+        bindingRevision: readBindingRigRevision(object.userData),
+        worldScale: object.getWorldScale(new Vector3()).toArray(),
       };
     }),
   );

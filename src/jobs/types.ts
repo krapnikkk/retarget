@@ -38,6 +38,7 @@ import type {
 import type { SemanticMotionValidationResult } from "@/validation";
 import type { ParseBudget } from "@/import/parse-budget";
 import type { ProcessingBudget } from "@/processing-budget";
+import type { HumanoidBindingTask, HumanoidBindingResult } from "@/binding/types";
 
 export type RetargetJobPhase =
   | "validate"
@@ -95,6 +96,7 @@ export type SerializedHumanoidAvatarRig = {
 };
 
 export type RetargetJobTask =
+  | HumanoidBindingTask
   | {
       type: "inspect-humanoid-avatar";
       bytes: ArrayBuffer;
@@ -171,7 +173,8 @@ export type RetargetJobTask =
     };
 
 export type RetargetJobResult<TTask extends RetargetJobTask> =
-  TTask extends { type: "inspect-humanoid-avatar" }
+  TTask extends HumanoidBindingTask ? HumanoidBindingResult<TTask["command"]>
+  : TTask extends { type: "inspect-humanoid-avatar" }
     ? SerializedHumanoidAvatarRig
     : TTask extends { type: "convert-mmd-avatar" }
       ? Uint8Array

@@ -10,6 +10,9 @@ export type HumanoidRigIdentityBone = {
   parentBone?: HumanoidBoneName;
   worldPosition: readonly [number, number, number];
   worldQuaternion: readonly [number, number, number, number];
+  /** Editing identity for SDK-authored binding rigs; absent for legacy rigs. */
+  bindingRevision?: string;
+  worldScale?: readonly [number, number, number];
 };
 
 const SIGNATURE_PREFIX = "humanoid-rest-v1:";
@@ -32,9 +35,22 @@ export function createHumanoidRigSignature(
       parentBone: entry.parentBone ?? null,
       position: entry.worldPosition.map(normalizeNumber),
       rotation: normalizeQuaternion(entry.worldQuaternion).map(normalizeNumber),
+      ...(entry.bindingRevision ? { binding: {
+        revision: readBindingRigRevision({ humanoidBindingRigRevision: entry.bindingRevision }),
+        scale: (entry.worldScale ?? [1, 1, 1]).map(normalizeNumber),
+      } } : {}),
     }];
   });
   return `${SIGNATURE_PREFIX}${JSON.stringify({ profileId, bones: evidence })}`;
+}
+
+export function readBindingRigRevision(extras: unknown): string | undefined {
+  if (!extras || typeof extras !== "object" || !("humanoidBindingRigRevision" in extras)) return undefined;
+  const revision = extras.humanoidBindingRigRevision;
+  if (typeof revision !== "string" || !/^[0-9a-f]{64}$/.test(revision)) {
+    throw new RetargetError("TARGET_RIG_INVALID", { message: "Invalid humanoid binding rig revision." });
+  }
+  return revision;
 }
 
 export function assertHumanoidTargetIdentity(

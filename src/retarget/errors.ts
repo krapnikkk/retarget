@@ -51,6 +51,12 @@ export const RETARGET_ERROR_CODES = [
   "TARGET_REQUIRED_CHAIN_MISSING",
   "ARTIFACT_INVALID",
   "ARTIFACT_AUTHORING_FAILED",
+  "BINDING_INPUT_UNSUPPORTED",
+  "BINDING_LANDMARKS_REQUIRED",
+  "BINDING_RIG_INVALID",
+  "BINDING_EDIT_STALE",
+  "BINDING_WEIGHTS_INVALID",
+  "BINDING_CONSTRAINT_CONFLICT",
   "OPERATION_CANCELLED",
 ] as const;
 
@@ -112,6 +118,12 @@ export const RETARGET_ERROR_MESSAGES: Record<RetargetErrorCode, string> = {
   TARGET_REQUIRED_CHAIN_MISSING: "The mapping does not cover a required target chain.",
   ARTIFACT_INVALID: "The authored or supplied artifact is invalid.",
   ARTIFACT_AUTHORING_FAILED: "The artifact could not be authored and validated.",
+  BINDING_INPUT_UNSUPPORTED: "The model is outside the supported humanoid binding profile.",
+  BINDING_LANDMARKS_REQUIRED: "The geometry does not provide sufficient fitting evidence; supply anatomical landmarks.",
+  BINDING_RIG_INVALID: "The binding skeleton or joint edit is invalid.",
+  BINDING_EDIT_STALE: "The binding edit belongs to a different asset, topology, or revision.",
+  BINDING_WEIGHTS_INVALID: "The binding weights or weight edit are invalid.",
+  BINDING_CONSTRAINT_CONFLICT: "The binding weight constraints cannot be satisfied.",
   OPERATION_CANCELLED: "The operation was cancelled.",
 };
 

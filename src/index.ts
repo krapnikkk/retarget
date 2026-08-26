@@ -3,6 +3,7 @@ export * as profiles from "./profiles";
 export * as retarget from "./retarget";
 export * as rigMotion from "./rig-motion";
 export * as rigs from "./rigs/public";
+export type * from "./binding/types";
 
 export { createRetargetError, isRetargetError } from "./retarget";
 export type {

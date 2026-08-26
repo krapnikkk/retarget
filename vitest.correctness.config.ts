@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: [
+      "tests/binding/**/*.test.ts",
       "tests/export/gltf-target-binding.test.ts",
       "tests/import/phase3-motion.test.ts",
       "tests/retarget/**/*.test.ts",
@@ -18,6 +19,12 @@ export default defineConfig({
       reporter: ["text", "json-summary"],
       reportsDirectory: "coverage/correctness",
       include: [
+        "src/binding/contracts.ts",
+        "src/binding/rig.ts",
+        "src/binding/weights.ts",
+        "src/import/binding-glb.ts",
+        "src/export/humanoid-binding-glb.ts",
+        "src/validation/binding-deformation.ts",
         "src/import/rig-motion-gltf.ts",
         "src/retarget/pose-sampler.ts",
         "src/retarget/source-normalization.ts",

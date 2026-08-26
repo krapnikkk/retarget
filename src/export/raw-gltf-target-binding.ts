@@ -4,6 +4,7 @@ import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
 import {
   assertHumanoidTargetIdentity,
   createHumanoidRigSignature,
+  readBindingRigRevision,
   type HumanoidBoneName,
   type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
@@ -65,6 +66,7 @@ export function bindCanonicalClipToRawGLTFTarget(
   assertHumanoidTargetIdentity(
     clip,
     createRawGLTFHumanoidRigSignature({
+      nodes,
       nodesByBone,
       parents,
       profileId: profile?.id ?? "unknown",
@@ -84,11 +86,13 @@ export function bindCanonicalClipToRawGLTFTarget(
 }
 
 function createRawGLTFHumanoidRigSignature({
+  nodes,
   nodesByBone,
   parents,
   profileId,
   getWorldMatrix,
 }: {
+  nodes: readonly RawGLTFNode[];
   nodesByBone: ReadonlyMap<HumanoidBoneName, number>;
   parents: ReadonlyMap<number, number>;
   profileId: string;
@@ -114,6 +118,8 @@ function createRawGLTFHumanoidRigSignature({
         parentBone,
         worldPosition: [position.x, position.y, position.z],
         worldQuaternion: [rotation.x, rotation.y, rotation.z, rotation.w],
+        bindingRevision: readBindingRigRevision(nodes[index].extras),
+        worldScale: new Vector3().setFromMatrixScale(getWorldMatrix(index)).toArray(),
       };
     }),
   );
@@ -142,6 +148,7 @@ export function inspectRawGLTFHumanoidRigSignature(
     return world;
   };
   return createRawGLTFHumanoidRigSignature({
+    nodes,
     nodesByBone,
     parents,
     profileId,

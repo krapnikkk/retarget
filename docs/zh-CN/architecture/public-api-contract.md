@@ -15,6 +15,8 @@
 
 Worker task 使用判别联合消息，`RetargetJobResult<TTask>` 将每种 task 映射到对应结果类型；公开失败统一使用 `RetargetErrorCode` 注册表，可转移输入在进入解析前保留结构校验。产品特定的字节和时间限制属于消费端可选策略。
 
+实验性的[人形绑定任务](humanoid-binding.md)将拟合、骨架/权重修正、蒙皮、校验及 GLB 导出分开调用。浏览器与 Node 隔离执行共享版本化字节/JSON 快照；受信任工具可使用显式 `processHumanoidBinding` 内联 IO 操作。
+
 Avatar exporter 只接受 `TargetBoundSolvedHumanoidMotionClip`；该类型要求携带目标骨架签名，避免已求解动作被静默重新绑定到另一套骨架。
 
 内部 parser、场景/文档对象、原始目标绑定变换、ZIP helper 和单格式 adapter 都不是公开捷径。新用例必须先形成粗粒度契约，不能为了方便直接导出内部文件。

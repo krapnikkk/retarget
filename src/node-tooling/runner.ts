@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { Worker } from "node:worker_threads";
 import { isRetargetError } from "@/retarget";
+import { assertHumanoidBindingTask } from "@/binding/contracts";
+import { assertCountWithinBudget } from "@/import/parse-budget";
 import { resolveNodeToolBudget } from "./budget";
 import type {
   NodeToolError,
@@ -35,7 +37,12 @@ export async function runNodeToolJob<TTask extends NodeToolTask>(
 
   let budget;
   try {
+    if (task.type === "humanoid-binding") assertHumanoidBindingTask(task);
     budget = resolveNodeToolBudget(options.budget);
+    if (task.type === "humanoid-binding") {
+      assertCountWithinBudget(collectNodeTaskTransfers(task).reduce((sum, bytes) => sum + bytes.byteLength, 0),
+        budget.maxInputBytes, "binding task input bytes before cloning");
+    }
   } catch (cause) {
     return failure(jobId, serializeLocalError(cause));
   }
@@ -138,6 +145,10 @@ function collectNodeTaskTransfers(task: NodeToolTask): ArrayBuffer[] {
   };
 
   switch (task.type) {
+    case "humanoid-binding":
+      add(task.bytes);
+      if (task.command.operation === "validate") add(task.command.outputBytes);
+      break;
     case "inspect-rigged-gltf":
     case "import-rig-motion-gltf":
       add(task.bytes);

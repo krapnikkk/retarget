@@ -48,6 +48,8 @@ function post(
 }
 
 function collectResultTransfers(result: unknown): ArrayBuffer[] {
+  if (result && typeof result === "object" && "bytes" in result && result.bytes instanceof Uint8Array &&
+    result.bytes.buffer instanceof ArrayBuffer) return [result.bytes.buffer];
   if (!result || typeof result !== "object" || !("artifact" in result)) {
     return [];
   }

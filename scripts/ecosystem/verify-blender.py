@@ -14,7 +14,7 @@ def user_args():
     except ValueError as error:
         raise RuntimeError("Expected Blender verifier arguments after --") from error
     args = sys.argv[separator + 1 :]
-    if len(args) != 4:
+    if len(args) not in (4, 5) or (len(args) == 5 and args[4] != "--require-deformation"):
         raise RuntimeError(
             "Expected artifact path, result path, Blender version, and build hash"
         )
@@ -45,7 +45,9 @@ def changed_value_count(reference, candidate, epsilon=1e-6):
 
 
 def main():
-    artifact_arg, result_arg, expected_version, expected_build_hash = user_args()
+    args = user_args()
+    artifact_arg, result_arg, expected_version, expected_build_hash = args[:4]
+    require_deformation = len(args) == 5
     artifact_path = pathlib.Path(artifact_arg).resolve()
     result_path = pathlib.Path(result_arg).resolve()
     result_path.parent.mkdir(parents=True, exist_ok=True)
@@ -76,6 +78,11 @@ def main():
 
         armatures = [item for item in bpy.data.objects if item.type == "ARMATURE"]
         meshes = [item for item in bpy.data.objects if item.type == "MESH"]
+        if require_deformation:
+            # glTF import may create mesh objects used only as bone widgets.
+            # They are not source geometry and have no armature modifier.
+            bone_widgets = {bone.custom_shape for armature in armatures for bone in armature.pose.bones if bone.custom_shape}
+            meshes = [item for item in meshes if item not in bone_widgets]
         actions = list(bpy.data.actions)
         bone_count = sum(len(item.data.bones) for item in armatures)
         if not armatures or not meshes or not actions or bone_count == 0:
@@ -93,12 +100,27 @@ def main():
             frame_end,
         ]
         snapshots = []
+        vertex_snapshots = []
         for frame in sample_frames:
             bpy.context.scene.frame_set(
                 int(math.floor(frame)), subframe=frame - math.floor(frame)
             )
             bpy.context.view_layer.update()
             snapshots.append(pose_snapshot(armatures))
+            if require_deformation:
+                values = []
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                for item in meshes:
+                    if not any(modifier.type == "ARMATURE" for modifier in item.modifiers):
+                        raise RuntimeError(f"Imported mesh {item.name} has no armature modifier: {[modifier.type for modifier in item.modifiers]}, scenes={len(item.users_scene)}")
+                    evaluated = item.evaluated_get(depsgraph)
+                    mesh = evaluated.to_mesh()
+                    try:
+                        for vertex in mesh.vertices:
+                            values.extend(evaluated.matrix_world @ vertex.co)
+                    finally:
+                        evaluated.to_mesh_clear()
+                vertex_snapshots.append(values)
         changed_values = sum(
             changed_value_count(snapshots[0], snapshot)
             for snapshot in snapshots[1:]
@@ -122,7 +144,14 @@ def main():
                 },
             }
         )
+        if require_deformation:
+            changed_vertices = sum(changed_value_count(vertex_snapshots[0], sample) for sample in vertex_snapshots[1:])
+            if changed_vertices == 0:
+                raise RuntimeError("Blender animation did not deform mesh vertices")
+            result["checks"]["evaluatedVerticesPerSample"] = len(vertex_snapshots[0]) // 3
+            result["checks"]["changedVertexValues"] = changed_vertices
     except Exception as error:
+        result["status"] = "failed"
         result["error"] = str(error)
         result_path.write_text(
             json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8"
