@@ -6,7 +6,12 @@ import type {
 } from "@/formats";
 import { RETARGET_ERROR_CODES, RetargetError } from "@/retarget/errors";
 import { HUMANOID_BONES } from "@/retarget/types";
-import { assertHumanoidBindingTask, validateBindingSnapshot } from "@/binding/contracts";
+import {
+  assertHumanoidBindingTask,
+  assertHumanoidBindingTaskCooperatively,
+  validateBindingSnapshot,
+  validateBindingSnapshotCooperatively,
+} from "@/binding/contracts";
 import type { HumanoidBindingSnapshot } from "@/binding/types";
 import {
   assertMotionProcessingBudget,
@@ -20,6 +25,10 @@ import {
   resolveParseBudget,
 } from "@/import/parse-budget";
 import { collectRetargetTaskTransfers } from "./transferables";
+import {
+  unpackHumanoidBindingSnapshotResult,
+  usesHumanoidBindingSnapshotTransport,
+} from "./humanoid-binding-snapshot-transport";
 import {
   RETARGET_JOB_PROTOCOL_VERSION,
   type RetargetJobBudget,
@@ -90,6 +99,22 @@ const PROGRESS_PHASES = new Set([
 export function assertRetargetJobRequest(
   value: unknown,
 ): asserts value is RetargetJobRequest {
+  const { task, parseBudget, processingBudget } = inspectRetargetJobRequest(value);
+  assertTaskFields(task, processingBudget);
+  assertTaskTransferBudget(task, parseBudget);
+}
+
+export async function assertRetargetJobRequestCooperatively(
+  value: unknown,
+  yieldControl: () => Promise<void>,
+): Promise<void> {
+  const { task, parseBudget, processingBudget } = inspectRetargetJobRequest(value);
+  if (task.type === "humanoid-binding") await assertHumanoidBindingTaskCooperatively(task, yieldControl);
+  else assertTaskFields(task, processingBudget);
+  assertTaskTransferBudget(task, parseBudget);
+}
+
+function inspectRetargetJobRequest(value: unknown) {
   const request = asRecord(value, "Worker request");
   assertExactKeys(
     request,
@@ -116,14 +141,17 @@ export function assertRetargetJobRequest(
     protocolError("Worker request task discriminator is unsupported.");
   }
   const typedTask = task as unknown as RetargetJobTask;
-  assertTaskFields(typedTask, processingBudget);
+  return { task: typedTask, parseBudget, processingBudget };
+}
+
+function assertTaskTransferBudget(task: RetargetJobTask, parseBudget: ReturnType<typeof resolveParseBudget>) {
   assertInputWithinBudget(
-    collectRetargetTaskTransfers(typedTask).reduce(
+    collectRetargetTaskTransfers(task).reduce(
       (total, buffer) => total + buffer.byteLength,
       0,
     ),
     parseBudget,
-    { section: `${typedTask.type} Worker request` },
+    { section: `${task.type} Worker request` },
   );
 }
 
@@ -191,6 +219,41 @@ export function assertRetargetJobResponse(
     response.result,
     resolveProcessingBudget(request.budget?.processing),
   );
+}
+
+export async function assertRetargetJobResponseCooperatively(
+  value: unknown,
+  request: RetargetJobRequest,
+  yieldControl: () => Promise<void>,
+): Promise<void> {
+  const response = asRecord(value, "Worker response");
+  assertDataProperties(response, "Worker response");
+  if (response.type !== "success" || !usesHumanoidBindingSnapshotTransport(request.task)) {
+    assertRetargetJobResponse(value, request);
+    return;
+  }
+  if (response.schemaVersion !== RETARGET_JOB_PROTOCOL_VERSION || response.jobId !== request.jobId) {
+    protocolError("Worker success response does not match its request.");
+  }
+  assertExactKeys(response, ["schemaVersion", "jobId", "type", "result"], "Worker success response");
+  try {
+    const snapshot = await unpackHumanoidBindingSnapshotResult(
+      response.result,
+      resolveProcessingBudget(request.budget?.processing),
+      yieldControl,
+    );
+    await validateBindingSnapshotCooperatively(
+      snapshot,
+      yieldControl,
+    );
+    response.result = snapshot;
+  } catch (cause) {
+    if (cause instanceof RetargetError && cause.code === "WORKER_PROTOCOL_INVALID") throw cause;
+    throw new RetargetError("WORKER_PROTOCOL_INVALID", {
+      cause,
+      message: "humanoid-binding result failed runtime validation.",
+    });
+  }
 }
 
 function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
@@ -388,11 +451,15 @@ function assertTaskResult(
         if (task.command.operation === "inspect") {
           if (value.schemaVersion !== 1 || !isRecord(value.asset) || !isRecord(value.bounds) || !Array.isArray(value.diagnostics)) protocolError("Invalid binding inspection.");
         } else if (task.command.operation === "export") {
-          if (!(value.bytes instanceof Uint8Array) || typeof value.rigRevision !== "string" ||
-            value.snapshotRevision !== task.command.expectedRevision || !isRecord(value.validation) || value.validation.ok !== true) protocolError("Invalid binding export.");
+          assertExactKeys(value, ["bytes", "snapshotRevision", "rigRevision", "validation"], "Binding export");
+          if (!(value.bytes instanceof Uint8Array) || !isSha256(value.snapshotRevision) || !isSha256(value.rigRevision) ||
+            value.snapshotRevision !== task.command.expectedRevision || value.snapshotRevision !== task.command.snapshot.revision ||
+            value.rigRevision !== task.command.snapshot.rigRevision) protocolError("Invalid binding export identity.");
+          assertGLBContainer(value.bytes);
+          assertBindingValidation(value.validation, true);
           assertOutputBytes(value.bytes.byteLength, budget);
         } else if (task.command.operation === "validate") {
-          if (typeof value.ok !== "boolean" || !isRecord(value.structural) || !isRecord(value.semantic)) protocolError("Invalid binding validation.");
+          assertBindingValidation(value, false);
         } else {
           validateBindingSnapshot(value as HumanoidBindingSnapshot);
         }
@@ -458,6 +525,56 @@ function assertTaskResult(
       message: `${task.type} result failed runtime validation.`,
     });
   }
+}
+
+function assertBindingValidation(value: unknown, requireOk: boolean) {
+  const validation = asRecord(value, "Binding validation");
+  assertExactKeys(validation, ["ok", "assurance", "structural", "semantic", "ecosystem"], "Binding validation");
+  const structural = asRecord(validation.structural, "Binding structural validation");
+  assertExactKeys(structural, ["ok", "issues"], "Binding structural validation");
+  const semantic = asRecord(validation.semantic, "Binding semantic validation");
+  assertExactKeys(semantic, ["ok", "issues", "verticesCompared", "posesCompared", "maxRestPositionError",
+    "maxDeformedPositionError", "tolerance"], "Binding semantic validation");
+  const ecosystem = asRecord(validation.ecosystem, "Binding ecosystem validation");
+  assertExactKeys(ecosystem, ["status"], "Binding ecosystem validation");
+  assertIssueList(structural.issues, "Binding structural issues");
+  assertIssueList(semantic.issues, "Binding semantic issues");
+  if (typeof validation.ok !== "boolean" || validation.assurance !== "experimental" ||
+    typeof structural.ok !== "boolean" || typeof semantic.ok !== "boolean" || ecosystem.status !== "not-run" ||
+    !Number.isSafeInteger(semantic.verticesCompared) || (semantic.verticesCompared as number) < 0 ||
+    !Number.isSafeInteger(semantic.posesCompared) || (semantic.posesCompared as number) < 0 ||
+    ![semantic.maxRestPositionError, semantic.maxDeformedPositionError, semantic.tolerance]
+      .every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0) ||
+    (semantic.tolerance as number) === 0 || validation.ok !== (structural.ok && semantic.ok) ||
+    (structural.ok && (structural.issues as unknown[]).length !== 0) ||
+    (semantic.ok && (semantic.issues as unknown[]).length !== 0) ||
+    (requireOk && (validation.ok !== true || (semantic.verticesCompared as number) === 0 ||
+      (semantic.posesCompared as number) === 0))) {
+    protocolError("Invalid binding validation result.");
+  }
+}
+
+function assertIssueList(value: unknown, label: string) {
+  if (!Array.isArray(value) || value.length > 1024) protocolError(`${label} must be a bounded array.`);
+  for (const item of value) assertBoundedString(item, label, 16_384);
+}
+
+function assertGLBContainer(bytes: Uint8Array) {
+  if (bytes.byteLength < 28) protocolError("Binding export is too short to be a GLB container.");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const jsonLength = view.getUint32(12, true);
+  const binaryHeader = 20 + jsonLength;
+  if (view.getUint32(0, true) !== 0x46546c67 || view.getUint32(4, true) !== 2 ||
+    view.getUint32(8, true) !== bytes.byteLength || jsonLength === 0 || jsonLength % 4 !== 0 ||
+    view.getUint32(16, true) !== 0x4e4f534a || binaryHeader + 8 > bytes.byteLength ||
+    view.getUint32(binaryHeader + 4, true) !== 0x004e4942 ||
+    binaryHeader + 8 + view.getUint32(binaryHeader, true) !== bytes.byteLength) {
+    protocolError("Binding export is not a complete GLB 2.0 container.");
+  }
+}
+
+function isSha256(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9a-f]{64}$/.test(value);
 }
 
 function assertRetargetJobBudget(

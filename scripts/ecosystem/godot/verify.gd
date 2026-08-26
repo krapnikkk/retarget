@@ -75,7 +75,6 @@ func _verify() -> void:
 						snapshots.append(_pose_snapshot(skeletons))
 					var changed_values := _changed_value_count(snapshots[0], snapshots[1])
 					changed_values += _changed_value_count(snapshots[0], snapshots[2])
-					result["diagnostics"]["changedPoseValues"] = changed_values
 					if changed_values == 0:
 						failure = "Godot animation sampling did not change any bone pose"
 					else:
@@ -94,7 +93,7 @@ func _verify() -> void:
 								"trackCount": animation.get_track_count(),
 								"boneCount": bone_count,
 								"sampleTimes": sample_times,
-								"changedPoseValues": changed_values,
+								"poseChanged": true,
 							},
 						}, true)
 

@@ -105,7 +105,7 @@ describe("browser retarget worker boundary", () => {
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });
 
-  it("copies glTF buffers by default before transferring worker-owned clones", async () => {
+  it("copies glTF buffers once through postMessage without transferring caller ownership", async () => {
     vi.stubGlobal("Worker", PendingWorker);
     const controller = new AbortController();
     const primary = new ArrayBuffer(8);
@@ -121,9 +121,7 @@ describe("browser retarget worker boundary", () => {
     );
     const worker = PendingWorker.instances[0]!;
 
-    expect(worker.transfers[0]).toHaveLength(2);
-    expect(worker.transfers[0]).not.toContain(primary);
-    expect(worker.transfers[0]).not.toContain(sidecar);
+    expect(worker.transfers[0]).toEqual([]);
     expect(primary.byteLength).toBe(8);
     expect(sidecar.byteLength).toBe(16);
     controller.abort();
@@ -179,7 +177,7 @@ describe("browser retarget worker boundary", () => {
       { signal: controller.signal },
     );
 
-    expect(PendingWorker.instances[0]!.transfers[0]).toHaveLength(3);
+    expect(PendingWorker.instances[0]!.transfers[0]).toEqual([]);
     controller.abort();
     await expect(promise).rejects.toMatchObject({ name: "AbortError" });
   });

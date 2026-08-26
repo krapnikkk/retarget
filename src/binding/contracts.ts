@@ -1,4 +1,4 @@
-import { sha256Hex } from "@/core/sha256";
+import { Sha256Hasher, sha256Hex } from "@/core/sha256";
 import { validateParentGraph } from "@/core/parent-graph";
 import { RetargetError, type RetargetErrorCode } from "@/retarget/errors";
 import { HUMANOID_BONES, type HumanoidBoneName } from "@/retarget/types";
@@ -43,6 +43,15 @@ export function finiteTuple(value: unknown, length: number): value is number[] {
 
 export function bindingHash(value: unknown) {
   return sha256Hex(new TextEncoder().encode(JSON.stringify(value)));
+}
+
+async function bindingHashCooperatively(value: unknown, yieldControl: () => Promise<void>) {
+  const hasher = new Sha256Hasher();
+  for (const chunk of bindingJSONByteChunks(value)) {
+    hasher.update(chunk);
+    await yieldControl();
+  }
+  return hasher.digestHex();
 }
 
 const parents = new Map<string, string | undefined>(HUMANOID_RIG_DEFINITION.roles.map(
@@ -104,6 +113,30 @@ export function sealBindingSnapshot(snapshot: HumanoidBindingSnapshot): Humanoid
 export function validateBindingSnapshot(
   snapshot: HumanoidBindingSnapshot, asset?: BindingAssetIdentity, expectedRevision?: string,
 ) {
+  for (const _ of bindingSnapshotValidationSteps(snapshot, asset, expectedRevision)) {
+    // Synchronous core and Worker callers exhaust every validation step.
+  }
+}
+
+export async function validateBindingSnapshotCooperatively(
+  snapshot: HumanoidBindingSnapshot,
+  yieldControl: () => Promise<void>,
+  asset?: BindingAssetIdentity,
+  expectedRevision?: string,
+) {
+  await yieldControl();
+  const { revision: _revision, ...content } = snapshot;
+  const revisions = {
+    content: await bindingHashCooperatively(content, yieldControl),
+    rig: await bindingHashCooperatively(snapshot.joints, yieldControl),
+  };
+  for (const _ of bindingSnapshotValidationSteps(snapshot, asset, expectedRevision, revisions)) await yieldControl();
+}
+
+function* bindingSnapshotValidationSteps(
+  snapshot: HumanoidBindingSnapshot, asset?: BindingAssetIdentity, expectedRevision?: string,
+  computedRevisions?: { content: string; rig: string },
+) {
   exactKeys(snapshot, ["schemaVersion", "profile", "asset", "revision", "rigRevision", "joints", "weights", "locks", "algorithm", "skinning", "diagnostics"], "Binding snapshot");
   if (snapshot.schemaVersion !== 1 || snapshot.profile !== "humanoid-binding-v1" ||
     !["landmark-template-v1", "existing-rig-v1"].includes(snapshot.algorithm)) {
@@ -124,6 +157,7 @@ export function validateBindingSnapshot(
       bindingError("BINDING_EDIT_STALE", "Invalid or duplicate primitive identity.");
     }
     primitiveIds.add(primitive.id);
+    yield;
   }
   if (snapshot.skinning !== null) {
     exactKeys(snapshot.skinning, ["algorithm", "iterations"], "Skinning provenance");
@@ -134,7 +168,10 @@ export function validateBindingSnapshot(
   }
   if ((snapshot.weights === null) !== (snapshot.skinning === null)) bindingError("BINDING_WEIGHTS_INVALID", "Weights and solver provenance must be present together.");
   const { revision, ...content } = snapshot;
-  if (revision !== bindingHash(content) || snapshot.rigRevision !== bindingHash(snapshot.joints) ||
+  const contentRevision = computedRevisions?.content ?? bindingHash(content);
+  const rigRevision = computedRevisions?.rig ?? bindingHash(snapshot.joints);
+  yield;
+  if (revision !== contentRevision || snapshot.rigRevision !== rigRevision ||
     (expectedRevision !== undefined && revision !== expectedRevision) ||
     (asset !== undefined && JSON.stringify(snapshot.asset) !== JSON.stringify(asset))) {
     bindingError("BINDING_EDIT_STALE", "Snapshot content, asset, topology or revision no longer matches.");
@@ -163,6 +200,7 @@ export function validateBindingSnapshot(
         bindingError("BINDING_WEIGHTS_INVALID", "Weight array dimensions do not match the source topology.");
       }
       for (let vertex = 0; vertex < primitive.vertexCount; vertex++) {
+        if (vertex > 0 && vertex % 2048 === 0) yield;
         let sum = 0;
         const indices = new Set<number>();
         for (let k = 0; k < 4; k++) {
@@ -178,6 +216,7 @@ export function validateBindingSnapshot(
         }
         if (Math.abs(sum - 1) > 1e-6) bindingError("BINDING_WEIGHTS_INVALID", "Weights do not sum to one.");
       }
+      yield;
     }
     for (const edit of snapshot.locks) {
       const primitive = snapshot.weights.find((entry) => entry.primitive === edit.primitive)!;
@@ -231,6 +270,22 @@ export function validateWeightEdits(value: unknown, snapshot: HumanoidBindingSna
 }
 
 export function assertHumanoidBindingTask(value: unknown): asserts value is HumanoidBindingTask {
+  const { command, operation } = inspectHumanoidBindingTask(value);
+  for (const _ of bindingJSONValidationSteps(command, operation)) {
+    // Synchronous callers, including the Worker boundary, exhaust every step.
+  }
+}
+
+export async function assertHumanoidBindingTaskCooperatively(
+  value: unknown,
+  yieldControl: () => Promise<void>,
+): Promise<void> {
+  const { command, operation } = inspectHumanoidBindingTask(value);
+  await yieldControl();
+  for (const _ of bindingJSONValidationSteps(command, operation)) await yieldControl();
+}
+
+function inspectHumanoidBindingTask(value: unknown) {
   const task = exactKeys(value, ["type", "bytes", "command"], "Humanoid binding task");
   if (task.type !== "humanoid-binding" || !(task.bytes instanceof ArrayBuffer)) {
     bindingError("WORKER_PROTOCOL_INVALID", "Binding tasks require ArrayBuffer input.");
@@ -253,6 +308,10 @@ export function assertHumanoidBindingTask(value: unknown): asserts value is Huma
   if (op === "validate" && !(command.outputBytes instanceof ArrayBuffer)) {
     bindingError("WORKER_PROTOCOL_INVALID", "Validation requires output bytes.");
   }
+  return { command, operation: op };
+}
+
+function* bindingJSONValidationSteps(command: Record<string, unknown>, op: string) {
   // Check before structuredClone/postMessage. JSON persistence cannot represent
   // sparse arrays, accessors, custom prototypes, cycles or non-finite values.
   const active = new Set<object>();
@@ -260,8 +319,7 @@ export function assertHumanoidBindingTask(value: unknown): asserts value is Huma
   while (stack.length) {
     const { value, depth, exit } = stack.pop()!;
     if (exit) { active.delete(value as object); continue; }
-    if (value === undefined || value === null || typeof value === "boolean" || typeof value === "string") continue;
-    if (typeof value === "number" && Number.isFinite(value)) continue;
+    if (isBindingJSONPrimitive(value)) continue;
     if (value instanceof ArrayBuffer && op === "validate" && value === command.outputBytes) continue;
     if (!value || typeof value !== "object" || active.has(value) || depth > 64) {
       bindingError("WORKER_PROTOCOL_INVALID", "Binding commands must be finite acyclic JSON data (maximum depth 64).");
@@ -269,14 +327,85 @@ export function assertHumanoidBindingTask(value: unknown): asserts value is Huma
     active.add(value);
     stack.push({ value, depth, exit: true });
     if (Array.isArray(value)) {
-      if (Object.keys(value).length !== value.length) bindingError("WORKER_PROTOCOL_INVALID", "Sparse or decorated arrays are not supported.");
-      for (let index = 0; index < value.length; index++) {
-        const descriptor = Object.getOwnPropertyDescriptor(value, index);
-        if (!descriptor || !("value" in descriptor)) bindingError("WORKER_PROTOCOL_INVALID", "Array accessors are not supported.");
+      let enumerableCount = 0;
+      for (const key in value) {
+        if (!Object.hasOwn(value, key) || !/^(0|[1-9][0-9]*)$/.test(key)) {
+          bindingError("WORKER_PROTOCOL_INVALID", "Sparse or decorated arrays are not supported.");
+        }
+        const index = Number(key);
+        const descriptor = Object.getOwnPropertyDescriptor(value, key);
+        if (!Number.isSafeInteger(index) || index < 0 || index >= value.length || !descriptor || !("value" in descriptor)) {
+          bindingError("WORKER_PROTOCOL_INVALID", "Array accessors are not supported.");
+        }
+        enumerableCount++;
+        if (isBindingJSONPrimitive(descriptor.value)) {
+          if (enumerableCount % 4096 === 0) yield;
+          continue;
+        }
         stack.push({ value: descriptor.value, depth: depth + 1 });
+        if (enumerableCount % 4096 === 0) yield;
       }
+      if (enumerableCount !== value.length) bindingError("WORKER_PROTOCOL_INVALID", "Sparse or decorated arrays are not supported.");
     } else {
       for (const item of Object.values(record(value, "Binding JSON data"))) stack.push({ value: item, depth: depth + 1 });
     }
   }
+}
+
+function isBindingJSONPrimitive(value: unknown) {
+  if (value === undefined || value === null || typeof value === "boolean" || typeof value === "string") return true;
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) return true;
+    bindingError("WORKER_PROTOCOL_INVALID", "Binding commands must contain only finite numbers.");
+  }
+  return false;
+}
+
+function* bindingJSONByteChunks(value: unknown) {
+  const encoder = new TextEncoder();
+  let text = "";
+  for (const token of bindingJSONTokens(value, true)) {
+    text += token;
+    if (text.length >= 64 * 1024) {
+      yield encoder.encode(text);
+      text = "";
+    }
+  }
+  if (text) yield encoder.encode(text);
+}
+
+function* bindingJSONTokens(value: unknown, root = false): Generator<string> {
+  if (value === null) { yield "null"; return; }
+  if (typeof value === "string" || typeof value === "boolean" || typeof value === "number") {
+    yield JSON.stringify(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    yield "[";
+    for (let index = 0; index < value.length; index++) {
+      if (index) yield ",";
+      const item = value[index];
+      if (item === undefined) yield "null";
+      else yield* bindingJSONTokens(item);
+    }
+    yield "]";
+    return;
+  }
+  if (value && typeof value === "object") {
+    yield "{";
+    let emitted = false;
+    for (const key of Object.keys(value)) {
+      const item = (value as Record<string, unknown>)[key];
+      if (item === undefined) continue;
+      if (emitted) yield ",";
+      emitted = true;
+      yield JSON.stringify(key);
+      yield ":";
+      yield* bindingJSONTokens(item);
+    }
+    yield "}";
+    return;
+  }
+  if (root) throw new Error("Binding hash root must be JSON serializable.");
+  yield "null";
 }

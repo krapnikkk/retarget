@@ -15,7 +15,7 @@
 | 拓扑 | 可独立处理开放、非流形、断开表面；断开组件返回人工复核诊断。同 primitive 中完全同位置顶点焊接，包括 UV/法线缝；重合独立壳体也可能耦合。 |
 | 属性/资源 | 保留核心位置、法线、切线、UV、颜色、有效自定义属性、材质及嵌入 PNG/JPEG 字节；顶点数须一致。不解码图片或认证图片质量。 |
 | 变换 | 有限正缩放 TRS，或非奇异、仿射、无反射/剪切的局部矩阵。实例世界变换计入 inverse bind；保留原节点索引/变换。 |
-| 拒绝内容 | 已有 skin/JOINTS/WEIGHTS、动画、morph、稀疏 accessor、外部资源、相机节点、多场景及所有 glTF 扩展，包括可选扩展；不静默丢弃。 |
+| 拒绝内容 | 已有 skin/JOINTS/WEIGHTS、动画、morph、稀疏 accessor、外部资源、相机节点、多场景及所有 glTF 扩展，包括可选扩展。顶层 `extras` 若存在必须是对象，以便加入命名空间化绑定元数据而不改变源值类型；对象 extras 会保留。不静默丢弃。 |
 | 关节编辑 | 固定人形层级、必需角色、单位世界四元数、非零骨长。位置修改比例；不支持改层级或关节缩放。 |
 
 姿态标签不能证明解剖正确，调用方需确认模型和草稿。v1 不含学习检测、体素内部计算、碰撞、镜像约束、体积保持或 corrective shape。服装、接触肢体、配件和手指尤其需要检查。
@@ -59,7 +59,7 @@ Node 使用 `3dretarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或
 
 快照/GLB 不含随机、时钟或地区排序。相同字节、命令数据/顺序、算法、选项及固定工具链可复现字节；验证了重复运行及指定夹具 Node/Chromium 一致性。不保证任意引擎/工具链逐字节一致；数值边界为 Float64 计算、Float32 存储及语义容差。JSON 键顺序属于快照表示，支持标准 stringify/parse，不支持任意重排。
 
-浏览器选项包括 `signal`、`onProgress`、`deadlineMs`、`bufferOwnership`、`budget: { parse, processing }`。默认复制，transfer 使输入 detached；取消/硬截止终止 Worker，内循环另有检查点，Worker 不可用直接失败。Node 使用对应平台选项，`budget.softDeadlineMs` 同时由父进程执行硬截止。
+浏览器选项包括 `signal`、`onProgress`、`deadlineMs`、`bufferOwnership`、`budget: { parse, processing }`。默认所有权只执行一次 `postMessage` 复制，transfer 使输入 detached。大型快照请求校验在有界分块间让出事件循环；快照结果通过内部 Transferable 关节/权重缓冲传输，主线程再分段恢复并重新验证完整 JSON revision 和每项权重。该传输结构不是公开快照类型。取消/硬截止终止 Worker，内循环另有检查点，Worker 不可用直接失败。Node 使用对应平台选项，`budget.softDeadlineMs` 同时由父进程执行硬截止。
 
 消费端显式设置字节、顶点/索引/骨骼及生成值预算。`maxGeneratedValues` 限制解码 accessor 标量数及 `vertices * joints * (iterations + 3)` 估算；结合字节/索引预算控制工作量，但不是实测峰值 RAM 配额。不引入产品文件大小/耗时默认值，输出重载前也受限。进度报告阶段，不预测剩余时间。
 
@@ -80,6 +80,6 @@ Node 使用 `3dretarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或
 | 显式目标/生态 | 既有重定向、原生浏览器顶点播放、两份固定 DCC/引擎回执。 |
 | 保守保证等级 | API 保持实验性，具体案例证据不扩散到其他输入。 |
 | 负向路径 | 畸形缓冲、扩展、变换、循环、退化/未引用几何、约束、预算、过期编辑及执行中取消；断开表面带诊断处理。 |
-| 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker，以及单独原生 Chromium 实测。 |
+| 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker，以及包含 10 万顶点快照派发/结算 heartbeat 门禁的单独原生 Chromium 实测。 |
 
 `pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。生成回执/锁与手写实现分别提交，任何消费端仓库均不作为门禁。

@@ -4,6 +4,7 @@ import { executeRetargetJob } from "@/jobs/execute-retarget-job";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 import type { RetargetJobResponse } from "@/jobs/types";
 import { collectRetargetResultTransfers } from "@/jobs/transferables";
+import { packHumanoidBindingSnapshotResult } from "@/jobs/humanoid-binding-snapshot-transport";
 import {
   assertRetargetJobRequest,
   assertRetargetJobResponse,
@@ -40,9 +41,10 @@ workerScope.addEventListener(
         result,
       };
       assertRetargetJobResponse(response, request);
+      const transportedResult = packHumanoidBindingSnapshotResult(request.task, result);
       post(
-        response,
-        collectRetargetResultTransfers(request.task, result),
+        { ...response, result: transportedResult } as RetargetJobResponse,
+        collectRetargetResultTransfers(request.task, transportedResult),
       );
     } catch (cause) {
       post({

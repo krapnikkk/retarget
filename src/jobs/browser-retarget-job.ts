@@ -3,6 +3,7 @@ import { RETARGET_JOB_PROTOCOL_VERSION } from "./types";
 import type {
   RetargetJobProgress,
   RetargetJobRequest,
+  RetargetJobResponse,
   RetargetJobResult,
   RetargetJobBudget,
   RetargetJobTask,
@@ -11,7 +12,9 @@ import { RetargetError } from "@/retarget/errors";
 import { collectRetargetTaskTransfers } from "./transferables";
 import {
   assertRetargetJobRequest,
+  assertRetargetJobRequestCooperatively,
   assertRetargetJobResponse,
+  assertRetargetJobResponseCooperatively,
 } from "./runtime-protocol";
 
 export type BufferOwnership = "copy" | "transfer";
@@ -42,10 +45,18 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     budget,
     task,
   };
-  assertRetargetJobRequest(requestToValidate);
-  const workerTask = bufferOwnership === "copy"
-    ? structuredClone(task)
-    : task;
+  const yieldControl = async () => {
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0));
+    if (signal?.aborted) throw createAbortError();
+  };
+  if (isHumanoidBindingDataTask(task)) {
+    await assertRetargetJobRequestCooperatively(requestToValidate, yieldControl);
+  } else {
+    assertRetargetJobRequest(requestToValidate);
+  }
+  // In copy mode postMessage performs the one required structured clone. An
+  // eager clone followed by postMessage cloned large JSON snapshots twice.
+  const workerTask = task;
   const request: RetargetJobRequest = {
     ...requestToValidate,
     task: workerTask,
@@ -54,6 +65,7 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
   return new Promise<RetargetJobResult<TTask>>((resolve, reject) => {
     const worker = createRetargetWorker(request.jobId);
     let settled = false;
+    let validatingResponse = false;
     let timeout: ReturnType<typeof globalThis.setTimeout> | undefined;
     const cleanup = () => {
       if (timeout !== undefined) globalThis.clearTimeout(timeout);
@@ -87,16 +99,32 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
       }));
     };
     const onMessage = (event: MessageEvent<unknown>) => {
+      if (validatingResponse) {
+        fail(new RetargetError("WORKER_PROTOCOL_INVALID", {
+          message: "Retarget worker sent overlapping responses.",
+        }));
+        return;
+      }
+      validatingResponse = true;
+      void handleMessage(event).finally(() => { validatingResponse = false; });
+    };
+    const handleMessage = async (event: MessageEvent<unknown>) => {
       const response = event.data;
       try {
-        assertRetargetJobResponse(response, request);
+        if (isHumanoidBindingDataTask(request.task)) {
+          await assertRetargetJobResponseCooperatively(response, request, yieldControl);
+        } else {
+          assertRetargetJobResponse(response, request);
+        }
       } catch (cause) {
         fail(cause);
         return;
       }
-      if (response.type === "progress") {
+      if (settled) return;
+      const validatedResponse = response as RetargetJobResponse;
+      if (validatedResponse.type === "progress") {
         try {
-          onProgress?.(response);
+          onProgress?.(validatedResponse);
         } catch (cause) {
           fail(new RetargetError("RETARGET_JOB_FAILED", {
             cause,
@@ -105,16 +133,16 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
         }
         return;
       }
-      if (response.type === "failure") {
-        const error = new RetargetError(response.error.code, {
-          details: response.error.details,
-          message: response.error.message,
+      if (validatedResponse.type === "failure") {
+        const error = new RetargetError(validatedResponse.error.code, {
+          details: validatedResponse.error.details,
+          message: validatedResponse.error.message,
         });
-        error.name = response.error.name;
+        error.name = validatedResponse.error.name;
         fail(error);
         return;
       }
-      succeed(response.result as RetargetJobResult<TTask>);
+      succeed(validatedResponse.result as RetargetJobResult<TTask>);
     };
     if (deadlineMs !== undefined) {
       timeout = globalThis.setTimeout(() => {
@@ -133,7 +161,12 @@ export async function runRetargetJob<TTask extends RetargetJobTask>(
     worker.addEventListener("message", onMessage);
     worker.addEventListener("messageerror", onMessageError);
     try {
-      worker.postMessage(request, collectRetargetTaskTransfers(workerTask));
+      worker.postMessage(
+        request,
+        bufferOwnership === "transfer"
+          ? collectRetargetTaskTransfers(workerTask)
+          : [],
+      );
     } catch (cause) {
       fail(new RetargetError("RETARGET_JOB_FAILED", {
         cause,
@@ -188,4 +221,10 @@ export async function runRetargetJobInline<TTask extends RetargetJobTask>(
 
 function createAbortError() {
   return new DOMException("Retarget job was cancelled.", "AbortError");
+}
+
+function isHumanoidBindingDataTask(value: unknown): value is Extract<RetargetJobTask, { type: "humanoid-binding" }> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const descriptor = Object.getOwnPropertyDescriptor(value, "type");
+  return !!descriptor && "value" in descriptor && descriptor.enumerable === true && descriptor.value === "humanoid-binding";
 }

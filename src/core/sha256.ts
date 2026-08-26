@@ -29,43 +29,80 @@ const SHA256_ROUND_CONSTANTS = [
 ] as const;
 
 export function sha256Hex(input: Uint8Array) {
-  const bitLength = input.byteLength * 8;
-  const paddedByteLength = Math.ceil((input.byteLength + 9) / 64) * 64;
-  const padded = new Uint8Array(paddedByteLength);
-  padded.set(input);
-  padded[input.byteLength] = 0x80;
-  const paddedView = new DataView(padded.buffer);
-  paddedView.setUint32(
-    paddedByteLength - 8,
-    Math.floor(bitLength / 0x1_0000_0000),
-    false,
-  );
-  paddedView.setUint32(paddedByteLength - 4, bitLength >>> 0, false);
+  return new Sha256Hasher().update(input).digestHex();
+}
 
-  const state: number[] = [...SHA256_INITIAL_STATE];
-  const words = new Uint32Array(64);
-  for (let offset = 0; offset < paddedByteLength; offset += 64) {
+export class Sha256Hasher {
+  readonly #state: number[] = [...SHA256_INITIAL_STATE];
+  readonly #words = new Uint32Array(64);
+  readonly #tail = new Uint8Array(64);
+  #tailLength = 0;
+  #bytesHashed = 0;
+  #finished = false;
+
+  update(input: Uint8Array) {
+    if (this.#finished) throw new Error("SHA-256 digest is already finalized.");
+    this.#bytesHashed += input.byteLength;
+    if (!Number.isSafeInteger(this.#bytesHashed)) throw new Error("SHA-256 input is too large.");
+    let offset = 0;
+    if (this.#tailLength) {
+      const copied = Math.min(64 - this.#tailLength, input.byteLength);
+      this.#tail.set(input.subarray(0, copied), this.#tailLength);
+      this.#tailLength += copied;
+      offset += copied;
+      if (this.#tailLength === 64) {
+        this.#processBlock(this.#tail, 0);
+        this.#tailLength = 0;
+      }
+    }
+    while (offset + 64 <= input.byteLength) {
+      this.#processBlock(input, offset);
+      offset += 64;
+    }
+    if (offset < input.byteLength) {
+      this.#tail.set(input.subarray(offset), 0);
+      this.#tailLength = input.byteLength - offset;
+    }
+    return this;
+  }
+
+  digestHex() {
+    if (this.#finished) throw new Error("SHA-256 digest is already finalized.");
+    this.#finished = true;
+    const bitLength = this.#bytesHashed * 8;
+    const finalBytes = new Uint8Array(this.#tailLength < 56 ? 64 : 128);
+    finalBytes.set(this.#tail.subarray(0, this.#tailLength));
+    finalBytes[this.#tailLength] = 0x80;
+    const view = new DataView(finalBytes.buffer);
+    view.setUint32(finalBytes.byteLength - 8, Math.floor(bitLength / 0x1_0000_0000), false);
+    view.setUint32(finalBytes.byteLength - 4, bitLength >>> 0, false);
+    for (let offset = 0; offset < finalBytes.byteLength; offset += 64) this.#processBlock(finalBytes, offset);
+    return this.#state.map((value) => value.toString(16).padStart(8, "0")).join("");
+  }
+
+  #processBlock(input: Uint8Array, offset: number) {
+    const view = new DataView(input.buffer, input.byteOffset, input.byteLength);
     for (let index = 0; index < 16; index += 1) {
-      words[index] = paddedView.getUint32(offset + index * 4, false);
+      this.#words[index] = view.getUint32(offset + index * 4, false);
     }
     for (let index = 16; index < 64; index += 1) {
-      const previous15 = words[index - 15]!;
-      const previous2 = words[index - 2]!;
+      const previous15 = this.#words[index - 15]!;
+      const previous2 = this.#words[index - 2]!;
       const sigma0 = rotateRight(previous15, 7) ^
         rotateRight(previous15, 18) ^ (previous15 >>> 3);
       const sigma1 = rotateRight(previous2, 17) ^
         rotateRight(previous2, 19) ^ (previous2 >>> 10);
-      words[index] = (
-        words[index - 16]! + sigma0 + words[index - 7]! + sigma1
+      this.#words[index] = (
+        this.#words[index - 16]! + sigma0 + this.#words[index - 7]! + sigma1
       ) >>> 0;
     }
 
-    let [a, b, c, d, e, f, g, h] = state;
+    let [a, b, c, d, e, f, g, h] = this.#state;
     for (let index = 0; index < 64; index += 1) {
       const sum1 = rotateRight(e!, 6) ^ rotateRight(e!, 11) ^ rotateRight(e!, 25);
       const choice = (e! & f!) ^ (~e! & g!);
       const temporary1 = (
-        h! + sum1 + choice + SHA256_ROUND_CONSTANTS[index]! + words[index]!
+        h! + sum1 + choice + SHA256_ROUND_CONSTANTS[index]! + this.#words[index]!
       ) >>> 0;
       const sum0 = rotateRight(a!, 2) ^ rotateRight(a!, 13) ^ rotateRight(a!, 22);
       const majority = (a! & b!) ^ (a! & c!) ^ (b! & c!);
@@ -80,17 +117,15 @@ export function sha256Hex(input: Uint8Array) {
       a = (temporary1 + temporary2) >>> 0;
     }
 
-    state[0] = (state[0]! + a!) >>> 0;
-    state[1] = (state[1]! + b!) >>> 0;
-    state[2] = (state[2]! + c!) >>> 0;
-    state[3] = (state[3]! + d!) >>> 0;
-    state[4] = (state[4]! + e!) >>> 0;
-    state[5] = (state[5]! + f!) >>> 0;
-    state[6] = (state[6]! + g!) >>> 0;
-    state[7] = (state[7]! + h!) >>> 0;
+    this.#state[0] = (this.#state[0]! + a!) >>> 0;
+    this.#state[1] = (this.#state[1]! + b!) >>> 0;
+    this.#state[2] = (this.#state[2]! + c!) >>> 0;
+    this.#state[3] = (this.#state[3]! + d!) >>> 0;
+    this.#state[4] = (this.#state[4]! + e!) >>> 0;
+    this.#state[5] = (this.#state[5]! + f!) >>> 0;
+    this.#state[6] = (this.#state[6]! + g!) >>> 0;
+    this.#state[7] = (this.#state[7]! + h!) >>> 0;
   }
-
-  return state.map((value) => value.toString(16).padStart(8, "0")).join("");
 }
 
 function rotateRight(value: number, bits: number) {

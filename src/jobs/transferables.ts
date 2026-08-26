@@ -1,4 +1,5 @@
 import type { RetargetJobTask } from "./types";
+import { collectHumanoidBindingSnapshotTransportTransfers } from "./humanoid-binding-snapshot-transport";
 
 export function collectRetargetTaskTransfers(
   task: RetargetJobTask,
@@ -57,6 +58,10 @@ export function collectRetargetResultTransfers(
   task: RetargetJobTask,
   result: unknown,
 ): ArrayBuffer[] {
+  if (task.type === "humanoid-binding") {
+    const snapshotTransfers = collectHumanoidBindingSnapshotTransportTransfers(result);
+    if (snapshotTransfers.length) return snapshotTransfers;
+  }
   if (task.type === "humanoid-binding" && result && typeof result === "object" && "bytes" in result &&
     result.bytes instanceof Uint8Array && result.bytes.buffer instanceof ArrayBuffer) return [result.bytes.buffer];
   if (

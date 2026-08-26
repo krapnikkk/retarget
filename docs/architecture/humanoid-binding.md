@@ -15,7 +15,7 @@
 | Topology | Open/nonmanifold/disconnected surfaces may be solved independently. Disconnected components produce a review diagnostic. Exact coincident positions within each primitive are welded, including UV/normal seams; coincident separate shells can therefore be coupled. |
 | Attributes/resources | Core position/normal/tangent/UV/colour attributes, valid custom attributes, materials and embedded PNG/JPEG bytes are preserved. Attribute vertex counts must agree. Images are not decoded or quality-certified. |
 | Transforms | Finite positive-scale TRS, or nonsingular affine non-reflected non-sheared local matrices. Instance world transforms enter inverse binds. Source node indices/transforms remain unchanged. |
-| Rejected content | Existing skins/JOINTS/WEIGHTS, animations, morphs, sparse accessors, external resources, camera nodes, multiple scenes and all glTF extensions, including optional extensions. No silent content removal. |
+| Rejected content | Existing skins/JOINTS/WEIGHTS, animations, morphs, sparse accessors, external resources, camera nodes, multiple scenes and all glTF extensions, including optional extensions. Top-level `extras`, when present, must be an object so namespaced binding metadata can be added without changing the source value's type; object extras are preserved. No silent content removal. |
 | Joint edits | Fixed humanoid hierarchy, required roles, unit world quaternions and nonzero bone lengths. Position edits change proportions. Joint scaling/hierarchy edits are unsupported. |
 
 Pose labels do not establish anatomy: callers must confirm the model and draft. v1 has no learned detector, voxel interior, collision handling, mirror constraint, volume preservation or corrective shapes. Clothing, touching limbs, accessories and fingers need particular review.
@@ -59,7 +59,7 @@ Four influences are a **v1 output profile**, not a universal glTF limit. Weight-
 
 No randomness, clocks or locale-dependent sorting enter snapshots/GLB. Identical bytes, command data/order, algorithm/options and pinned toolchain reproduce bytes. Repeated runs and Node/Chromium equality are tested on the named fixture. Byte identity across arbitrary engines/toolchains is not guaranteed; Float64 computation, Float32 storage and semantic tolerances define the numerical boundary. JSON key order belongs to the snapshot representation: standard stringify/parse is supported, arbitrary reordering is not.
 
-Browser options include `signal`, `onProgress`, `deadlineMs`, `bufferOwnership` and `budget: { parse, processing }`. Default ownership copies; transfer detaches inputs. Cancellation and hard deadlines terminate the worker; inner loops also checkpoint. Missing Worker support fails closed. Node exposes corresponding platform options and `budget.softDeadlineMs`, also enforced as a hard limit by the parent.
+Browser options include `signal`, `onProgress`, `deadlineMs`, `bufferOwnership` and `budget: { parse, processing }`. Default ownership performs one `postMessage` copy; transfer detaches inputs. Large snapshot request checks yield between bounded chunks. Snapshot results use internal Transferable joint/weight buffers, then cooperatively reconstruct and verify the complete JSON revision and every weight on the main side. This transport is not a public snapshot type. Cancellation and hard deadlines terminate the worker; inner loops also checkpoint. Missing Worker support fails closed. Node exposes corresponding platform options and `budget.softDeadlineMs`, also enforced as a hard limit by the parent.
 
 Consumers choose byte, vertex/index/bone and generated-value budgets. `maxGeneratedValues` bounds decoded accessor scalar counts and the estimate `vertices * joints * (iterations + 3)`. Alongside byte/index bounds this constrains work; it is not a measured peak-RAM quota. No product file-size/time default is introduced. Output is bounded before reload. Progress reports stages, not predicted completion time.
 
@@ -80,6 +80,6 @@ The [fixture manifest and evidence guide](../../tests/binding/README.md) record 
 | Explicit target and ecosystem | Existing retarget pipeline, native browser vertex playback, two pinned DCC/engine receipts. |
 | Conservative assurance | Experimental API results; exact-case evidence does not promote unrelated inputs. |
 | Negative paths | Malformed buffers, extensions, transforms, cycles, degenerate/unreferenced geometry, constraints, budgets, stale edits and running cancellation. Disconnected surfaces are accepted with diagnostics. |
-| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run. |
+| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including a 100k-vertex snapshot dispatch/settlement heartbeat gate. |
 
 Run `pnpm verify` for all repository gates and `pnpm verify:binding:ecosystem` for external runtimes. Generated receipts/locks belong in a separate commit from handwritten implementation. No consumer repository is a gate.

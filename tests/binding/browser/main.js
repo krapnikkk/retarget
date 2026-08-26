@@ -54,6 +54,40 @@ document.querySelector("#run").addEventListener("click", async () => {
     check(transferred.byteLength === 0, "Transfer ownership did not detach input");
     result.checks.push("running cancellation, hard deadline, copy and transfer ownership");
 
+    const large = structuredClone(skin), largeVertexCount = 100_000;
+    const sourceJoints = large.weights[0].joints, sourceWeights = large.weights[0].weights;
+    const sourceVertexCount = sourceJoints.length / 4;
+    large.asset.primitives[0].vertexCount = largeVertexCount;
+    large.weights[0].joints = Array.from({ length: largeVertexCount * 4 }, (_, i) => sourceJoints[(i % 4) + (Math.floor(i / 4) % sourceVertexCount) * 4]);
+    large.weights[0].weights = Array.from({ length: largeVertexCount * 4 }, (_, i) => sourceWeights[(i % 4) + (Math.floor(i / 4) % sourceVertexCount) * 4]);
+    const { revision: _oldRevision, ...largeContent } = large;
+    large.revision = await hash(new TextEncoder().encode(JSON.stringify(largeContent)));
+    const TrackingWorker = window.Worker;
+    window.Worker = class extends TrackingWorker {
+      constructor() { super(new URL("./large-snapshot.worker.js", import.meta.url), { name: "large-snapshot-echo", type: "module" }); }
+    };
+    let heartbeatAt = performance.now(), maxHeartbeatGapMs = 0, settlementStartedAt;
+    const responsivenessTimer = setInterval(() => {
+      const now = performance.now(); maxHeartbeatGapMs = Math.max(maxHeartbeatGapMs, now - heartbeatAt); heartbeatAt = now;
+    }, 8);
+    await new Promise((resolve) => setTimeout(resolve, 32));
+    const dispatchStartedAt = performance.now();
+    const largeTask = runRetargetJob({ type: "humanoid-binding", bytes,
+      command: { operation: "skin", snapshot: large, expectedRevision: large.revision } },
+    { onProgress() { settlementStartedAt = performance.now(); } });
+    const dispatchMs = performance.now() - dispatchStartedAt;
+    const echoed = await largeTask;
+    const settlementMs = performance.now() - settlementStartedAt;
+    await new Promise((resolve) => setTimeout(resolve, 32));
+    clearInterval(responsivenessTimer); window.Worker = TrackingWorker;
+    check(echoed.revision === large.revision, "Large snapshot response was not validated");
+    check(dispatchMs < 100 && settlementMs < 2_000 && maxHeartbeatGapMs < 100,
+      `Large snapshot blocked dispatch/settlement: dispatch=${dispatchMs}, settlement=${settlementMs}, gap=${maxHeartbeatGapMs}`);
+    result.largeSnapshot = { vertexCount: largeVertexCount,
+      dispatchMs: Math.round(dispatchMs * 100) / 100, settlementMs: Math.round(settlementMs * 100) / 100,
+      maxHeartbeatGapMs: Math.round(maxHeartbeatGapMs * 100) / 100 };
+    result.checks.push("100k-vertex snapshot dispatch and settlement heartbeat gaps stay below 100 ms");
+
     const motionBytes = await (await fetch("/walk.glb")).arrayBuffer();
     const pipeline = getRetargetPipeline("gltf-animation", "gltf-humanoid", "animated-glb");
     const animated = await pipeline.run({ motionFile: new File([motionBytes], "walk.glb"),

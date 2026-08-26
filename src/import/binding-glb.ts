@@ -33,6 +33,9 @@ export function readBindingGLB(
   if (json.asset?.version !== "2.0" || (json.asset.minVersion && json.asset.minVersion !== "2.0")) {
     unsupported("Only glTF 2.0 is supported.");
   }
+  if (json.extras !== undefined && (json.extras === null || typeof json.extras !== "object" || Array.isArray(json.extras))) {
+    unsupported("Top-level extras must be an object so binding metadata can be added without rewriting source content.");
+  }
   // Reject extensions even when optional: silently losing their rendering or
   // geometry semantics would make the apparent preservation contract dishonest.
   const queue: unknown[] = [json];

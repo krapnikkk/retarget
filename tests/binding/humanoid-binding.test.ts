@@ -11,7 +11,7 @@ import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
 import { assertHumanoidBindingTask, sealBindingSnapshot } from "@/binding/contracts";
 import { inspectHumanoidAvatarBytes } from "@/jobs/inspect-humanoid-avatar";
 import { assertRetargetJobResponse } from "@/jobs/runtime-protocol";
-import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
+import { RETARGET_JOB_PROTOCOL_VERSION, type RetargetJobRequest } from "@/jobs/types";
 import type { HumanoidBindingExport, HumanoidBindingSnapshot } from "@/binding/types";
 import { bindingFixture, rewriteBindingFixture } from "./fixtures";
 import { measureBindingQuality } from "./quality";
@@ -46,6 +46,29 @@ describe("humanoid binding with the pinned CC0 mannequin", () => {
     expect(inspection.missingRequiredBones).toEqual([]);
     expect(() => assertRetargetJobResponse({ schemaVersion: RETARGET_JOB_PROTOCOL_VERSION, jobId: "binding-inspection", type: "success", result: inspection },
       { schemaVersion: RETARGET_JOB_PROTOCOL_VERSION, jobId: "binding-inspection", task: { type: "inspect-humanoid-avatar", bytes: exported.bytes.slice().buffer as ArrayBuffer, filename: "bound.glb", formatId: "gltf-humanoid" } })).not.toThrow();
+  });
+
+  it("rejects malformed humanoid-binding export Worker responses", () => {
+    const request = {
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "binding-export",
+      task: { type: "humanoid-binding", bytes: fixture.bytes,
+        command: { operation: "export", snapshot: skinned, expectedRevision: skinned.revision } },
+    } satisfies RetargetJobRequest;
+    const response = { schemaVersion: RETARGET_JOB_PROTOCOL_VERSION, jobId: request.jobId,
+      type: "success", result: exported } as const;
+    expect(() => assertRetargetJobResponse(response, request)).not.toThrow();
+    const malformed = [
+      { ...structuredClone(exported), bytes: new Uint8Array() },
+      { ...structuredClone(exported), rigRevision: "not-a-hash" },
+      { ...structuredClone(exported), rigRevision: "0".repeat(64) },
+      { ...structuredClone(exported), validation: { ok: true } },
+      { ...structuredClone(exported), unexpected: true },
+    ];
+    for (const result of malformed) {
+      expect(() => assertRetargetJobResponse({ ...response, result }, request))
+        .toThrow(expect.objectContaining({ code: "WORKER_PROTOCOL_INVALID" }));
+    }
   });
 
   it("meets the declared shoulder/elbow/hip/knee quality limits against the artist skin", async () => {
@@ -259,6 +282,25 @@ describe("humanoid binding with the pinned CC0 mannequin", () => {
     const validation = await processHumanoidBinding(bytes, { operation: "validate", snapshot: skin, expectedRevision: skin.revision, outputBytes: corrupted });
     expect(validation.structural.ok).toBe(false);
     expect(validation.structural.issues.join(" ")).toContain("primitive");
+  });
+
+  it("preserves object top-level extras and rejects non-object extras", async () => {
+    const objectBytes = rewriteBindingFixture(fixture.bytes, (json) => {
+      json.extras = { preserveMe: ["source", { nested: true }] };
+    });
+    const rig = await processHumanoidBinding(objectBytes, { operation: "use-rig", joints: fixture.joints });
+    const skin = await processHumanoidBinding(objectBytes, { operation: "skin", snapshot: rig, expectedRevision: rig.revision });
+    const output = await processHumanoidBinding(objectBytes, { operation: "export", snapshot: skin, expectedRevision: skin.revision });
+    expect(readBindingContainer(output.bytes).json.extras).toMatchObject({
+      preserveMe: ["source", { nested: true }],
+      humanoidBinding: { schemaVersion: 1 },
+    });
+
+    for (const extras of [["preserve-me", { nested: true }], "preserve-me", 7, null]) {
+      const bytes = rewriteBindingFixture(fixture.bytes, (json) => { json.extras = extras as never; });
+      await expect(processHumanoidBinding(bytes, { operation: "inspect" }))
+        .rejects.toMatchObject({ code: "BINDING_INPUT_UNSUPPORTED" });
+    }
   });
 
   it.each<[string, Parameters<typeof rewriteBindingFixture>[1]]>([
