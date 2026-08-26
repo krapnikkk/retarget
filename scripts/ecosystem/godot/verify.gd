@@ -52,14 +52,10 @@ func _verify() -> void:
 				var animation_name: StringName = selection["name"]
 				var animation: Animation = selection["animation"]
 				var length := animation.length
-				var track_paths: Array[String] = []
-				for track_index in animation.get_track_count():
-					track_paths.append(str(animation.track_get_path(track_index)))
 				result["diagnostics"] = {
 					"animationName": str(animation_name),
 					"animationLengthSeconds": length,
 					"trackCount": animation.get_track_count(),
-					"trackPaths": track_paths,
 				}
 				if length <= 0.0 or animation.get_track_count() == 0:
 					failure = "Godot imported animation has no duration or tracks"
