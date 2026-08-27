@@ -80,6 +80,6 @@ The [fixture manifest and evidence guide](../../tests/binding/README.md) record 
 | Explicit target and ecosystem | Existing retarget pipeline, native browser vertex playback, two pinned DCC/engine receipts. |
 | Conservative assurance | Experimental API results; exact-case evidence does not promote unrelated inputs. |
 | Negative paths | Malformed buffers, extensions, transforms, cycles, degenerate/unreferenced geometry, constraints, budgets, stale edits and running cancellation. Disconnected surfaces are accepted with diagnostics. |
-| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including a 100k-vertex snapshot dispatch/settlement heartbeat gate. |
+| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including 100k-vertex call-return, first-progress, resolve and total timing plus a main-thread heartbeat gate. |
 
 Run `pnpm verify` for all repository gates and `pnpm verify:binding:ecosystem` for external runtimes. Generated receipts/locks belong in a separate commit from handwritten implementation. No consumer repository is a gate.

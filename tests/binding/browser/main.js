@@ -66,27 +66,35 @@ document.querySelector("#run").addEventListener("click", async () => {
     window.Worker = class extends TrackingWorker {
       constructor() { super(new URL("./large-snapshot.worker.js", import.meta.url), { name: "large-snapshot-echo", type: "module" }); }
     };
-    let heartbeatAt = performance.now(), maxHeartbeatGapMs = 0, settlementStartedAt;
+    let heartbeatAt = performance.now(), maxHeartbeatGapMs = 0, firstProgressAt;
     const responsivenessTimer = setInterval(() => {
       const now = performance.now(); maxHeartbeatGapMs = Math.max(maxHeartbeatGapMs, now - heartbeatAt); heartbeatAt = now;
     }, 8);
     await new Promise((resolve) => setTimeout(resolve, 32));
-    const dispatchStartedAt = performance.now();
+    const callStartedAt = performance.now();
     const largeTask = runRetargetJob({ type: "humanoid-binding", bytes,
       command: { operation: "skin", snapshot: large, expectedRevision: large.revision } },
-    { onProgress() { settlementStartedAt = performance.now(); } });
-    const dispatchMs = performance.now() - dispatchStartedAt;
+    { onProgress() { firstProgressAt ??= performance.now(); } });
+    const callReturnedAt = performance.now();
     const echoed = await largeTask;
-    const settlementMs = performance.now() - settlementStartedAt;
+    const resolvedAt = performance.now();
     await new Promise((resolve) => setTimeout(resolve, 32));
     clearInterval(responsivenessTimer); window.Worker = TrackingWorker;
     check(echoed.revision === large.revision, "Large snapshot response was not validated");
-    check(dispatchMs < 100 && settlementMs < 2_000 && maxHeartbeatGapMs < 100,
-      `Large snapshot blocked dispatch/settlement: dispatch=${dispatchMs}, settlement=${settlementMs}, gap=${maxHeartbeatGapMs}`);
+    check(firstProgressAt !== undefined, "Large snapshot Worker reported no progress");
+    const callReturnMs = callReturnedAt - callStartedAt;
+    const callToFirstProgressMs = firstProgressAt - callStartedAt;
+    const progressToResolveMs = resolvedAt - firstProgressAt;
+    const totalMs = resolvedAt - callStartedAt;
+    check(callReturnMs < 100 && progressToResolveMs < 2_000 && maxHeartbeatGapMs < 100,
+      `Large snapshot timing/responsiveness gate failed: callReturn=${callReturnMs}, callToFirstProgress=${callToFirstProgressMs}, progressToResolve=${progressToResolveMs}, total=${totalMs}, gap=${maxHeartbeatGapMs}`);
     result.largeSnapshot = { vertexCount: largeVertexCount,
-      dispatchMs: Math.round(dispatchMs * 100) / 100, settlementMs: Math.round(settlementMs * 100) / 100,
+      callReturnMs: Math.round(callReturnMs * 100) / 100,
+      callToFirstProgressMs: Math.round(callToFirstProgressMs * 100) / 100,
+      progressToResolveMs: Math.round(progressToResolveMs * 100) / 100,
+      totalMs: Math.round(totalMs * 100) / 100,
       maxHeartbeatGapMs: Math.round(maxHeartbeatGapMs * 100) / 100 };
-    result.checks.push("100k-vertex snapshot dispatch and settlement heartbeat gaps stay below 100 ms");
+    result.checks.push("100k-vertex snapshot call/progress/resolve stages are timed and heartbeat gaps stay below 100 ms");
 
     const motionBytes = await (await fetch("/walk.glb")).arrayBuffer();
     const pipeline = getRetargetPipeline("gltf-animation", "gltf-humanoid", "animated-glb");
