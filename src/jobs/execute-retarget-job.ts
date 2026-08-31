@@ -13,7 +13,12 @@ import {
   GENERIC_FBX_HUMANOID_PROFILE,
   MIXAMO_RIG_PROFILE,
 } from "@/profiles";
-import { createRetargetError, serializeMotionClip } from "@/retarget";
+import {
+  createRetargetError,
+  isRetargetError,
+  serializeMotionClip,
+  type RetargetErrorCode,
+} from "@/retarget";
 import { validateHumanoidMotionSemantics } from "@/validation";
 import { solveHumanoidCustomRigMotion } from "@/solvers";
 import { getRigSolver } from "@/solvers";
@@ -141,42 +146,48 @@ async function executeTask(
   if (task.type === "import-motion") {
     report("parse", 0.1);
     const bytes = new Uint8Array(task.bytes);
-    const clip =
-      task.formatId === "mixamo-fbx" ||
-      task.formatId === "actorcore-fbx" ||
-      task.formatId === "generic-fbx"
-        ? importFBXHumanoidMotionBytes({
-            bytes: task.bytes,
-            filename: task.filename,
-            kind: task.formatId,
-            profile:
-              task.formatId === "mixamo-fbx"
-                ? MIXAMO_RIG_PROFILE
-                : task.formatId === "actorcore-fbx"
-                  ? ACTORCORE_PROFILE
-                  : GENERIC_FBX_HUMANOID_PROFILE,
-            animationIndex: task.animationIndex,
-            animationName: task.animationName,
-            budget: parseBudget,
-          })
-        : task.formatId === "bvh"
-        ? importBVH(bytes, task.filename, parseBudget)
-        : task.formatId === "vmd"
-          ? importVMD(bytes, task.filename, parseBudget)
-          : task.formatId === "vrma"
-            ? await importVRMA(bytes, task.filename, parseBudget)
-            : task.formatId === "gltf-animation"
-              ? await importGLTFAnimation(
-                  bytes,
-                  task.filename,
-                  {
-                    animationIndex: task.animationIndex,
-                    animationName: task.animationName,
-                    budget: parseBudget,
-                    resources: restoreGLTFResources(task.resources),
-                  },
-                )
-              : assertNever(task.formatId);
+    let clip;
+    try {
+      clip =
+        task.formatId === "mixamo-fbx" ||
+        task.formatId === "actorcore-fbx" ||
+        task.formatId === "generic-fbx"
+          ? importFBXHumanoidMotionBytes({
+              bytes: task.bytes,
+              filename: task.filename,
+              kind: task.formatId,
+              profile:
+                task.formatId === "mixamo-fbx"
+                  ? MIXAMO_RIG_PROFILE
+                  : task.formatId === "actorcore-fbx"
+                    ? ACTORCORE_PROFILE
+                    : GENERIC_FBX_HUMANOID_PROFILE,
+              animationIndex: task.animationIndex,
+              animationName: task.animationName,
+              budget: parseBudget,
+            })
+          : task.formatId === "bvh"
+            ? importBVH(bytes, task.filename, parseBudget)
+            : task.formatId === "vmd"
+              ? importVMD(bytes, task.filename, parseBudget)
+              : task.formatId === "vrma"
+                ? await importVRMA(bytes, task.filename, parseBudget)
+                : task.formatId === "gltf-animation"
+                  ? await importGLTFAnimation(
+                      bytes,
+                      task.filename,
+                      {
+                        animationIndex: task.animationIndex,
+                        animationName: task.animationName,
+                        budget: parseBudget,
+                        resources: restoreGLTFResources(task.resources),
+                      },
+                    )
+                  : assertNever(task.formatId);
+    } catch (cause) {
+      if (isRetargetError(cause)) throw cause;
+      throw createRetargetError(motionParseErrorCode(task.formatId), cause);
+    }
     deadline.checkpoint("parse");
     report("normalize", 0.82);
     assertMotionProcessingBudget(clip, processingBudget);
@@ -330,6 +341,27 @@ async function executeTask(
     });
   }
   return assertNever(task);
+}
+
+function motionParseErrorCode(
+  formatId: Extract<RetargetJobTask, {type: "import-motion"}>["formatId"],
+): RetargetErrorCode {
+  switch (formatId) {
+    case "mixamo-fbx":
+    case "actorcore-fbx":
+    case "generic-fbx":
+      return "FBX_PARSE_FAILED";
+    case "bvh":
+      return "BVH_PARSE_FAILED";
+    case "vmd":
+      return "VMD_PARSE_FAILED";
+    case "vrma":
+      return "VRMA_PARSE_FAILED";
+    case "gltf-animation":
+      return "GLTF_ANIMATION_PARSE_FAILED";
+    default:
+      return assertNever(formatId);
+  }
 }
 
 function assertTaskInputBudget(task: RetargetJobTask, budget: ParseBudget) {

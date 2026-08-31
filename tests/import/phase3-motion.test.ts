@@ -99,6 +99,24 @@ describe("Phase 3 motion importers", () => {
     );
   });
 
+  it("retains an explicitly declared canonical glTF coordinate basis", async () => {
+    const document = createMinimalAnimatedDocument();
+    document.getRoot().listAccessors()
+      .find((accessor) => accessor.getName() === "hips.translation")!
+      .setArray(new Float32Array([0, 0, 0, 0, 0, -1]));
+    const clip = await importGLTFAnimation(
+      await new WebIO().writeBinary(document),
+      "canonical.glb",
+      { profileId: "canonical-gltf-humanoid" },
+    );
+    const translation = clip.tracks.find(
+      (track) => track.bone === "hips" && track.path === "translation",
+    );
+
+    expect(clip.source.profile).toBe("canonical-gltf-humanoid");
+    expect(translation?.values.at(-1)).toBe(-1);
+  });
+
   it("imports text glTF animation channels from supplied sidecars", async () => {
     const serialized = await new WebIO().writeJSON(
       createMinimalAnimatedDocument(),

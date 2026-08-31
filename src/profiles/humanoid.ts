@@ -219,6 +219,17 @@ export const GENERIC_GLTF_HUMANOID_PROFILE = {
   ],
 } as const satisfies RigProfile;
 
+export const CANONICAL_GLTF_HUMANOID_PROFILE = {
+  ...GENERIC_GLTF_HUMANOID_PROFILE,
+  id: "canonical-gltf-humanoid",
+  label: "Canonical glTF Humanoid",
+  restPose: "normalized",
+  forwardAxis: "-z",
+  notes: [
+    "Explicit canonical +Y-up/-Z-forward glTF input; consumers must not infer this contract from the extension or filename.",
+  ],
+} as const satisfies RigProfile;
+
 export const GENERIC_FBX_HUMANOID_PROFILE = {
   id: "generic-fbx-humanoid",
   label: "Generic FBX Humanoid",
@@ -287,6 +298,7 @@ export const HUMANOID_RIG_PROFILES = [
   MMD_BODY_PROFILE,
   GENERIC_FBX_HUMANOID_PROFILE,
   GENERIC_GLTF_HUMANOID_PROFILE,
+  CANONICAL_GLTF_HUMANOID_PROFILE,
   ACTORCORE_PROFILE,
   READY_PLAYER_ME_PROFILE,
 ] as const satisfies readonly RigProfile[];

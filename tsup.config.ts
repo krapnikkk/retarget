@@ -7,7 +7,7 @@ export default defineConfig({
     node: "src/node.ts",
     "browser/index": "src/browser/index.ts",
     "browser/input": "src/browser/input.ts",
-    "validation/index": "src/validation/index.ts",
+    "validation/index": "src/validation-entry.ts",
     "certification/index": "src/certification/index.ts",
     "workers/input-preparation.worker": "src/workers/input-preparation.worker.ts",
     "workers/retarget.worker": "src/workers/retarget.worker.ts",

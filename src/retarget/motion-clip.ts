@@ -168,7 +168,8 @@ function validateCanonicalMotionShape(
       motion.source.kind !== "vmd" &&
       motion.source.kind !== "gltf-animation" &&
       motion.source.kind !== "actorcore-fbx" &&
-      motion.source.kind !== "generic-fbx"
+      motion.source.kind !== "generic-fbx" &&
+      motion.source.kind !== "video-pose"
     ) {
       issues.push("source.kind must be a supported motion input format.");
     }

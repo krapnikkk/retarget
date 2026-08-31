@@ -4,12 +4,17 @@ import {
   VRMC_VRM_EXTENSIONS,
   writeVRMA,
 } from "gltf-transform-vrm-extensions";
+import { Quaternion, Vector3 } from "three";
 import {
   getMotionTargetBinding,
   type HumanoidBoneName,
   type RetargetedMotionClip,
   validateMotionClip,
 } from "@/retarget";
+import {
+  CANONICAL_AXIS_FRAME,
+  createAxisCorrection,
+} from "@/retarget/coordinate-space";
 import {
   resolveExportBoneName,
   type BoneNamingOptions,
@@ -25,6 +30,16 @@ type WritableVRMAnimationExtension = {
   humanoidBoneNodes: Map<string, Node>;
   humanoidNodeBoneNames: Map<Node, string>;
 };
+
+const VRMA_AXIS_FRAME = {
+  forwardAxis: "z",
+  upAxis: "y",
+} as const;
+const CANONICAL_TO_VRMA_ROTATION = createAxisCorrection(
+  CANONICAL_AXIS_FRAME,
+  VRMA_AXIS_FRAME,
+);
+const VRMA_TO_CANONICAL_ROTATION = CANONICAL_TO_VRMA_ROTATION.clone().invert();
 
 export async function exportVRMA(
   clip: RetargetedMotionClip,
@@ -105,8 +120,8 @@ export function createVRMADocument(
       .setArray(
         new Float32Array(
           track.path === "translation"
-            ? addRestHipsTranslation(track.values, restHipsHeight)
-            : track.values,
+            ? encodeVRMATranslations(track.values, restHipsHeight)
+            : encodeVRMARotations(track.values),
         ),
       )
       .setType(
@@ -132,8 +147,43 @@ export function createVRMADocument(
   return document;
 }
 
-function addRestHipsTranslation(values: readonly number[], restHipsHeight: number) {
-  return values.map((value, index) => (index % 3 === 1 ? value + restHipsHeight : value));
+function encodeVRMATranslations(
+  values: readonly number[],
+  restHipsHeight: number,
+) {
+  const encoded: number[] = [];
+  const translation = new Vector3();
+  for (let index = 0; index < values.length; index += 3) {
+    translation
+      .set(
+        values[index] ?? 0,
+        values[index + 1] ?? 0,
+        values[index + 2] ?? 0,
+      )
+      .applyQuaternion(CANONICAL_TO_VRMA_ROTATION);
+    encoded.push(translation.x, translation.y + restHipsHeight, translation.z);
+  }
+  return encoded;
+}
+
+function encodeVRMARotations(values: readonly number[]) {
+  const encoded: number[] = [];
+  const rotation = new Quaternion();
+  for (let index = 0; index < values.length; index += 4) {
+    rotation
+      .set(
+        values[index] ?? 0,
+        values[index + 1] ?? 0,
+        values[index + 2] ?? 0,
+        values[index + 3] ?? 1,
+      )
+      .normalize()
+      .premultiply(CANONICAL_TO_VRMA_ROTATION)
+      .multiply(VRMA_TO_CANONICAL_ROTATION)
+      .normalize();
+    encoded.push(rotation.x, rotation.y, rotation.z, rotation.w);
+  }
+  return encoded;
 }
 
 function getVRMARestHipsHeight(clip: RetargetedMotionClip) {

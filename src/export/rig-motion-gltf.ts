@@ -50,7 +50,12 @@ export async function exportAnimatedRigGLB({
   }
   const buffer =
     document.getRoot().listBuffers()[0] ?? document.createBuffer("rig-motion-buffer");
-  addRigMotionAnimation(document, buffer, inspection.nodesByRole, motion);
+  addRigMotionAnimation(
+    document,
+    buffer,
+    inspection.nodesByRole as unknown as ReadonlyMap<string, Node>,
+    motion,
+  );
   const output = await new WebIO().writeBinary(document);
   signal?.throwIfAborted();
   return output;

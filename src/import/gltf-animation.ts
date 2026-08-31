@@ -1,5 +1,8 @@
 import { type Animation, type Document, type Node } from "@gltf-transform/core";
-import { GENERIC_GLTF_HUMANOID_PROFILE } from "@/profiles";
+import {
+  CANONICAL_GLTF_HUMANOID_PROFILE,
+  GENERIC_GLTF_HUMANOID_PROFILE,
+} from "@/profiles";
 import type { HumanoidBoneName, MotionTrack, MotionTrackPath } from "@/retarget";
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
 import {
@@ -25,6 +28,7 @@ export type GLTFAnimationImportOptions = {
   budget?: ParseBudget;
   sourceFile?: File;
   resources?: Record<string, Uint8Array<ArrayBuffer>>;
+  profileId?: "generic-gltf-humanoid" | "canonical-gltf-humanoid";
 };
 
 export async function importGLTFAnimation(
@@ -108,10 +112,13 @@ export async function importGLTFAnimation(
   }
 
   const restTransforms = collectSourceRestTransforms(document);
+  const profile = options.profileId === "canonical-gltf-humanoid"
+    ? CANONICAL_GLTF_HUMANOID_PROFILE
+    : GENERIC_GLTF_HUMANOID_PROFILE;
   return createImportedHumanoidMotionClip({
     kind: "gltf-animation",
     filename,
-    profile: GENERIC_GLTF_HUMANOID_PROFILE,
+    profile,
     restHipsHeight: getRestHipsHeight(document),
     restTransforms,
     rotationSemantics: "absolute-local",

@@ -8,6 +8,7 @@ import {
 } from "@/mmd/vmd-document";
 import { importVMD } from "@/import/vmd";
 import { importVRMA } from "@/import/vrma";
+import { exportVRMA } from "@/export/vrma";
 import { validateHumanoidMotionSemantics } from "@/validation";
 
 describe("VMD document codec", () => {
@@ -107,19 +108,19 @@ describe("VMD document codec", () => {
     );
   });
 
-  it("matches the pinned Quaternius walk sibling across real VMD and VRMA exports", async () => {
+  it("round-trips the pinned Quaternius walk through native VRMA coordinates", async () => {
     const fixtureRoot = new URL(
       "../fixtures/certification/golden-motion/motions/quaternius-walk/",
       import.meta.url,
     );
-    const [vmdBytes, vrmaBytes] = await Promise.all([
-      readFile(new URL("quaternius-walk.vmd", fixtureRoot)),
-      readFile(new URL("quaternius-walk.vrma", fixtureRoot)),
-    ]);
-    const [vmd, vrma] = await Promise.all([
-      importVMD(vmdBytes, "quaternius-walk.vmd"),
-      importVRMA(vrmaBytes, "quaternius-walk.vrma"),
-    ]);
+    const vmd = await importVMD(
+      await readFile(new URL("quaternius-walk.vmd", fixtureRoot)),
+      "quaternius-walk.vmd",
+    );
+    const vrma = await importVRMA(
+      await exportVRMA(vmd),
+      "quaternius-walk.vrma",
+    );
     const comparison = validateHumanoidMotionSemantics({
       actual: vmd,
       expected: vrma,

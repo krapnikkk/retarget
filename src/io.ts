@@ -10,7 +10,11 @@ export { importVRMA } from "./import/vrma";
 export function importGLTFAnimationBytes(
   bytes: Uint8Array,
   filename = "motion.glb",
-  options: { animationIndex?: number; animationName?: string } = {},
+  options: {
+    animationIndex?: number;
+    animationName?: string;
+    profileId?: "generic-gltf-humanoid" | "canonical-gltf-humanoid";
+  } = {},
 ) {
   return importGLTFAnimation(bytes, filename, options);
 }

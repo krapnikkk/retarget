@@ -271,7 +271,7 @@
       "rigDetectionMode": "name-heuristic",
       "solverRevision": 4,
       "targetBindingRevision": 1,
-      "status": "semantic-passed",
+      "status": "candidate",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.vrma",
         "sha256": "7b1da50af9ce34b8496b7e3c92ca230a3b195a489fef05a4e031b422c150fe67",
@@ -293,10 +293,9 @@
         "endEffectorMeters": 0.01,
         "symmetryMeters": 0.01
       },
-      "expectedCanonicalFrom": "quaternius-walk-gltf-to-studio-mannequin-glb",
       "evidence": {
         "structural": "passed",
-        "semantic": "passed",
+        "semantic": "pending",
         "ecosystem": "pending"
       }
     },

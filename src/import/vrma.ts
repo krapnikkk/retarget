@@ -13,7 +13,7 @@ import {
   type MotionTrackPath,
 } from "@/retarget";
 import type { SourceBoneRestTransform } from "@/retarget/source-normalization";
-import { VRM_HUMANOID_PROFILE } from "@/profiles";
+import { VRM_HUMANOID_PROFILE, type RigProfile } from "@/profiles";
 import { createImportedHumanoidMotionClip } from "./humanoid-motion";
 import { readGLTFAnimationTrack } from "./gltf-interpolation";
 import {
@@ -31,6 +31,14 @@ type VRMAAnimationExtension = VRMCVRMAnimation & {
 
 const DEFAULT_IMPORTED_FPS = 30;
 const SUPPORTED_TARGET_PATHS = new Set(["rotation", "translation"]);
+const VRMA_SOURCE_PROFILE = {
+  ...VRM_HUMANOID_PROFILE,
+  forwardAxis: "z",
+  notes: [
+    ...VRM_HUMANOID_PROFILE.notes,
+    "Native VRMA normalized tracks are converted from +Z to the canonical -Z frame at import.",
+  ],
+} satisfies RigProfile;
 
 export async function importVRMA(
   bytes: Uint8Array,
@@ -152,7 +160,7 @@ export function createMotionClipFromVRMADocument(
     filename,
     fps: estimateFPS(tracks),
     kind: "vrma",
-    profile: VRM_HUMANOID_PROFILE,
+    profile: VRMA_SOURCE_PROFILE,
     restHipsHeight,
     restTransforms,
     rootName: animation.getName() || stripExtension(filename),

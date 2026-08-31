@@ -74,7 +74,8 @@ export type CanonicalMotionSourceKind =
   | "vmd"
   | "gltf-animation"
   | "actorcore-fbx"
-  | "generic-fbx";
+  | "generic-fbx"
+  | "video-pose";
 
 export type RetargetTargetKind =
   | "vrm"
@@ -192,6 +193,24 @@ export type CanonicalMotion = {
         property: number;
       };
       unmappedBoneNames: string[];
+    };
+    videoPose?: {
+      schema: "video-motion.pose-evidence.v1";
+      backend: "mediapipe-pose-landmarker";
+      backendVersion: "1.0.1";
+      sampledFrameCount: number;
+      outputFrameCount: number;
+      detectedFrameCount: number;
+      interpolatedFrameCount: number;
+      invalidFrameCount: number;
+      detectionRate: number;
+      averageConfidence: number;
+      qualityScore: number;
+      inferenceFps: number;
+      outputFps: number;
+      mirror: boolean;
+      groundAligned: boolean;
+      footLock: boolean;
     };
   };
 };

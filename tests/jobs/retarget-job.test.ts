@@ -82,6 +82,19 @@ describe("retarget job runtime", () => {
     })).rejects.toMatchObject({ code: "PROCESSING_BUDGET_EXCEEDED" });
   });
 
+  it("preserves the public format error code across the job boundary", async () => {
+    await expect(executeRetargetJob({
+      schemaVersion: RETARGET_JOB_PROTOCOL_VERSION,
+      jobId: "invalid-vmd",
+      task: {
+        type: "import-motion",
+        formatId: "vmd",
+        filename: "broken.vmd",
+        bytes: new TextEncoder().encode("not-a-vmd-file").buffer,
+      },
+    })).rejects.toMatchObject({ code: "VMD_PARSE_FAILED" });
+  });
+
   it("does not reject large finite solve requests using product policy", () => {
     expect(() =>
       assertRetargetSolveBudget({

@@ -1,4 +1,3 @@
-import type { Document, Node, Skin } from "@gltf-transform/core";
 import { Quaternion, Vector3 } from "three";
 import {
   assertParentChains,
@@ -23,6 +22,52 @@ import type {
 import type { Quat, RigRestTransform, Vec3 } from "@/rig-motion/types";
 import { sha256Hex } from "@/core/sha256";
 import { normalizeBoneName } from "@/core/bone-name";
+
+type GltfRigAccessor = {
+  getElement(index: number, target: number[]): number[];
+};
+
+type GltfRigMesh = {
+  getName(): string;
+};
+
+type GltfRigSkin = {
+  listJoints(): GltfRigNode[];
+  getInverseBindMatrices(): GltfRigAccessor | null;
+};
+
+type GltfRigAnimationChannel = {
+  getTargetNode(): GltfRigNode | null;
+};
+
+type GltfRigAnimation = {
+  listChannels(): GltfRigAnimationChannel[];
+};
+
+export type GltfRigNode = {
+  getName(): string;
+  listChildren(): GltfRigNode[];
+  getParentNode(): GltfRigNode | null;
+  getTranslation(): readonly number[];
+  getRotation(): readonly number[];
+  getWorldTranslation(): readonly number[];
+  getWorldRotation(): readonly number[];
+  getScale(): readonly number[];
+  getSkin(): GltfRigSkin | null;
+  getMesh(): GltfRigMesh | null;
+};
+
+export type GltfRigDocument = {
+  getRoot(): {
+    listSkins(): GltfRigSkin[];
+    listAnimations(): GltfRigAnimation[];
+    listNodes(): GltfRigNode[];
+  };
+};
+
+type Document = GltfRigDocument;
+type Node = GltfRigNode;
+type Skin = GltfRigSkin;
 
 export type RigInspectionOptions = {
   familyOverride?: RigFamilyId | "auto";

@@ -11,6 +11,7 @@ export type RigProfileId =
   | "mmd-body"
   | "generic-fbx-humanoid"
   | "generic-gltf-humanoid"
+  | "canonical-gltf-humanoid"
   | "bvh-humanoid";
 
 export type RigProfileBone = {

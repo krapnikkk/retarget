@@ -1,6 +1,6 @@
 {
   "name": "3dretarget",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": true,
   "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
   "license": "MIT",
