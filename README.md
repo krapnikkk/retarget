@@ -7,11 +7,11 @@ bounded format probing, source normalization, canonical motion, rig inspection,
 target solving, semantic validation, export, format-safety validation, and a
 cancellable browser Worker runtime plus isolated Node artifact tooling.
 
-Version `0.7.1` is distributed as a locally packed, controlled preview. The
-package remains private in registry metadata to prevent accidental registry
-publication; downstream consumers install and pin the exact tarball. Its
-roadmap and readiness are determined by reusable retargeting capabilities
-rather than any particular application.
+Version `0.7.2` is the provider side of the consumer engine cutover. The package
+remains private in registry metadata until an approved private-registry publish
+is performed; a sibling checkout may be used for coordinated development but
+is not release evidence. Its roadmap and readiness are determined by reusable
+retargeting capabilities rather than any particular application.
 
 ## Scope
 
@@ -44,16 +44,12 @@ and must be followed by a recorded successful `pnpm verify` before handoff.
 Large research corpora are downloaded into the ignored `references/` directory.
 Committed fixtures include provenance and hashes.
 
-## Local controlled release
+## Controlled release
 
-Install the immutable `0.7.1` tarball supplied by the maintainer:
-
-```powershell
-pnpm add C:\path\to\3dretarget-0.7.1.tgz
-```
-
-Consumers must pin the exact package version and use the documented public
-entries. Package version `0.7.1` denotes initial API development; capability
+Consumers must install and pin the exact `0.7.2` version from the approved
+private registry and use only the documented public entries. Local `pnpm pack`
+output is a package-verification artifact, not the consumer distribution path.
+Package version `0.7.2` denotes initial API development; capability
 assurance remains case-scoped as `experimental`, `beta`, or `certified`.
 Experimental paths are available for evaluation but are not supported as
 production-compatible combinations. The supported Node toolchain is the

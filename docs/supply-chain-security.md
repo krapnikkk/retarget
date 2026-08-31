@@ -2,10 +2,11 @@
 
 [简体中文](zh-CN/supply-chain-security.md)
 
-The package remains private in registry metadata and is distributed to
-approved downstream consumers as a locally packed, exact-version tarball. A
-consumer application is not a library readiness gate and is not modified as
-part of the library release.
+The package is distributed to approved downstream consumers as an exact version
+from the approved private registry. A sibling checkout is allowed only for
+coordinated development, and a local packed artifact is verification evidence,
+not the distribution channel. A consumer application is not a library readiness
+gate and is not modified as part of the library release.
 
 Before every controlled release, the local release operator must record:
 
@@ -24,8 +25,9 @@ gate, including the domain-layer import rule. Hosted CI is an optional manual
 release/review confirmation rather than a per-commit dependency. Bypassing the
 hook does not waive the requirement to record a successful local verification.
 
-The tarball remains ignored by Git and is transferred separately. Registry
-publication, registry credentials, automated consumer updates, required hosted
-CI, and release SBOMs remain deferred under the local maintenance profile. The MIT license
-covers the library code only; consumer assets and generated outputs retain
-their own provenance and license obligations.
+Packed artifacts remain ignored by Git. Registry credentials are operator-owned
+secrets; publication is a distinct release gate after local verification.
+Automated consumer updates, required hosted CI, and release SBOMs remain
+deferred under the local maintenance profile. The MIT license covers the
+library code only; consumer assets and generated outputs retain their own
+provenance and license obligations.
