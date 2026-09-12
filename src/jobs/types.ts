@@ -86,6 +86,7 @@ export type RiggedGLTFInspectionJobResult = {
 };
 
 export type SerializedHumanoidAvatarRig = {
+  poseEditingIssue?: "NON_UNIFORM_SCALE";
   format: AvatarFormatId;
   filename: string;
   profile: import("@/profiles").RigProfile;
@@ -127,6 +128,11 @@ export type RetargetJobTask =
       resources?: SerializedGLTFResources;
       animationIndex?: number;
       animationName?: string;
+    }
+  | {
+      type: "pose-humanoid";
+      motion: import("@/retarget").TargetBoundSolvedHumanoidMotionClip;
+      edit: import("@/retarget").HumanoidPoseEdit;
     }
   | {
       type: "edit-humanoid";
@@ -179,7 +185,8 @@ export type RetargetJobTask =
     };
 
 export type RetargetJobResult<TTask extends RetargetJobTask> =
-  TTask extends HumanoidBindingTask ? HumanoidBindingResult<TTask["command"]>
+  TTask extends { type: "pose-humanoid" } ? import("@/retarget").TargetBoundSolvedHumanoidMotionClip
+  : TTask extends HumanoidBindingTask ? HumanoidBindingResult<TTask["command"]>
   : TTask extends { type: "inspect-humanoid-avatar" }
     ? SerializedHumanoidAvatarRig
     : TTask extends { type: "convert-mmd-avatar" }

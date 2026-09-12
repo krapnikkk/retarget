@@ -1,3 +1,4 @@
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import { Accessor, Document, WebIO, type Node } from "@gltf-transform/core";
 import { Quaternion } from "three";
 import { assertValidParentGraph } from "@/core/parent-graph";
@@ -31,6 +32,7 @@ export function createGLTFAnimationDocument(
   clip: RetargetedMotionClip,
   { boneNamingProfile = "canonical" }: BoneNamingOptions = {},
 ) {
+  assertHumanoidPoseExport(clip, "gltf-animation");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));

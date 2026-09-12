@@ -1,3 +1,4 @@
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import { Euler, Quaternion, Vector3 } from "three";
 import { BVH_HUMANOID_PROFILE } from "@/profiles";
 import {
@@ -230,6 +231,7 @@ export function createBVHText(
   { boneNamingProfile = "canonical" }: BoneNamingOptions = {},
   budget?: ProcessingBudget,
 ) {
+  assertHumanoidPoseExport(clip, "bvh");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));

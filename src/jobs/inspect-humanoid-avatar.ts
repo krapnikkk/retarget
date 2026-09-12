@@ -121,6 +121,7 @@ function inspectDocument(
     profile,
     bones: [...nodesByBone.keys()],
     skeleton: createNodeSkeleton(filename, nodesByBone),
+    poseEditingIssue: [...nodesByBone.values()].some(n => unsupportedScale(n.getWorldScale())) ? "NON_UNIFORM_SCALE" : undefined,
     missingRequiredBones: REQUIRED_VRM_BONES.filter(
       (bone) => !nodesByBone.has(bone),
     ),
@@ -151,6 +152,7 @@ function inspectObject(
     profile,
     bones: [...bones.keys()],
     skeleton: createObjectSkeleton(filename, bones),
+    poseEditingIssue: [...bones.values()].some(n => unsupportedScale(n.getWorldScale(new Vector3()).toArray())) ? "NON_UNIFORM_SCALE" : undefined,
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
     restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
     rigSignature: createObjectRigSignature(profile.id, bones),
@@ -205,6 +207,10 @@ function inspectStructuralJSON(
       profile,
       bones: [...nodesByBone.keys()],
       skeleton: { name: filename, children: roots },
+      poseEditingIssue: [...nodesByBone.values()].some(index => {
+        const scale = new Vector3(); getRawWorldMatrix(nodes, parents, index).decompose(new Vector3(), new Quaternion(), scale);
+        return unsupportedScale(scale.toArray());
+      }) ? "NON_UNIFORM_SCALE" : undefined,
       missingRequiredBones: REQUIRED_VRM_BONES.filter(
         (bone) => !nodesByBone.has(bone),
       ),
@@ -529,4 +535,8 @@ function profileIdForFormat(format: AvatarFormatId): RigProfileId {
   if (format === "mmd-model") return "mmd-body";
   if (format === "generic-fbx-avatar") return "generic-fbx-humanoid";
   return "generic-gltf-humanoid";
+}
+
+function unsupportedScale(scale: readonly number[]) {
+  return scale.some(v => !Number.isFinite(v) || v <= 0) || Math.max(...scale) - Math.min(...scale) > Math.max(...scale) * 1e-5;
 }

@@ -1,3 +1,4 @@
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import type { AvatarExportInput } from "@/adapters/types";
 import { Quaternion } from "three";
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
@@ -86,6 +87,7 @@ export function writeAnimatedPMX(
   pmxBytes: Uint8Array,
   clip: AvatarExportInput["clip"],
 ) {
+  assertHumanoidPoseExport(clip, "animated-pmx");
   const targetDocument = convertMMDModelToGLBDocument(pmxBytes, "avatar.pmx");
   assertHumanoidTargetIdentity(
     clip,

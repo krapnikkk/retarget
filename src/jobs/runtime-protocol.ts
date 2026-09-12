@@ -1,3 +1,4 @@
+import { assertHumanoidPoseEdit } from "@/retarget/pose-edit";
 import { assertHumanoidClipEdit } from "@/retarget/clip-edit";
 import type { CanonicalHumanoidMotionClip } from "@/retarget/types";
 import type {
@@ -46,6 +47,7 @@ const TASK_TYPES = new Set<RetargetJobTask["type"]>([
   "inspect-rigged-gltf",
   "import-motion",
   "edit-humanoid",
+  "pose-humanoid",
   "solve-humanoid",
   "retarget-rigged-gltf",
   "export-motion",
@@ -322,6 +324,12 @@ function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
       assertResources(task.resources, "import-motion.resources");
       assertAnimationSelection(task);
       return;
+    case "pose-humanoid":
+      assertExactKeys(task, ["type","motion","edit"], task.type);
+      assertMotionProcessingBudget(task.motion,budget);
+      assertHumanoidPoseEdit(task.edit,task.motion.duration);
+      if (task.motion.processing.stage !== "solved" || !task.motion.target?.rigSignature) protocolError("Pose edits require bound solved input.");
+      return;
     case "edit-humanoid":
       assertExactKeys(task, ["type", "motion", "edit"], task.type);
       assertMotionProcessingBudget(task.motion, budget);
@@ -494,6 +502,12 @@ function assertTaskResult(
         }
         return;
       }
+      case "pose-humanoid":
+        assertMotionProcessingBudget(result as never, budget);
+        if ((result as typeof task.motion).processing.stage !== "solved" || (result as typeof task.motion).target?.rigSignature !== task.edit.rigSignature) protocolError("Pose result target mismatch.");
+        if ((result as typeof task.motion).processing.sourceCanonicalId !== task.motion.processing.sourceCanonicalId ||
+          (task.edit.corrections.some(c => c.enabled && c.weight > 0) && JSON.stringify((result as typeof task.motion).metadata?.poseEdit?.settings) !== JSON.stringify(task.edit))) protocolError("Pose result settings mismatch.");
+        return;
       case "import-motion":
       case "solve-humanoid":
         assertMotionProcessingBudget(result as never, budget);

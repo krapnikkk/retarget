@@ -100,6 +100,7 @@ export async function bindMotionClipToAvatar({
     ...solvedClip,
     target: {
       kind: rig.format,
+      poseEditingIssue: rig.poseEditingIssue,
       filename: avatarFile.name,
       rigSignature: rig.rigSignature,
       restHipsHeight: rig.restHipsHeight,

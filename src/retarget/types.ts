@@ -166,6 +166,7 @@ export type CanonicalMotion = {
   tracks: MotionTrack[];
   diagnostics?: RetargetDiagnostics;
   metadata?: {
+    poseEdit?: { settings: import("./pose-edit").HumanoidPoseEdit; warnings: import("./pose-edit").HumanoidPoseWarning[]; resultId: string };
     clipEdit?: { sourceCanonicalId: string; settings: HumanoidClipEdit };
     sourceHeight?: number;
     targetHeight?: number;
@@ -224,6 +225,7 @@ export type CanonicalMotion = {
 };
 
 export type RetargetTargetBinding = {
+  poseEditingIssue?: "NON_UNIFORM_SCALE";
   kind: RetargetTargetKind;
   filename: string;
   rigSignature?: string;

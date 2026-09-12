@@ -1,3 +1,4 @@
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import {
   HUMANOID_BONES,
   normalizeMotionTime,
@@ -24,6 +25,7 @@ export async function exportVMD(
   _options?: import("./bone-naming").BoneNamingOptions,
   budget?: ProcessingBudget,
 ): Promise<Uint8Array> {
+  assertHumanoidPoseExport(clip, "vmd");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));
