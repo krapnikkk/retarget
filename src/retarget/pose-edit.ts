@@ -171,20 +171,24 @@ export function bakeHumanoidPoseEdits(
     }
   }
   if (!changed.size) return clip;
-  const times = new Set<number>([0, clip.duration]);
-  for (const track of clip.tracks) for (const time of track.times) times.add(time);
+  // glTF/VRMA encode time as float32. Keep the first (original) sample when
+  // a generated time rounds to the same value, otherwise reload rejects duplicates.
+  const times = new Map<number, number>();
+  const addTime = (time: number) => { const key = Math.fround(time); if (!times.has(key)) times.set(key, time); };
+  addTime(0); addTime(clip.duration);
+  for (const track of clip.tracks) for (const time of track.times) addTime(time);
   for (const c of edit.corrections) {
     if (!c.enabled || c.weight === 0) continue;
-    for (const t of [c.startSeconds,c.startSeconds+c.fadeInSeconds,c.endSeconds-c.fadeOutSeconds,c.endSeconds]) times.add(t);
+    for (const t of [c.startSeconds,c.startSeconds+c.fadeInSeconds,c.endSeconds-c.fadeOutSeconds,c.endSeconds]) addTime(t);
     const count = Math.ceil((c.endSeconds-c.startSeconds)*clip.fps);
     assertSafeCount(count+1, budget.maxFrames, "pose frames", "refine");
-    for (let i=1;i<count;i++) times.add(c.startSeconds + i/clip.fps);
+    for (let i=1;i<count;i++) addTime(c.startSeconds + i/clip.fps);
   }
   assertSafeCount(times.size, budget.maxFrames, "pose frames", "refine");
   const preservedSamples = clip.tracks.filter(t => !(t.path === "rotation" && changed.has(t.bone))).reduce((n,t)=>n+t.times.length,0);
   assertSafeCount(preservedSamples + times.size*changed.size, budget.maxTotalSamples, "pose samples", "refine");
   assertSafeCount((preservedSamples + times.size*changed.size)*4, budget.maxGeneratedValues, "pose values", "refine");
-  const ordered = [...times].sort((a,b)=>a-b);
+  const ordered = [...times.values()].sort((a,b)=>a-b);
   const values = new Map([...changed].map(b => [b, [] as number[]]));
   const warnings: HumanoidPoseWarning[] = [];
   const warn = (correction: number, code: HumanoidPoseWarning["code"], time: number) => {

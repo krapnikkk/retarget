@@ -37,6 +37,17 @@ function fixture(height=1, angle=0) {
   return {doc,nodes,clip,source,edit};
 }
 describe("target-bound pose corrections",()=>{
+  it("reloads mixed original float32 key times and generated FPS samples", async()=>{
+    const {clip,edit}=fixture();
+    const times=Array.from({length:61},(_,i)=>Math.fround(i/30));
+    for(const track of clip.tracks) {track.times=times;track.values=times.flatMap(()=>[0,0,0,1]);}
+    edit.corrections[0]!.startSeconds=0;edit.corrections[0]!.endSeconds=2;
+    const result=bakeHumanoidPoseEdits(clip,edit);
+    const bytes=await exportVRMA(result);
+    const reloaded=await validateMotionExportReload("vrma",bytes);
+    expect(reloaded.ok,JSON.stringify(reloaded)).toBe(true);
+  });
+
   it("preserves root displacement while correcting hips and shoulders, and reports an axial pole",()=>{
     const {clip,edit,nodes,doc}=fixture(1.4,-.4);
     const shoulder=doc.createNode("leftShoulder").setTranslation([.15,.4,0]);
