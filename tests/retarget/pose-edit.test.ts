@@ -37,6 +37,26 @@ function fixture(height=1, angle=0) {
   return {doc,nodes,clip,source,edit};
 }
 describe("target-bound pose corrections",()=>{
+  it("preserves root displacement while correcting hips and shoulders, and reports an axial pole",()=>{
+    const {clip,edit,nodes,doc}=fixture(1.4,-.4);
+    const shoulder=doc.createNode("leftShoulder").setTranslation([.15,.4,0]);
+    nodes.get("hips")!.addChild(shoulder);
+    const upper=nodes.get("leftUpperArm")!;
+    upper.setTranslation([.13,.3,0]);shoulder.addChild(upper);
+    nodes.set("leftShoulder",shoulder);
+    clip.target.rigSignature=createGLTFHumanoidRigSignature(nodes,"generic-gltf-humanoid");
+    clip.tracks.push({bone:"leftShoulder",path:"rotation",times:[0,2],values:[0,0,0,1,0,0,0,1]},
+      {bone:"hips",path:"translation",times:[0,1,2],values:[0,0,0,.2,.1,.4,.4,.2,.8]});
+    edit.rigSignature=clip.target.rigSignature;
+    edit.corrections=[{...edit.corrections[0]!,bone:"hips"},{...edit.corrections[0]!,bone:"leftShoulder"}];
+    const result=bakeHumanoidPoseEdits(clip,edit);
+    expect(result.tracks.find(t=>t.path==="translation")).toBe(clip.tracks.find(t=>t.path==="translation"));
+    for(const time of [0,.5,1,1.5,2]) expect(sampleHumanoidTargetPose(result,time).hips).toEqual(sampleHumanoidTargetPose(clip,time).hips);
+    const positions=sampleHumanoidTargetPose(clip,1);
+    edit.corrections=[{kind:"ik",enabled:true,bone:"leftFoot",target:positions.leftFoot!,pole:positions.leftUpperLeg!,startSeconds:0,endSeconds:2,fadeInSeconds:0,fadeOutSeconds:0,weight:1}];
+    expect(bakeHumanoidPoseEdits(clip,edit).metadata?.poseEdit?.warnings.some(w=>w.code==="IK_POLE_DEGENERATE")).toBe(true);
+  });
+
   it.each([[1,0],[1.8,-.5]])("bakes local FK across T/A pose and height %j", (height,angle)=>{
     const {clip,edit,nodes}=fixture(height,angle), before=structuredClone(clip);
     const result=bakeHumanoidPoseEdits(clip,edit);
