@@ -15,6 +15,7 @@ import {
   type CustomRigMappingConfig,
 } from "@/solvers";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
+import type { RunRetargetJobOptions } from "@/jobs/browser-retarget-job";
 import type { SerializedHumanoidAvatarRig } from "@/jobs/types";
 import {
   collectTransferableAssetPackage,
@@ -32,6 +33,7 @@ export async function bindMotionClipToAvatar({
   mappingConfig = DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
   solveOptions = DEFAULT_RETARGET_SOLVE_OPTIONS,
   signal,
+  jobOptions,
 }: {
   avatarFile: File;
   avatarFormatId: AvatarFormatId;
@@ -39,6 +41,7 @@ export async function bindMotionClipToAvatar({
   mappingConfig?: CustomRigMappingConfig;
   solveOptions?: RetargetSolveOptions;
   signal?: AbortSignal;
+  jobOptions?: Pick<RunRetargetJobOptions, "budget" | "deadlineMs">;
 }): Promise<TargetBoundSolvedHumanoidMotionClip> {
   signal?.throwIfAborted();
   const rangeLoadable = isRangeLoadableGLB(avatarFile);
@@ -72,7 +75,7 @@ export async function bindMotionClipToAvatar({
       structuralJSONBytes,
       assetPackage,
     },
-    { bufferOwnership: "transfer", signal },
+    { ...jobOptions, bufferOwnership: "transfer", signal },
   );
   signal?.throwIfAborted();
   const solvedClip = await runRetargetJob(
@@ -89,7 +92,7 @@ export async function bindMotionClipToAvatar({
         restHipsHeight: rig.restHipsHeight,
       },
     },
-    { signal },
+    { ...jobOptions, signal },
   );
   signal?.throwIfAborted();
 

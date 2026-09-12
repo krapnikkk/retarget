@@ -39,7 +39,7 @@ SolvedHumanoidMotionClip
 ## 单片段编辑 v1
 
 根接口 `editHumanoidMotion(original, edit, processingBudget?)` 与浏览器 Worker
-`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, processingBudget })`
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, budget: { processing: processingBudget } })`
 接收 `HumanoidClipEdit`：`{ schemaVersion: 1, startSeconds, endSeconds, speed }`。
 每次从保留的原始 canonical clip 重建，编辑在映射、求解和脚步清理之前执行。
 仅支持一个连续区间和正数恒定速度。时间归零，结果时长为 `(endSeconds - startSeconds) / speed`。
@@ -50,3 +50,6 @@ SolvedHumanoidMotionClip
 范围、版本和非有限数字错误使用 `PROCESSING_OPTION_INVALID`；输出分配前检查时长、帧数、采样和值数量预算。
 取消或调用方指定的 deadline 会终止 Worker；消费者不得让过期结果覆盖新版本。
 编辑能力不增加生态认证等级。
+
+浏览器 bindMotionClipToAvatar 接收可选 jobOptions（budget 与 deadlineMs），
+并传递给角色检查和目标求解。消费者可以在编辑与目标求解阶段共享预算。

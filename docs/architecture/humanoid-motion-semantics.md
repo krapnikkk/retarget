@@ -73,7 +73,7 @@ world-space comparisons in the next hardening stage pass.
 ## Single-clip editing v1
 
 Root API `editHumanoidMotion(original, edit, processingBudget?)` and browser Worker
-`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, processingBudget })`
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, budget: { processing: processingBudget } })`
 accept `HumanoidClipEdit`: `{ schemaVersion: 1, startSeconds, endSeconds, speed }`.
 Always rebuild from the retained original canonical clip, before mapping, solve and foot cleanup.
 One contiguous interval and positive constant speed are supported. Times are rebased to zero;
@@ -87,3 +87,7 @@ Invalid ranges, versions and non-finite numbers raise `PROCESSING_OPTION_INVALID
 duration, frame, sample and value budgets are checked before allocating output tracks.
 The Worker can be terminated by cancellation or the caller-owned deadline; a superseded result
 must not replace a newer consumer revision. Editing does not grant ecosystem certification.
+
+The browser bindMotionClipToAvatar helper accepts optional jobOptions containing budget and deadlineMs,
+forwarded to avatar inspection and target solve. Consumers can share their editing budgets
+with these stages instead of leaving target solve unbounded.

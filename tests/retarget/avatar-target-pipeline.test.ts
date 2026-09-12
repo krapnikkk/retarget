@@ -35,6 +35,12 @@ describe("avatar target binding", () => {
     expect(boundClip.target.rigSignature).toMatch(/^humanoid-rest-v1:/);
   });
 
+  it("forwards caller processing budgets to target solve", async () => {
+    const clip = createRetargetedMotionClipStub({ vrmFile: { name: "pending.vrm" }, fbxFile: { name: "idle.fbx" } });
+    const avatarFile = new File([await createMinimalHumanoidGLB()], "avatar.glb");
+    await expect(bindMotionClipToAvatar({ avatarFile, avatarFormatId: "gltf-humanoid", clip, jobOptions: { budget: { processing: { maxDurationSeconds: 0.5 } } } })).rejects.toMatchObject({ code: "PROCESSING_CLIP_INVALID" });
+  });
+
   it("bakes imported motion tracks through the custom rig solver when binding a target", async () => {
     const sourceValues = [0.707107, 0, 0, 0.707107, 0.707107, 0, 0, 0.707107];
     const clip = createImportedHumanoidMotionClip({
