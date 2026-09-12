@@ -257,7 +257,7 @@ function assertFiniteRange(
   }
 }
 
-function assertSafeCount(
+export function assertSafeCount(
   value: number,
   limit: number,
   label: string,

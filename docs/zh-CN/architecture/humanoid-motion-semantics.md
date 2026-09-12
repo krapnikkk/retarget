@@ -35,3 +35,18 @@ SolvedHumanoidMotionClip
 共享目标绑定器把规范世界增量转换到目标轴基和父级局部静止基。通用角色预览、基于文档的 GLB/VRM/FBX 导出、流式 GLB 导出以及 PMX 骨骼形变导出均使用这些共享变换。节点动画输出为绝对目标局部值；PMX 骨骼形变按格式要求接收目标局部增量。
 
 结构导出验证与语义认证保持分离。在后续加固阶段的 Golden Motion 清单和世界空间比较通过前，任何格式三元组都不得标记为已认证。
+
+## 单片段编辑 v1
+
+根接口 `editHumanoidMotion(original, edit, processingBudget?)` 与浏览器 Worker
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, processingBudget })`
+接收 `HumanoidClipEdit`：`{ schemaVersion: 1, startSeconds, endSeconds, speed }`。
+每次从保留的原始 canonical clip 重建，编辑在映射、求解和脚步清理之前执行。
+仅支持一个连续区间和正数恒定速度。时间归零，结果时长为 `(endSeconds - startSeconds) / speed`。
+边界位移采用线性插值，旋转采用最短路径 SLERP；保留空间根偏移与源 FPS。
+不取整关键帧、不重新居中空间轨迹，也不使用预览播放倍率。
+
+结果具有新的确定性 canonical 身份，`metadata.clipEdit` 保存父动作身份与编辑参数，输入不变。
+范围、版本和非有限数字错误使用 `PROCESSING_OPTION_INVALID`；输出分配前检查时长、帧数、采样和值数量预算。
+取消或调用方指定的 deadline 会终止 Worker；消费者不得让过期结果覆盖新版本。
+编辑能力不增加生态认证等级。

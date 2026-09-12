@@ -1,3 +1,5 @@
+import { assertHumanoidClipEdit } from "@/retarget/clip-edit";
+import type { CanonicalHumanoidMotionClip } from "@/retarget/types";
 import type {
   AvatarExportFormatId,
   AvatarFormatId,
@@ -43,6 +45,7 @@ const TASK_TYPES = new Set<RetargetJobTask["type"]>([
   "convert-mmd-avatar",
   "inspect-rigged-gltf",
   "import-motion",
+  "edit-humanoid",
   "solve-humanoid",
   "retarget-rigged-gltf",
   "export-motion",
@@ -319,6 +322,12 @@ function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
       assertResources(task.resources, "import-motion.resources");
       assertAnimationSelection(task);
       return;
+    case "edit-humanoid":
+      assertExactKeys(task, ["type", "motion", "edit"], task.type);
+      assertMotionProcessingBudget(task.motion, budget);
+      assertHumanoidClipEdit(task.edit, task.motion.duration);
+      if (task.motion.processing.stage !== "canonical") protocolError("Clip edits require canonical input.");
+      return;
     case "solve-humanoid":
       assertExactKeys(
         task,
@@ -472,6 +481,19 @@ function assertTaskResult(
         }
         assertOutputBytes(result.byteLength, budget);
         return;
+      case "edit-humanoid": {
+        assertMotionProcessingBudget(result as never, budget);
+        const edited = result as CanonicalHumanoidMotionClip;
+        const evidence = edited.metadata?.clipEdit;
+        if (edited.processing.stage !== "canonical" ||
+          evidence?.sourceCanonicalId !== task.motion.processing.sourceCanonicalId ||
+          edited.duration !== (task.edit.endSeconds - task.edit.startSeconds) / task.edit.speed ||
+          !evidence || ["schemaVersion", "startSeconds", "endSeconds", "speed"].some((key) =>
+            evidence.settings[key as keyof typeof task.edit] !== task.edit[key as keyof typeof task.edit])) {
+          protocolError("Edited motion does not match the requested source and settings.");
+        }
+        return;
+      }
       case "import-motion":
       case "solve-humanoid":
         assertMotionProcessingBudget(result as never, budget);

@@ -6,3 +6,4 @@ export * from "./motion-refinement";
 export * from "./motion-clip";
 export * from "./pose-sampler";
 export * from "./types";
+export * from "./clip-edit";

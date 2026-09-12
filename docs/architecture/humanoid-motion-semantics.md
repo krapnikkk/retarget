@@ -69,3 +69,21 @@ PMX bone morphs receive target-local delta values as required by that format.
 Structural export validation remains separate from semantic certification.
 No format triple becomes certified until the Golden Motion manifest and
 world-space comparisons in the next hardening stage pass.
+
+## Single-clip editing v1
+
+Root API `editHumanoidMotion(original, edit, processingBudget?)` and browser Worker
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, processingBudget })`
+accept `HumanoidClipEdit`: `{ schemaVersion: 1, startSeconds, endSeconds, speed }`.
+Always rebuild from the retained original canonical clip, before mapping, solve and foot cleanup.
+One contiguous interval and positive constant speed are supported. Times are rebased to zero;
+output duration is `(endSeconds - startSeconds) / speed`. Boundary translation uses linear
+interpolation and rotation uses shortest-path SLERP. Spatial root offsets and source FPS remain
+unchanged. No keyframe rounding, spatial recentering, or preview playback rate enters this operation.
+
+The result is a new canonical clip with deterministic identity and `metadata.clipEdit`
+recording the parent canonical identity and edit settings. The input is never mutated.
+Invalid ranges, versions and non-finite numbers raise `PROCESSING_OPTION_INVALID`;
+duration, frame, sample and value budgets are checked before allocating output tracks.
+The Worker can be terminated by cancellation or the caller-owned deadline; a superseded result
+must not replace a newer consumer revision. Editing does not grant ecosystem certification.

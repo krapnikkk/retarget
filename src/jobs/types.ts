@@ -8,6 +8,7 @@ import type { BoneNamingOptions } from "@/export/bone-naming";
 import type {
   CanonicalHumanoidMotionClip,
   HumanoidBoneName,
+  HumanoidClipEdit,
   RetargetSolveOptions,
   RetargetedMotionClip,
   SolvedHumanoidMotionClip,
@@ -128,6 +129,11 @@ export type RetargetJobTask =
       animationName?: string;
     }
   | {
+      type: "edit-humanoid";
+      motion: CanonicalHumanoidMotionClip;
+      edit: HumanoidClipEdit;
+    }
+  | {
       type: "solve-humanoid";
       motion: CanonicalHumanoidMotionClip;
       mapping: CustomRigMappingConfig;
@@ -180,7 +186,7 @@ export type RetargetJobResult<TTask extends RetargetJobTask> =
       ? Uint8Array
       : TTask extends { type: "inspect-rigged-gltf" }
         ? RiggedGLTFInspectionJobResult
-        : TTask extends { type: "import-motion" }
+        : TTask extends { type: "import-motion" | "edit-humanoid" }
           ? CanonicalHumanoidMotionClip
           : TTask extends { type: "solve-humanoid" }
             ? SolvedHumanoidMotionClip

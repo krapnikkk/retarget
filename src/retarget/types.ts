@@ -60,6 +60,13 @@ export type HumanoidBoneName = (typeof HUMANOID_BONES)[number];
 
 export type MotionTrackPath = "rotation" | "translation";
 
+export type HumanoidClipEdit = {
+  schemaVersion: 1;
+  startSeconds: number;
+  endSeconds: number;
+  speed: number;
+};
+
 export type MotionTrack = {
   bone: HumanoidBoneName;
   path: MotionTrackPath;
@@ -159,6 +166,7 @@ export type CanonicalMotion = {
   tracks: MotionTrack[];
   diagnostics?: RetargetDiagnostics;
   metadata?: {
+    clipEdit?: { sourceCanonicalId: string; settings: HumanoidClipEdit };
     sourceHeight?: number;
     targetHeight?: number;
     rootScale?: number;
