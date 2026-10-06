@@ -46,6 +46,12 @@ The browser `exportPairedAvatarMotionZip` operation is experimental: it
 validates target identity and motion reload, but failures are plain errors
 without public codes, it has no cancellation, progress, or budget contract, and
 its signature may change in a minor release.
+The browser `exportAnimatedGLBStream` operation is experimental and
+humanoid-only: it appends a target-bound solved clip to a self-contained GLB and
+returns a `Blob` composed from range-backed parts without reading the whole
+avatar. A clip bound to another rig fails with `TARGET_RIG_MISMATCH`; other
+failures are plain errors, and it has no cancellation, progress, or budget
+contract yet.
 Avatar exporters accept `TargetBoundSolvedHumanoidMotionClip`, whose target rig
 signature prevents a solved clip from being silently rebound to another rig.
 

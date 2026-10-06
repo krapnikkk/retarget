@@ -56,6 +56,8 @@ export type { RigMotionAction } from "../import/rig-motion-gltf";
 export {exportAnimatedGLB, exportBakedVRM} from "../export/avatar-glb";
 export {exportFBXAvatarAnimation} from "../export/fbx-avatar";
 export {exportPairedAvatarMotionZip} from "../export/paired-archive";
+export {exportAnimatedGLBStream} from "../export/streamed-avatar-glb";
+export type {AnimatedGLBStreamInput} from "../export/streamed-avatar-glb";
 export {
   exportAnimatedRigGLB,
   exportRigMotionGLTF,

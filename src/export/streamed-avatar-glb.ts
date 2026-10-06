@@ -32,13 +32,25 @@ const JSON_CHUNK_TYPE = 0x4e4f534a;
 const BIN_CHUNK_TYPE = 0x004e4942;
 const GLB_MAGIC = 0x46546c67;
 
+export type AnimatedGLBStreamInput = {
+  avatarFile: File;
+  clip: TargetBoundSolvedHumanoidMotionClip;
+};
+
+/**
+ * Appends the solved humanoid clip to a self-contained GLB avatar and returns
+ * the Animated GLB as a `Blob` composed from range-backed parts, without
+ * reading the whole avatar into memory. The clip must be bound to this avatar's
+ * rig; a different rig fails with `TARGET_RIG_MISMATCH`.
+ *
+ * @experimental Humanoid targets only. Other failures are plain `Error`s
+ * without public error codes, and cancellation, progress, and budget limits
+ * are not yet supported. The signature may change in a minor release.
+ */
 export async function exportAnimatedGLBStream({
   avatarFile,
   clip,
-}: {
-  avatarFile: File;
-  clip: TargetBoundSolvedHumanoidMotionClip;
-}) {
+}: AnimatedGLBStreamInput): Promise<Blob> {
   const info = await readGLBRangeInfo(avatarFile);
   const json = structuredClone(info.json);
   const nodes = Array.isArray(json.nodes)
