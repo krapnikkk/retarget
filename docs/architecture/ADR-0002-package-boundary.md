@@ -14,7 +14,7 @@ gates that do not measure library quality.
 
 ## Decision
 
-`3dretarget` is an independent, consumer-neutral library. It owns reusable
+`@krapnikkk/retarget` is an independent, consumer-neutral library. It owns reusable
 retargeting code, public contracts, tests, corpus manifests, and packed runtime
 artifacts.
 

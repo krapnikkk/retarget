@@ -1,5 +1,5 @@
 {
-  "name": "3dretarget",
+  "name": "@krapnikkk/retarget",
   "version": "0.7.2",
   "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
   "license": "MIT",
@@ -9,11 +9,11 @@
   "author": "krapnikkk",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/krapnikkk/3dretarget.git"
+    "url": "git+https://github.com/krapnikkk/retarget.git"
   },
-  "homepage": "https://github.com/krapnikkk/3dretarget#readme",
+  "homepage": "https://github.com/krapnikkk/retarget#readme",
   "bugs": {
-    "url": "https://github.com/krapnikkk/3dretarget/issues"
+    "url": "https://github.com/krapnikkk/retarget/issues"
   },
   "keywords": [
     "animation",

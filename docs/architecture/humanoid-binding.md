@@ -25,7 +25,7 @@ Pose labels do not establish anatomy: callers must confirm the model and draft. 
 One coarse task, `{ type: "humanoid-binding", bytes, command }`, has separate `inspect`, `fit`, `use-rig`, `edit-rig`, `skin`, `edit-weights`, `export` and `validate` commands. On every call, `bytes` contains the **original static input**, not an exported skinned GLB. Command types infer result types.
 
 ```ts
-import { runRetargetJob } from "3dretarget/browser";
+import { runRetargetJob } from "@krapnikkk/retarget/browser";
 
 const rig = await runRetargetJob({ type: "humanoid-binding", bytes: inputBytes,
   command: { operation: "fit", pose: "t-pose", forward: "+z", landmarks } });
@@ -39,7 +39,7 @@ const output = await runRetargetJob({ type: "humanoid-binding", bytes: inputByte
 // output.bytes: Uint8Array; output.validation: structural + deformation report.
 ```
 
-Node uses `runNodeToolJob` from `3dretarget/node`, returning `{ ok, result }` or `{ ok: false, error }`. Trusted tooling can explicitly run inline with `processHumanoidBinding(bytes, command, options)` from `3dretarget/io`. No scene/document objects leak through these contracts.
+Node uses `runNodeToolJob` from `@krapnikkk/retarget/node`, returning `{ ok, result }` or `{ ok: false, error }`. Trusted tooling can explicitly run inline with `processHumanoidBinding(bytes, command, options)` from `@krapnikkk/retarget/io`. No scene/document objects leak through these contracts.
 
 ## Editing and invalidation
 

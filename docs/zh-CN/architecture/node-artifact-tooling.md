@@ -2,7 +2,7 @@
 
 [English](../../architecture/node-artifact-tooling.md)
 
-`3dretarget/node` 将 `runNodeToolJob` 作为粗粒度 Node 资源生成与验证边界。运行器启动打包后的 Node tooling Worker，且不会回退到进程内执行。`AbortSignal` 或调用方可选的截止时间会终止 Worker，即使同步解析器或写入器仍在运行也能取消。
+`@krapnikkk/retarget/node` 将 `runNodeToolJob` 作为粗粒度 Node 资源生成与验证边界。运行器启动打包后的 Node tooling Worker，且不会回退到进程内执行。`AbortSignal` 或调用方可选的截止时间会终止 Worker，即使同步解析器或写入器仍在运行也能取消。
 
 ## 契约
 
@@ -16,7 +16,7 @@
 - 确定性 canonical GLB 到 PMX 或完整 PMX bundle 生成；由于腿部 IK、物理和 morph 生成仍不在范围内，该能力保持 experimental；
 - VRM、PMX、PMX bundle 与 Rig Motion glTF 字节验证。
 
-格式能力表继续由根包公开，来源与保证清单继续位于 `3dretarget/certification`。Node 入口不会复制目录或认证策略。
+格式能力表继续由根包公开，来源与保证清单继续位于 `@krapnikkk/retarget/certification`。Node 入口不会复制目录或认证策略。
 
 ## 确定性
 
@@ -34,7 +34,7 @@ Node 任务默认不设置文件大小、输出大小、估算内存或处理时
 `bufferOwnership: "transfer"`；只有任务声明的字节字段会被转移并 detached。
 
 ```ts
-import { runNodeToolJob } from "3dretarget/node";
+import { runNodeToolJob } from "@krapnikkk/retarget/node";
 
 const result = await runNodeToolJob({
   type: "author-vrm",

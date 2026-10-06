@@ -208,6 +208,6 @@ SDK acceptance requires:
 
 The generated acceptance record and its certification hash live at
 `src/certification/non-humanoid-v1.json` and are exported by
-`3dretarget/certification`. Fixture admission does not
+`@krapnikkk/retarget/certification`. Fixture admission does not
 make an asset a public catalog entry; catalog publication keeps its separate
 manifest, integrity, preview, and release gates.

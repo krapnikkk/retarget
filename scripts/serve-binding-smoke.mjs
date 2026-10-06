@@ -28,8 +28,8 @@ try {
 }
 const config = { root: path.join(root, "tests/binding/browser"), configFile: false, publicDir,
   resolve: { alias: [
-    { find: "3dretarget/browser", replacement: path.join(root, "dist/browser/index.js") },
-    { find: "3dretarget", replacement: path.join(root, "dist/index.js") },
+    { find: "@krapnikkk/retarget/browser", replacement: path.join(root, "dist/browser/index.js") },
+    { find: "@krapnikkk/retarget", replacement: path.join(root, "dist/index.js") },
   ] },
   build: { outDir: path.join(work, "site"), emptyOutDir: true },
   preview: { host: "127.0.0.1", port: 4177, strictPort: true } };

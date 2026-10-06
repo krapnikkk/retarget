@@ -2,7 +2,7 @@
 
 [English source](../../architecture/browser-input-preparation.md)
 
-`3dretarget/browser/input` 通过 `prepareBrowserAssetInput()` 提供宿主文件获取与库内不可信输入准备之间的粗粒度边界；`3dretarget/browser` 为兼容性重新导出同一 API。之所以提供仅输入入口，是因为生产打包证据表明完整浏览器入口还会携带重定向流水线与格式专用运行时。两个入口都不负责文件选择器 UI，也不会持久化浏览器权限。
+`@krapnikkk/retarget/browser/input` 通过 `prepareBrowserAssetInput()` 提供宿主文件获取与库内不可信输入准备之间的粗粒度边界；`@krapnikkk/retarget/browser` 为兼容性重新导出同一 API。之所以提供仅输入入口，是因为生产打包证据表明完整浏览器入口还会携带重定向流水线与格式专用运行时。两个入口都不负责文件选择器 UI，也不会持久化浏览器权限。
 
 ## 所有权边界
 
@@ -44,7 +44,7 @@ ZIP 与目录中的主文件选择遵循相同规则。存在零个或多个内�
 
 输入准备消息使用 schema version `2`。双方都会校验请求/响应判别字段、任务 ID、角色、限制、进度、已注册错误码与成功结果结构。畸形消息以 `WORKER_PROTOCOL_INVALID` fail-closed；创建失败使用 `WORKER_UNAVAILABLE`，不可信输入准备绝不静默退回主线程。`AbortSignal`、调用方配置的截止时间、`messageerror`、克隆异常与进度回调异常统一终止活动 Worker，并进入同一清理路径。
 
-包门禁会把 tarball 安装到临时消费端，用生产 bundler 构建 `3dretarget/browser/input`，并检查输出代码和源码模块证据。入口及其 Worker 必须排除 MMD、VMD、Ammo、FBX loader 和完整重定向任务标记。入口、Worker、tarball 与消费端 bundle 的字节数只作为诊断信息输出，不再作为硬门禁。
+包门禁会把 tarball 安装到临时消费端，用生产 bundler 构建 `@krapnikkk/retarget/browser/input`，并检查输出代码和源码模块证据。入口及其 Worker 必须排除 MMD、VMD、Ammo、FBX loader 和完整重定向任务标记。入口、Worker、tarball 与消费端 bundle 的字节数只作为诊断信息输出，不再作为硬门禁。
 
 进度使用专用阶段联合：
 
@@ -61,7 +61,7 @@ discover | read | probe | unpack | resolve | complete
 ## 公共示例
 
 ```ts
-import { prepareBrowserAssetInput } from "3dretarget/browser";
+import { prepareBrowserAssetInput } from "@krapnikkk/retarget/browser";
 
 const prepared = await prepareBrowserAssetInput(file, {
   role: "motion",

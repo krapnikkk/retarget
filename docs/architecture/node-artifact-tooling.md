@@ -2,7 +2,7 @@
 
 [简体中文](../zh-CN/architecture/node-artifact-tooling.md)
 
-`3dretarget/node` exposes `runNodeToolJob` as the coarse Node authoring and
+`@krapnikkk/retarget/node` exposes `runNodeToolJob` as the coarse Node authoring and
 validation boundary. The runner starts the packed Node tooling Worker and never
 falls back to in-process execution. An `AbortSignal` or an optional caller deadline
 terminates the Worker, including while synchronous parsers or writers are busy.
@@ -25,7 +25,7 @@ The first task set covers:
 - validation of VRM, PMX, PMX bundles, and Rig Motion glTF bytes.
 
 Format capability tables are exported by the root package, while provenance and
-assurance manifests remain in `3dretarget/certification`. The Node entry does not
+assurance manifests remain in `@krapnikkk/retarget/certification`. The Node entry does not
 duplicate catalog or certification policy.
 
 ## Determinism
@@ -58,7 +58,7 @@ input buffers may set `bufferOwnership: "transfer"`; only task-declared byte
 fields are transferred and detached.
 
 ```ts
-import { runNodeToolJob } from "3dretarget/node";
+import { runNodeToolJob } from "@krapnikkk/retarget/node";
 
 const result = await runNodeToolJob({
   type: "author-vrm",

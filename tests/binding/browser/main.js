@@ -1,5 +1,5 @@
-import { getRetargetPipeline, runRetargetJob } from "3dretarget/browser";
-import { retarget } from "3dretarget";
+import { getRetargetPipeline, runRetargetJob } from "@krapnikkk/retarget/browser";
+import { retarget } from "@krapnikkk/retarget";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { AnimationMixer, Box3, HemisphereLight, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from "three";
 

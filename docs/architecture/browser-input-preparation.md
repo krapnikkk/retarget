@@ -2,9 +2,9 @@
 
 [简体中文](../zh-CN/architecture/browser-input-preparation.md)
 
-`3dretarget/browser/input` exposes `prepareBrowserAssetInput()` as the coarse
+`@krapnikkk/retarget/browser/input` exposes `prepareBrowserAssetInput()` as the coarse
 boundary between host-owned file acquisition and library-owned, untrusted
-input preparation. `3dretarget/browser` re-exports the same API for
+input preparation. `@krapnikkk/retarget/browser` re-exports the same API for
 compatibility. The input-only entry exists because production bundle evidence
 shows that the full browser entry also carries retarget pipelines and
 format-specific runtimes. Neither entry owns picker UI or persists browser
@@ -81,7 +81,7 @@ untrusted preparation never silently falls back to the main thread.
 failures all terminate the active Worker through the same cleanup path.
 
 The package gate installs the packed tarball into a temporary consumer, builds
-`3dretarget/browser/input` with a production bundler, and checks the emitted
+`@krapnikkk/retarget/browser/input` with a production bundler, and checks the emitted
 code plus source-module evidence. The entry and its Worker must exclude MMD,
 VMD, Ammo, FBX loader, and full retarget-job markers. Artifact, tarball, and
 consumer-bundle byte sizes are reported as diagnostics rather than hard gates.
@@ -106,7 +106,7 @@ context, is idempotent, and prevents later transferable collection.
 ## Public example
 
 ```ts
-import { prepareBrowserAssetInput } from "3dretarget/browser";
+import { prepareBrowserAssetInput } from "@krapnikkk/retarget/browser";
 
 const prepared = await prepareBrowserAssetInput(file, {
   role: "motion",

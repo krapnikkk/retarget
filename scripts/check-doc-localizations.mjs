@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "node:process";
 
 const root = process.cwd();
-const repositoryDocs = "https://github.com/krapnikkk/3dretarget/blob/main/";
+const repositoryDocs = "https://github.com/krapnikkk/retarget/blob/main/";
 
 function hasDocumentLink(text, relative, target) {
   return text.includes(`](${relative})`) ||

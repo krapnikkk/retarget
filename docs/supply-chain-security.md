@@ -2,10 +2,9 @@
 
 [简体中文](zh-CN/supply-chain-security.md)
 
-`3dretarget` is released as an unscoped public package on the public npm registry.
-Make the GitHub repository public before publishing so package documentation
-links are accessible. Consumer applications are not library release gates and
-are not modified as part of a library release.
+`@krapnikkk/retarget` is released as a scoped public package on the public npm
+registry. Consumer applications are not library release gates and are not
+modified as part of a library release.
 
 ## Release procedure
 
@@ -22,11 +21,10 @@ are not modified as part of a library release.
    `npm publish --registry https://registry.npmjs.org/`. The package's
    `publishConfig.access` is `public`. Registry credentials are maintainer-owned
    secrets.
-6. Record a release receipt in `releases/VERSION.json`, replacing `VERSION` with
-   the published version. Include the published tarball filename, SHA-256,
-   byte size, package version, Node/pnpm/npm toolchain versions, and verification,
-   ecosystem, audit, and license-inventory results. Verify the receipt against
-   the published tarball. Preserve existing release receipts as history.
+6. Tag the published commit as `vVERSION` and push the tag. Publish a GitHub
+   Release for that tag summarizing changes and the ecosystem verification
+   result. The npm registry records the tarball integrity, and published
+   versions are immutable.
 
 Packed artifacts remain ignored by Git. Publication is a separate release
 step after verification. Automated consumer updates, required hosted CI, and
