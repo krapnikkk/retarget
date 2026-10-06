@@ -2,7 +2,7 @@
 
 [简体中文](zh-CN/supply-chain-security.md)
 
-`@krapnikkk/retarget` is released as a scoped public package on the public npm
+`@krapnik/retarget` is released as a scoped public package on the public npm
 registry. Consumer applications are not library release gates and are not
 modified as part of a library release.
 

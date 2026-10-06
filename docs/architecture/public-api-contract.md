@@ -2,15 +2,15 @@
 
 [简体中文](../zh-CN/architecture/public-api-contract.md)
 
-This document records the public npm package surface of `@krapnikkk/retarget`.
+This document records the public npm package surface of `@krapnik/retarget`.
 It defines the compatibility boundary for library stabilization.
 
 ## Entries
 
-- `@krapnikkk/retarget` exposes serializable format, profile, canonical motion, rig, and
+- `@krapnik/retarget` exposes serializable format, profile, canonical motion, rig, and
   structured error contracts. It does not expose `File`, DOM/Worker handles,
   Three.js objects, or glTF-Transform documents.
-- `@krapnikkk/retarget/browser` owns `File`/`AbortSignal` orchestration, the narrow
+- `@krapnik/retarget/browser` owns `File`/`AbortSignal` orchestration, the narrow
   high-level retarget pipeline, and fail-closed Worker execution. Pipeline
   lookup requires the motion, avatar, and output format IDs so assurance is
   attached to a complete input-to-output combination rather than a format pair.
@@ -19,19 +19,19 @@ It defines the compatibility boundary for library stabilization.
   rigged glTF uses the separate coarse `runRiggedGLTFPipeline` operation, which
   preserves the same complete input-to-Animated-GLB boundary without exposing
   glTF-Transform or Three.js objects.
-- `@krapnikkk/retarget/browser/input` is the stable input-preparation-only subset. It
+- `@krapnik/retarget/browser/input` is the stable input-preparation-only subset. It
   preserves the same `prepareBrowserAssetInput()` contract and dedicated
   Worker URL without including retarget pipelines or format parser runtimes in
   the entry module graph. The full browser entry re-exports it for
   compatibility.
-- `@krapnikkk/retarget/io` accepts and returns bytes and serializable data only.
-- `@krapnikkk/retarget/node` exposes the byte IO surface, an isolated
+- `@krapnik/retarget/io` accepts and returns bytes and serializable data only.
+- `@krapnik/retarget/node` exposes the byte IO surface, an isolated
   `runNodeToolJob` contract for deterministic artifact authoring/validation,
   and explicit inline retarget jobs for trusted local tools and tests. Node
   tooling accepts bytes and serializable metadata only; it owns no filesystem
   traversal or catalog policy. Inline execution is not re-exported by the
   browser entry.
-- `@krapnikkk/retarget/validation` and `@krapnikkk/retarget/certification` expose serializable
+- `@krapnik/retarget/validation` and `@krapnik/retarget/certification` expose serializable
   results and manifests only.
 
 Worker tasks are discriminated messages. `RetargetJobResult<TTask>` maps every

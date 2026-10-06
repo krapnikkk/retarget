@@ -1,5 +1,5 @@
 {
-  "name": "@krapnikkk/retarget",
+  "name": "@krapnik/retarget",
   "version": "0.7.2",
   "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
   "license": "MIT",

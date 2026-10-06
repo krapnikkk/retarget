@@ -54,7 +54,7 @@ const cases = [
       sourceFormat: "gltf-rigged",
       targetFormat: "gltf-rigged",
       outputFormat: "animated-glb",
-      publicEntry: "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+      publicEntry: "@krapnik/retarget/browser#runRiggedGLTFPipeline",
       scope:
         "Pinned Mesh2Motion Fox Idle/Walk/Run/Jump source actions to the pinned Fox, Dog, and Horse target fixtures.",
       evidence: {
@@ -198,7 +198,7 @@ function remainingFamilyPromotion(pairCount, scope) {
     sourceFormat: "gltf-rigged",
     targetFormat: "gltf-rigged",
     outputFormat: "animated-glb",
-    publicEntry: "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+    publicEntry: "@krapnik/retarget/browser#runRiggedGLTFPipeline",
     scope,
     evidence: {
       structural: {

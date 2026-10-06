@@ -54,7 +54,7 @@
         "sourceFormat": "gltf-rigged",
         "targetFormat": "gltf-rigged",
         "outputFormat": "animated-glb",
-        "publicEntry": "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        "publicEntry": "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         "scope": "Pinned Mesh2Motion Fox Idle/Walk/Run/Jump source actions to the pinned Fox, Dog, and Horse target fixtures.",
         "evidence": {
           "structural": {
@@ -124,7 +124,7 @@
         "sourceFormat": "gltf-rigged",
         "targetFormat": "gltf-rigged",
         "outputFormat": "animated-glb",
-        "publicEntry": "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        "publicEntry": "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         "scope": "Pinned Mesh2Motion Bird Flap/Glide/Idle/Walk source actions to the pinned Eagle target fixture.",
         "evidence": {
           "structural": {
@@ -193,7 +193,7 @@
         "sourceFormat": "gltf-rigged",
         "targetFormat": "gltf-rigged",
         "outputFormat": "animated-glb",
-        "publicEntry": "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        "publicEntry": "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         "scope": "Pinned Mesh2Motion Snake non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
         "evidence": {
           "structural": {
@@ -264,7 +264,7 @@
         "sourceFormat": "gltf-rigged",
         "targetFormat": "gltf-rigged",
         "outputFormat": "animated-glb",
-        "publicEntry": "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        "publicEntry": "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         "scope": "Pinned Mesh2Motion Spider non-rest action matrix to a deterministically scaled target derived from the pinned rig.",
         "evidence": {
           "structural": {
@@ -330,7 +330,7 @@
         "sourceFormat": "gltf-rigged",
         "targetFormat": "gltf-rigged",
         "outputFormat": "animated-glb",
-        "publicEntry": "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        "publicEntry": "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         "scope": "Pinned Mesh2Motion Dragon Fly Flap/Fly Glide/Idle/Walk source actions to a deterministically scaled target derived from the pinned rig.",
         "evidence": {
           "structural": {
@@ -369,5 +369,5 @@
       }
     }
   ],
-  "acceptanceHash": "63d6098688370e67e366fcae5faeda7bda29d3c07f40647cab40ee003bf4e746"
+  "acceptanceHash": "8b69aff5b8e9a23b414bec691c8da01a6000e3dac09d2a5497b5e84e2bcb2427"
 }

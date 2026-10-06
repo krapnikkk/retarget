@@ -4,7 +4,7 @@
 
 ## Supported versions
 
-`@krapnikkk/retarget` is distributed through the public npm registry. Security fixes
+`@krapnik/retarget` is distributed through the public npm registry. Security fixes
 are provided for the latest published `0.x` minor release line. Upgrade to its
 latest patch release to receive fixes. Before 1.0, APIs may change between
 minor releases.

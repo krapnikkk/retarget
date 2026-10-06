@@ -3,9 +3,9 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Worker as NodeWorker } from "node:worker_threads";
-import { processHumanoidBinding } from "@krapnikkk/retarget/io";
-import { runNodeToolJob } from "@krapnikkk/retarget/node";
-import { runRetargetJob } from "@krapnikkk/retarget/browser";
+import { processHumanoidBinding } from "@krapnik/retarget/io";
+import { runNodeToolJob } from "@krapnik/retarget/node";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 const bytes = Uint8Array.from(readFileSync("binding-input.glb")).buffer;
 const joints = JSON.parse(readFileSync("binding-joints.json", "utf8"));

@@ -2,7 +2,7 @@
 
 [English](../supply-chain-security.md)
 
-`@krapnikkk/retarget` 以带作用域的公开包发布到公共 npm 注册表。消费端应用不是库的发布门禁，库发布也不会修改消费端应用。
+`@krapnik/retarget` 以带作用域的公开包发布到公共 npm 注册表。消费端应用不是库的发布门禁，库发布也不会修改消费端应用。
 
 ## 发布流程
 

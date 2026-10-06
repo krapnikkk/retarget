@@ -142,7 +142,7 @@ try {
     stdio: "inherit",
   });
   writeFileSync(path.join(temporaryRoot, "browser-input-bundle.ts"), [
-    'import { prepareBrowserAssetInput } from "@krapnikkk/retarget/browser/input";',
+    'import { prepareBrowserAssetInput } from "@krapnik/retarget/browser/input";',
     'export const prepare = prepareBrowserAssetInput;',
     '',
   ].join("\n"));
@@ -192,7 +192,7 @@ try {
     `[ok] production-bundled packed browser input (${packedInputBytes} bytes) without unrelated format runtimes`,
   );
   writeFileSync(path.join(temporaryRoot, "node-tooling-smoke.mjs"), [
-    'import { runNodeToolJob } from "@krapnikkk/retarget/node";',
+    'import { runNodeToolJob } from "@krapnik/retarget/node";',
     'const motion = {',
     '  schemaVersion: 2, rigDefinitionId: "humanoid-v1", family: "humanoid",',
     '  name: "packed-node-tool", duration: 1, fps: 30, createdAt: "2026-08-14T00:00:00.000Z",',
@@ -232,7 +232,7 @@ try {
     'import { Worker } from "node:worker_threads";',
     'import path from "node:path";',
     'import { fileURLToPath, pathToFileURL } from "node:url";',
-    'const browserEntry = fileURLToPath(import.meta.resolve("@krapnikkk/retarget/browser"));',
+    'const browserEntry = fileURLToPath(import.meta.resolve("@krapnik/retarget/browser"));',
     'const workerUrl = pathToFileURL(path.resolve(path.dirname(browserEntry), "../workers/retarget.worker.js")).href;',
     'const worker = new Worker(new URL("./worker-wrapper.mjs", import.meta.url), { workerData: { workerUrl } });',
     'const receive = (predicate, timeoutMs = 10000) => new Promise((resolve, reject) => {',
@@ -295,19 +295,19 @@ try {
   writeFileSync(path.join(temporaryRoot, "binding-smoke.mjs"), readFileSync(path.join(root, "scripts/package-smoke/humanoid-binding.mjs")));
   execFileSync(process.execPath, [path.join(temporaryRoot, "binding-smoke.mjs")], { cwd: temporaryRoot, stdio: "inherit" });
   writeFileSync(path.join(temporaryRoot, "smoke.ts"), [
-    'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "@krapnikkk/retarget";',
-    'import { importBVH, importGLTFAnimationBytes } from "@krapnikkk/retarget/io";',
-    'import { processHumanoidBinding } from "@krapnikkk/retarget/io";',
-    'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "@krapnikkk/retarget";',
-    'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "@krapnikkk/retarget/node";',
-    'import { getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline } from "@krapnikkk/retarget/browser";',
-    'import { prepareBrowserAssetInput, type BrowserInputSelection } from "@krapnikkk/retarget/browser/input";',
-    'import { validateHumanoidMotionSemantics } from "@krapnikkk/retarget/validation";',
-    'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "@krapnikkk/retarget/certification";',
+    'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "@krapnik/retarget";',
+    'import { importBVH, importGLTFAnimationBytes } from "@krapnik/retarget/io";',
+    'import { processHumanoidBinding } from "@krapnik/retarget/io";',
+    'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "@krapnik/retarget";',
+    'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "@krapnik/retarget/node";',
+    'import { getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline } from "@krapnik/retarget/browser";',
+    'import { prepareBrowserAssetInput, type BrowserInputSelection } from "@krapnik/retarget/browser/input";',
+    'import { validateHumanoidMotionSemantics } from "@krapnik/retarget/validation";',
+    'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "@krapnik/retarget/certification";',
     'void [createRetargetError, formats, importBVH, importGLTFAnimationBytes];',
     'void [runNodeToolJob, runRetargetJobInline, runRetargetJob, prepareBrowserAssetInputCompat];',
     'const nodeToolTask: NodeToolTask = { type: "validate-artifact", artifactName: "typing.vrm", bytes: new ArrayBuffer(0), format: "vrm" };',
-    'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("@krapnikkk/retarget").RetargetError["code"] = result.error.code; void code; } });',
+    'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("@krapnik/retarget").RetargetError["code"] = result.error.code; void code; } });',
     'type RiggedPipelineOutput = Awaited<ReturnType<typeof runRiggedGLTFPipeline>>["output"];',
     'const riggedOutputFormat: RiggedPipelineOutput["format"] = "animated-glb";',
     'void [runRiggedGLTFPipeline, riggedOutputFormat];',

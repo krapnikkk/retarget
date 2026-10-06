@@ -1,8 +1,8 @@
-# @krapnikkk/retarget
+# @krapnik/retarget
 
 [简体中文](https://github.com/krapnikkk/retarget/blob/main/README.zh-CN.md)
 
-`@krapnikkk/retarget` is a consumer-neutral TypeScript library for bounded probing of
+`@krapnik/retarget` is a consumer-neutral TypeScript library for bounded probing of
 untrusted 3D files and explicit `Source -> Canonical -> Target` animation
 retargeting. It provides source normalization, rig inspection, target solving,
 semantic validation, and export through a cancellable browser Worker runtime
@@ -11,13 +11,13 @@ and Node tooling.
 ## Install
 
 ```sh
-npm install @krapnikkk/retarget
+npm install @krapnik/retarget
 ```
 
 ## Requirements
 
 - ESM-only; CommonJS is not supported.
-- Node >= 24.11.0 for `@krapnikkk/retarget/node` and `@krapnikkk/retarget/io`.
+- Node >= 24.11.0 for `@krapnik/retarget/node` and `@krapnik/retarget/io`.
 - Browsers must support module Workers.
 - Bundlers must support `new Worker(new URL("...", import.meta.url), { type: "module" })`,
   such as Vite, webpack 5, or Rollup with a Worker plugin.
@@ -26,13 +26,13 @@ npm install @krapnikkk/retarget
 
 | Entry | Purpose |
 | --- | --- |
-| `@krapnikkk/retarget` | Serializable format, profile, motion, rig, pipeline, and error contracts. |
-| `@krapnikkk/retarget/browser` | Content-first bounded File/package preparation, explicit disposal, and fail-closed Worker execution. |
-| `@krapnikkk/retarget/browser/input` | Input preparation only, without retarget pipelines or format parser runtimes in the main bundle. |
-| `@krapnikkk/retarget/io` | Byte-oriented motion import/export without DOM or scene objects. |
-| `@krapnikkk/retarget/node` | Byte IO, isolated deterministic VRM/PMX and Rig Motion glTF authoring/validation jobs, and explicit trusted inline retarget jobs; no filesystem traversal or generic ZIP API. |
-| `@krapnikkk/retarget/validation` | Serializable semantic validation results. |
-| `@krapnikkk/retarget/certification` | Provenance and assurance manifests. |
+| `@krapnik/retarget` | Serializable format, profile, motion, rig, pipeline, and error contracts. |
+| `@krapnik/retarget/browser` | Content-first bounded File/package preparation, explicit disposal, and fail-closed Worker execution. |
+| `@krapnik/retarget/browser/input` | Input preparation only, without retarget pipelines or format parser runtimes in the main bundle. |
+| `@krapnik/retarget/io` | Byte-oriented motion import/export without DOM or scene objects. |
+| `@krapnik/retarget/node` | Byte IO, isolated deterministic VRM/PMX and Rig Motion glTF authoring/validation jobs, and explicit trusted inline retarget jobs; no filesystem traversal or generic ZIP API. |
+| `@krapnik/retarget/validation` | Serializable semantic validation results. |
+| `@krapnik/retarget/certification` | Provenance and assurance manifests. |
 
 ## Quick start
 
@@ -40,7 +40,7 @@ Probe a user-selected motion file in a Worker. Inspect the selection's status
 and format before choosing a pipeline; always dispose of prepared resources.
 
 ```ts
-import { prepareBrowserAssetInput } from "@krapnikkk/retarget/browser/input";
+import { prepareBrowserAssetInput } from "@krapnik/retarget/browser/input";
 
 export async function inspectMotion(file: File, signal?: AbortSignal) {
   const prepared = await prepareBrowserAssetInput(file, { role: "motion", signal });
@@ -56,7 +56,7 @@ For a file identified as BVH, import canonical motion through the browser
 Worker. Pass an AbortSignal to cancel the job.
 
 ```ts
-import { runRetargetJob } from "@krapnikkk/retarget/browser";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 export async function importMotion(file: File, signal?: AbortSignal) {
   return runRetargetJob(
@@ -74,7 +74,7 @@ export async function importMotion(file: File, signal?: AbortSignal) {
 Node tools can import BVH bytes directly through the IO entry:
 
 ```ts
-import { importBVH } from "@krapnikkk/retarget/io";
+import { importBVH } from "@krapnik/retarget/io";
 
 export function importMotionBytes(bytes: Uint8Array) {
   const motion = importBVH(bytes, "walk.bvh");

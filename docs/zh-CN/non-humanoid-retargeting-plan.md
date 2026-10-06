@@ -147,4 +147,4 @@ SDK 验收要求：
 - 导出的 glTF Animation 与 Animated GLB 以预期通道重载，并能通过 Three.js `AnimationMixer` 前进；
 - 现有人形、浏览器运行时和导出测试保持通过。
 
-生成的验收记录及认证哈希位于 `src/certification/non-humanoid-v1.json`，并由 `@krapnikkk/retarget/certification` 导出。固定资源准入不会把资产变为公共目录条目；目录发布仍有独立的清单、完整性、预览和发布门禁。
+生成的验收记录及认证哈希位于 `src/certification/non-humanoid-v1.json`，并由 `@krapnik/retarget/certification` 导出。固定资源准入不会把资产变为公共目录条目；目录发布仍有独立的清单、完整性、预览和发布门禁。

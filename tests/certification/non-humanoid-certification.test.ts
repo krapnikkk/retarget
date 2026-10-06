@@ -18,7 +18,7 @@ describe("non-humanoid pipeline certification", () => {
         sourceFormat: "gltf-rigged",
         targetFormat: "gltf-rigged",
         outputFormat: "animated-glb",
-        publicEntry: "@krapnikkk/retarget/browser#runRiggedGLTFPipeline",
+        publicEntry: "@krapnik/retarget/browser#runRiggedGLTFPipeline",
         evidence: {
           structural: expect.objectContaining({ status: "passed" }),
           semantic: expect.objectContaining({ status: "passed" }),

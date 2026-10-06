@@ -25,7 +25,7 @@
 一个粗粒度 `{ type: "humanoid-binding", bytes, command }` 任务提供独立的 `inspect`、`fit`、`use-rig`、`edit-rig`、`skin`、`edit-weights`、`export`、`validate`。每次 `bytes` 都是**原始静态资产**，不是上次导出的蒙皮 GLB；结果类型由命令推导。
 
 ```ts
-import { runRetargetJob } from "@krapnikkk/retarget/browser";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 const rig = await runRetargetJob({ type: "humanoid-binding", bytes: inputBytes,
   command: { operation: "fit", pose: "t-pose", forward: "+z", landmarks } });
@@ -39,7 +39,7 @@ const output = await runRetargetJob({ type: "humanoid-binding", bytes: inputByte
 // output.bytes 为 Uint8Array，output.validation 包含结构与变形报告。
 ```
 
-Node 使用 `@krapnikkk/retarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或 `{ ok: false, error }`。受信任工具可显式使用 `@krapnikkk/retarget/io` 的 `processHumanoidBinding(bytes, command, options)` 内联执行，不公开场景对象。
+Node 使用 `@krapnik/retarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或 `{ ok: false, error }`。受信任工具可显式使用 `@krapnik/retarget/io` 的 `processHumanoidBinding(bytes, command, options)` 内联执行，不公开场景对象。
 
 ## 编辑与失效
 

@@ -2,16 +2,16 @@
 
 [English](../../architecture/public-api-contract.md)
 
-本文记录 `@krapnikkk/retarget` 公共 npm 包的公开接口范围，定义功能库稳定化过程中的兼容性边界。
+本文记录 `@krapnik/retarget` 公共 npm 包的公开接口范围，定义功能库稳定化过程中的兼容性边界。
 
 ## 入口
 
-- `@krapnikkk/retarget` 仅公开可序列化的格式、配置、规范动作、骨架与结构化错误契约，不公开 `File`、DOM/Worker 句柄、Three.js 对象或 glTF-Transform 文档。
-- `@krapnikkk/retarget/browser` 负责 `File`/`AbortSignal` 编排、窄化的高层重定向流水线与 fail-closed Worker 执行。人形流水线查询必须同时提供动作、角色和输出格式 ID，使保证等级绑定到完整输入到输出组合，而不是格式二元组。所选流水线的 `run` 方法返回声明的输出字节和已求解动作；`retarget` 保留为仅求解操作。非人形 rigged glTF 使用独立的粗粒度 `runRiggedGLTFPipeline`，在不公开 glTF-Transform 或 Three.js 对象的前提下保持完整输入到 Animated GLB 边界。
-- `@krapnikkk/retarget/browser/input` 是稳定的仅输入准备子集。它保留相同的 `prepareBrowserAssetInput()` 契约和专用 Worker URL，但入口模块图不包含重定向流水线或格式解析器运行时。完整浏览器入口为兼容性继续重新导出该能力。
-- `@krapnikkk/retarget/io` 只接收和返回字节与可序列化数据。
-- `@krapnikkk/retarget/node` 公开字节 IO、用于确定性资源生成/验证的隔离式 `runNodeToolJob`，并为受信任本地工具与测试提供显式 inline retarget job。Node tooling 只接收字节和可序列化元数据，不负责文件系统遍历或目录策略；浏览器入口不导出 inline 执行。
-- `@krapnikkk/retarget/validation` 与 `@krapnikkk/retarget/certification` 只公开可序列化结果和清单。
+- `@krapnik/retarget` 仅公开可序列化的格式、配置、规范动作、骨架与结构化错误契约，不公开 `File`、DOM/Worker 句柄、Three.js 对象或 glTF-Transform 文档。
+- `@krapnik/retarget/browser` 负责 `File`/`AbortSignal` 编排、窄化的高层重定向流水线与 fail-closed Worker 执行。人形流水线查询必须同时提供动作、角色和输出格式 ID，使保证等级绑定到完整输入到输出组合，而不是格式二元组。所选流水线的 `run` 方法返回声明的输出字节和已求解动作；`retarget` 保留为仅求解操作。非人形 rigged glTF 使用独立的粗粒度 `runRiggedGLTFPipeline`，在不公开 glTF-Transform 或 Three.js 对象的前提下保持完整输入到 Animated GLB 边界。
+- `@krapnik/retarget/browser/input` 是稳定的仅输入准备子集。它保留相同的 `prepareBrowserAssetInput()` 契约和专用 Worker URL，但入口模块图不包含重定向流水线或格式解析器运行时。完整浏览器入口为兼容性继续重新导出该能力。
+- `@krapnik/retarget/io` 只接收和返回字节与可序列化数据。
+- `@krapnik/retarget/node` 公开字节 IO、用于确定性资源生成/验证的隔离式 `runNodeToolJob`，并为受信任本地工具与测试提供显式 inline retarget job。Node tooling 只接收字节和可序列化元数据，不负责文件系统遍历或目录策略；浏览器入口不导出 inline 执行。
+- `@krapnik/retarget/validation` 与 `@krapnik/retarget/certification` 只公开可序列化结果和清单。
 
 Worker task 使用判别联合消息，`RetargetJobResult<TTask>` 将每种 task 映射到对应结果类型；公开失败统一使用 `RetargetErrorCode` 注册表，可转移输入在进入解析前保留结构校验。产品特定的字节和时间限制属于消费端可选策略。
 

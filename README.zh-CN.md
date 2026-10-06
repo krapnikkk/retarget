@@ -1,19 +1,19 @@
-# @krapnikkk/retarget
+# @krapnik/retarget
 
 [English](https://github.com/krapnikkk/retarget/blob/main/README.md)
 
-`@krapnikkk/retarget` 是一个不依赖特定消费端的 TypeScript 动画重定向库，可对不可信的 3D 文件进行有界内容探测，并明确遵循 `Source -> Canonical -> Target` 流程。它通过可取消的浏览器 Worker 运行时和 Node 工具层，提供源数据规范化、骨架检查、目标求解、语义验证和导出能力。
+`@krapnik/retarget` 是一个不依赖特定消费端的 TypeScript 动画重定向库，可对不可信的 3D 文件进行有界内容探测，并明确遵循 `Source -> Canonical -> Target` 流程。它通过可取消的浏览器 Worker 运行时和 Node 工具层，提供源数据规范化、骨架检查、目标求解、语义验证和导出能力。
 
 ## 安装
 
 ```sh
-npm install @krapnikkk/retarget
+npm install @krapnik/retarget
 ```
 
 ## 环境要求
 
 - 仅支持 ESM，不支持 CommonJS。
-- `@krapnikkk/retarget/node` 和 `@krapnikkk/retarget/io` 要求 Node >= 24.11.0。
+- `@krapnik/retarget/node` 和 `@krapnik/retarget/io` 要求 Node >= 24.11.0。
 - 浏览器必须支持模块 Worker。
 - 打包工具须支持 `new Worker(new URL("...", import.meta.url), { type: "module" })`，例如 Vite、webpack 5 或配有 Worker 插件的 Rollup。
 
@@ -21,20 +21,20 @@ npm install @krapnikkk/retarget
 
 | 入口 | 用途 |
 | --- | --- |
-| `@krapnikkk/retarget` | 可序列化的格式、Profile、动作、骨架、流水线和错误契约。 |
-| `@krapnikkk/retarget/browser` | 内容优先的有界 File/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。 |
-| `@krapnikkk/retarget/browser/input` | 仅包含输入准备，避免在主包中引入重定向流水线或格式解析器运行时。 |
-| `@krapnikkk/retarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出。 |
-| `@krapnikkk/retarget/node` | 字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式内联重定向任务；不公开文件系统遍历或通用 ZIP API。 |
-| `@krapnikkk/retarget/validation` | 可序列化的语义验证结果。 |
-| `@krapnikkk/retarget/certification` | 来源和保证等级清单。 |
+| `@krapnik/retarget` | 可序列化的格式、Profile、动作、骨架、流水线和错误契约。 |
+| `@krapnik/retarget/browser` | 内容优先的有界 File/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。 |
+| `@krapnik/retarget/browser/input` | 仅包含输入准备，避免在主包中引入重定向流水线或格式解析器运行时。 |
+| `@krapnik/retarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出。 |
+| `@krapnik/retarget/node` | 字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式内联重定向任务；不公开文件系统遍历或通用 ZIP API。 |
+| `@krapnik/retarget/validation` | 可序列化的语义验证结果。 |
+| `@krapnik/retarget/certification` | 来源和保证等级清单。 |
 
 ## 快速开始
 
 在 Worker 中探测用户选择的动作文件。选择流水线前，应检查探测结果的状态和格式；使用后务必释放准备阶段持有的资源。
 
 ```ts
-import { prepareBrowserAssetInput } from "@krapnikkk/retarget/browser/input";
+import { prepareBrowserAssetInput } from "@krapnik/retarget/browser/input";
 
 export async function inspectMotion(file: File, signal?: AbortSignal) {
   const prepared = await prepareBrowserAssetInput(file, { role: "motion", signal });
@@ -49,7 +49,7 @@ export async function inspectMotion(file: File, signal?: AbortSignal) {
 对于已识别为 BVH 的文件，通过浏览器 Worker 导入规范动作。可传入 AbortSignal 取消任务。
 
 ```ts
-import { runRetargetJob } from "@krapnikkk/retarget/browser";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 export async function importMotion(file: File, signal?: AbortSignal) {
   return runRetargetJob(
@@ -67,7 +67,7 @@ export async function importMotion(file: File, signal?: AbortSignal) {
 Node 工具可通过 IO 入口直接导入 BVH 字节：
 
 ```ts
-import { importBVH } from "@krapnikkk/retarget/io";
+import { importBVH } from "@krapnik/retarget/io";
 
 export function importMotionBytes(bytes: Uint8Array) {
   const motion = importBVH(bytes, "walk.bvh");

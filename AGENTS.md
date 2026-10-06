@@ -2,7 +2,7 @@
 
 [简体中文](AGENTS.zh-CN.md)
 
-`@krapnikkk/retarget` is a consumer-neutral library and the sole owner of reusable
+`@krapnik/retarget` is a consumer-neutral library and the sole owner of reusable
 animation-retargeting behavior. It evolves independently of any application,
 deployment, or downstream release cycle.
 
