@@ -35,10 +35,10 @@ release SBOMs remain deferred under the current maintenance profile.
 ## Commit verification
 
 Run `pnpm hooks:install` once per checkout. The versioned pre-commit hook runs
-the complete `pnpm verify` gate, including the domain-layer import rule. Hosted
-CI is an optional manual release/review confirmation rather than a per-commit
-dependency. Bypassing the hook does not waive the requirement to record a
-successful local verification before handoff.
+`pnpm check`: the domain-layer import rule, incremental type checking, and the
+`unit` test project. The complete `pnpm verify` gate runs before release and
+through `prepublishOnly`. Hosted CI is an optional manual release/review
+confirmation rather than a per-commit dependency.
 
 The MIT license covers the library code only; consumer assets and generated
 outputs retain their own provenance and license obligations.

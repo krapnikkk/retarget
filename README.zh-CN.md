@@ -102,11 +102,13 @@ export function importMotionBytes(bytes: Uint8Array) {
 ```sh
 pnpm install
 pnpm hooks:install # 每个工作副本执行一次
-pnpm verify
+pnpm check        # 架构规则、类型检查、unit 测试（pre-commit）
+pnpm test:slow    # CPU 密集的真实资源测试
+pnpm verify       # 完整发布门禁，prepublishOnly 也会执行
 pnpm verify:ecosystem # 需要固定版本的 Blender 和 Godot
 ```
 
-纳入版本控制的 pre-commit hook 会运行 `pnpm verify`。绕过后，交接前仍须记录一次成功的验证。大型研究语料保存在由 Git 忽略的 `references/` 中；已提交的固定资源包含来源与哈希记录。
+纳入版本控制的 pre-commit hook 会运行 `pnpm check`。`pnpm verify` 额外执行覆盖率、认证回执、固定资源和包验证。大型研究语料保存在由 Git 忽略的 `references/` 中；已提交的固定资源包含来源与哈希记录。
 
 ## 许可证
 

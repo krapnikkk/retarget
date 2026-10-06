@@ -4,5 +4,5 @@ set -eu
 repo_root=$(git rev-parse --show-toplevel)
 cd "$repo_root"
 
-echo "[3dretarget] running the required local pre-commit verification gate"
-pnpm verify:precommit
+echo "[3dretarget] running the fast pre-commit check (full gate: pnpm verify)"
+pnpm check

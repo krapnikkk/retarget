@@ -2,7 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2023"],
-    "types": []
+    "types": [],
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsc/browser.tsbuildinfo"
   },
   "include": ["src/**/*.ts"],
   "exclude": [

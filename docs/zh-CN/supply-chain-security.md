@@ -17,6 +17,6 @@
 
 ## 提交验证
 
-每个工作副本执行一次 `pnpm hooks:install`。纳入版本控制的 pre-commit hook 会运行完整的 `pnpm verify` 门禁，包括领域层导入规则。托管 CI 是发布或审查时的可选人工复核，不是每次提交的依赖。绕过 hook 后，交接前仍须补跑并记录一次成功的本地验证。
+每个工作副本执行一次 `pnpm hooks:install`。纳入版本控制的 pre-commit hook 会运行 `pnpm check`：领域层导入规则、增量类型检查和 `unit` 测试项目。完整的 `pnpm verify` 门禁在发布前及 `prepublishOnly` 中执行。托管 CI 是发布或审查时的可选人工复核，不是每次提交的依赖。
 
 MIT 许可证仅覆盖本库代码；消费端资源和生成输出仍须遵守各自的来源与许可要求。

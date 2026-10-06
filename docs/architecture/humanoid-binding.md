@@ -82,4 +82,4 @@ The [fixture manifest and evidence guide](../../tests/binding/README.md) record 
 | Negative paths | Malformed buffers, extensions, transforms, cycles, degenerate/unreferenced geometry, constraints, budgets, stale edits and running cancellation. Disconnected surfaces are accepted with diagnostics. |
 | Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including 100k-vertex call-return, first-progress, resolve and total timing plus a main-thread heartbeat gate. |
 
-Run `pnpm verify` for all repository gates and `pnpm verify:binding:ecosystem` for external runtimes. Generated receipts/locks belong in a separate commit from handwritten implementation. No consumer repository is a gate.
+Run `pnpm test:slow` while developing binding, `pnpm verify` for all repository gates, and `pnpm verify:binding:ecosystem` for external runtimes. Regenerated receipts/locks may land with the change that caused them. No consumer repository is a gate.

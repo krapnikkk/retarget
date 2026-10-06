@@ -82,4 +82,4 @@ Node 使用 `3dretarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或
 | 负向路径 | 畸形缓冲、扩展、变换、循环、退化/未引用几何、约束、预算、过期编辑及执行中取消；断开表面带诊断处理。 |
 | 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker，以及包含 10 万顶点快照调用返回、首次进度、完成、总耗时分段和主线程 heartbeat 门禁的单独原生 Chromium 实测。 |
 
-`pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。生成回执/锁与手写实现分别提交，任何消费端仓库均不作为门禁。
+开发 binding 时运行 `pnpm test:slow`，`pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。重新生成的回执/锁可以与引起变化的改动一起提交，任何消费端仓库均不作为门禁。

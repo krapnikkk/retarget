@@ -129,12 +129,14 @@ file-size, elapsed-time, and memory policies belong to the consumer.
 ```sh
 pnpm install
 pnpm hooks:install # once per checkout
-pnpm verify
+pnpm check        # architecture rule, type check, unit tests (pre-commit)
+pnpm test:slow    # CPU-heavy real-fixture tests
+pnpm verify       # full release gate, also run by prepublishOnly
 pnpm verify:ecosystem # requires the pinned Blender and Godot builds
 ```
 
-The versioned pre-commit hook runs `pnpm verify`. Bypassing it requires a
-recorded successful verification before handoff. Large research corpora stay
+The versioned pre-commit hook runs `pnpm check`. `pnpm verify` adds
+coverage, certification receipts, fixtures, and package verification. Large research corpora stay
 in ignored `references/`; committed fixtures include provenance and hashes.
 
 ## License
