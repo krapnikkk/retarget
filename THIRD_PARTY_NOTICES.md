@@ -2,14 +2,12 @@
 
 `3dretarget` depends on the following separately distributed runtime packages:
 
-| Package | Pinned version | Declared license |
+| Package | Version range | Declared license |
 | --- | ---: | --- |
-| `@gltf-transform/core` | 4.3.0 | MIT |
-| `@moeru/three-mmd` | 0.1.1 | MIT |
-| `@moeru/three-mmd-physics-ammo` | 0.1.1 | MIT |
-| `@pixiv/three-vrm` | 3.5.3 | MIT |
-| `gltf-transform-vrm-extensions` | 0.1.6 | MIT |
-| `three` | 0.184.0 | MIT |
+| `@gltf-transform/core` | ^4.3.0 | MIT |
+| `@moeru/three-mmd` | ^0.1.1 | MIT |
+| `gltf-transform-vrm-extensions` | ^0.1.6 | MIT |
+| `three` | ^0.184.0 | MIT |
 
 The production dependency graph reported by pnpm also contains MIT-licensed
 transitive packages and `@dimforge/rapier3d-compat` 0.12.0 under Apache-2.0

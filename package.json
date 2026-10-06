@@ -1,13 +1,40 @@
 {
   "name": "3dretarget",
   "version": "0.7.2",
-  "private": true,
   "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "krapnikkk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krapnikkk/3dretarget.git"
+  },
+  "homepage": "https://github.com/krapnikkk/3dretarget#readme",
+  "bugs": {
+    "url": "https://github.com/krapnikkk/3dretarget/issues"
+  },
+  "keywords": [
+    "animation",
+    "retargeting",
+    "retarget",
+    "humanoid",
+    "vrm",
+    "vrma",
+    "gltf",
+    "glb",
+    "bvh",
+    "vmd",
+    "mmd",
+    "fbx",
+    "three",
+    "webworker"
+  ],
   "type": "module",
   "packageManager": "pnpm@10.24.0",
   "engines": {
-    "node": "24.11.x"
+    "node": ">=24.11.0"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -48,6 +75,7 @@
   ],
   "sideEffects": false,
   "scripts": {
+    "prepublishOnly": "pnpm verify",
     "build": "tsup",
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
@@ -80,14 +108,14 @@
     "check:docs-localization": "node scripts/check-doc-localizations.mjs"
   },
   "dependencies": {
-    "@gltf-transform/core": "4.3.0",
-    "@moeru/three-mmd": "0.1.1",
-    "@moeru/three-mmd-physics-ammo": "0.1.1",
-    "@pixiv/three-vrm": "3.5.3",
-    "gltf-transform-vrm-extensions": "0.1.6",
-    "three": "0.184.0"
+    "@gltf-transform/core": "^4.3.0",
+    "@moeru/three-mmd": "^0.1.1",
+    "gltf-transform-vrm-extensions": "^0.1.6",
+    "three": "^0.184.0"
   },
   "devDependencies": {
+    "@moeru/three-mmd-physics-ammo": "0.1.1",
+    "@pixiv/three-vrm": "3.5.3",
     "@types/node": "^24.13.3",
     "@types/three": "^0.184.1",
     "@vitest/coverage-v8": "4.1.6",

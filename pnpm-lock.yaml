@@ -9,24 +9,24 @@ importers:
   .:
     dependencies:
       '@gltf-transform/core':
-        specifier: 4.3.0
+        specifier: ^4.3.0
         version: 4.3.0
       '@moeru/three-mmd':
-        specifier: 0.1.1
+        specifier: ^0.1.1
         version: 0.1.1(@types/three@0.184.1)(three@0.184.0)
+      gltf-transform-vrm-extensions:
+        specifier: ^0.1.6
+        version: 0.1.6(@gltf-transform/core@4.3.0)
+      three:
+        specifier: ^0.184.0
+        version: 0.184.0
+    devDependencies:
       '@moeru/three-mmd-physics-ammo':
         specifier: 0.1.1
         version: 0.1.1(@moeru/three-mmd@0.1.1(@types/three@0.184.1)(three@0.184.0))(@types/three@0.184.1)(three@0.184.0)
       '@pixiv/three-vrm':
         specifier: 3.5.3
         version: 3.5.3(three@0.184.0)
-      gltf-transform-vrm-extensions:
-        specifier: 0.1.6
-        version: 0.1.6(@gltf-transform/core@4.3.0)
-      three:
-        specifier: 0.184.0
-        version: 0.184.0
-    devDependencies:
       '@types/node':
         specifier: ^24.13.3
         version: 24.13.3

@@ -1,53 +1,113 @@
 # 3dretarget
 
-> 本文是 [English](README.md) 的中文同步版。若中英文在法律、安全、治理或规范性要求上存在冲突，以英文版为准。
+[English](https://github.com/krapnikkk/3dretarget/blob/main/README.md)
 
-`3dretarget` 是一个消费者中立的动作重定向功能库，提供有界格式探测、源数据规范化、规范动作、骨架检查、目标求解、语义验证、导出、格式安全校验、可取消的浏览器 Worker 运行时，以及隔离式 Node 资源工具层。
+`3dretarget` 是一个不依赖特定消费端的 TypeScript 动画重定向库，可对不可信的 3D 文件进行有界内容探测，并明确遵循 `Source -> Canonical -> Target` 流程。它通过可取消的浏览器 Worker 运行时和 Node 工具层，提供源数据规范化、骨架检查、目标求解、语义验证和导出能力。
 
-`0.7.2` 是消费端引擎切换对应的提供端版本。包在执行经批准的私有注册表发布前继续保持私有；相邻 checkout 可用于协同开发，但不能作为发布证据。项目路线图和就绪状态由可复用的重定向能力决定，不以任何特定应用为中心。
+## 安装
 
-## 范围
-
-本仓库负责：
-
-- 可复用的 `Source -> Canonical -> Target` 行为；
-- 可序列化的公开契约和平台适配器；
-- 正确性、安全性、诊断及兼容性证据；
-- 可复现固定资源和认证清单。
-
-本仓库不负责产品 UI、应用状态、目录、分析、托管或部署。消费端专属的集成代码和验收测试由消费应用自行负责。
-
-## 开发
-
-```powershell
-pnpm install
-pnpm hooks:install # 每个 checkout 只需执行一次
-pnpm verify
-pnpm verify:ecosystem # 需要固定版本的 Blender 与 Godot
+```sh
+npm install 3dretarget
 ```
 
-本私有仓库默认使用纳入版本控制的本地 pre-commit hook 作为提交门禁。每次提交都会运行 `pnpm verify`；托管 CI 仅保留给人工发布或审查，避免日常提交消耗有限次数。`git commit --no-verify` 只是紧急绕过方式，不能作为变更已通过验证的证据；交接前仍必须补跑并记录一次成功的 `pnpm verify`。
+## 环境要求
 
-大型研究语料下载到被 Git 忽略的 `references/` 目录。已提交的固定资源均包含来源和哈希记录。
-
-## 受控发布
-
-消费端必须从批准的私有注册表安装并精确锁定 `0.7.2`，且只使用已记录的公开入口。本地 `pnpm pack` 输出只是包验证制品，不是消费端分发路径。包版本 `0.7.2` 表示 API 仍处于初始开发阶段；能力保证继续按精确用例标记为 `experimental`、`beta` 或 `certified`。实验路径可用于评估，但不作为生产兼容组合提供支持。受支持的 Node 工具链以 `package.json` 声明为准。
-
-MIT 许可证覆盖本库代码，但不会重新许可消费端资源、用户输入、生成输出或独立安装的依赖。
+- 仅支持 ESM，不支持 CommonJS。
+- `3dretarget/node` 和 `3dretarget/io` 要求 Node >= 24.11.0。
+- 浏览器必须支持模块 Worker。
+- 打包工具须支持 `new Worker(new URL("...", import.meta.url), { type: "module" })`，例如 Vite、webpack 5 或配有 Worker 插件的 Rollup。
 
 ## 公开入口
 
-- `3dretarget`：可序列化的格式、Profile、动作、骨架、流水线和错误契约。
-- `3dretarget/browser`：内容优先的有界 `File`/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。
-- `3dretarget/browser/input`：仅包含输入准备的浏览器入口。当消费端主包不需要重定向流水线或格式解析器运行时时使用该入口。
-- `3dretarget/io`：不暴露 DOM 或场景对象的字节级动作导入导出。
-- `3dretarget/node`：字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式 inline retarget job；不公开文件系统遍历或通用 ZIP API。
-- `3dretarget/validation`：可序列化的语义验证结果。
-- `3dretarget/certification`：来源和保证等级清单。
+| 入口 | 用途 |
+| --- | --- |
+| `3dretarget` | 可序列化的格式、Profile、动作、骨架、流水线和错误契约。 |
+| `3dretarget/browser` | 内容优先的有界 File/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。 |
+| `3dretarget/browser/input` | 仅包含输入准备，避免在主包中引入重定向流水线或格式解析器运行时。 |
+| `3dretarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出。 |
+| `3dretarget/node` | 字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式内联重定向任务；不公开文件系统遍历或通用 ZIP API。 |
+| `3dretarget/validation` | 可序列化的语义验证结果。 |
+| `3dretarget/certification` | 来源和保证等级清单。 |
+
+## 快速开始
+
+在 Worker 中探测用户选择的动作文件。选择流水线前，应检查探测结果的状态和格式；使用后务必释放准备阶段持有的资源。
+
+```ts
+import { prepareBrowserAssetInput } from "3dretarget/browser/input";
+
+export async function inspectMotion(file: File, signal?: AbortSignal) {
+  const prepared = await prepareBrowserAssetInput(file, { role: "motion", signal });
+  try {
+    return prepared.selection;
+  } finally {
+    prepared.dispose();
+  }
+}
+```
+
+对于已识别为 BVH 的文件，通过浏览器 Worker 导入规范动作。可传入 AbortSignal 取消任务。
+
+```ts
+import { runRetargetJob } from "3dretarget/browser";
+
+export async function importMotion(file: File, signal?: AbortSignal) {
+  return runRetargetJob(
+    {
+      type: "import-motion",
+      formatId: "bvh",
+      filename: file.name,
+      bytes: await file.arrayBuffer(),
+    },
+    { signal },
+  );
+}
+```
+
+Node 工具可通过 IO 入口直接导入 BVH 字节：
+
+```ts
+import { importBVH } from "3dretarget/io";
+
+export function importMotionBytes(bytes: Uint8Array) {
+  const motion = importBVH(bytes, "walk.bvh");
+  return { duration: motion.duration, tracks: motion.tracks };
+}
+```
+
+## 支持的组合与保证等级
+
+保证等级按具体用例划分：`experimental` 能力仅供评估；`beta` 组合具有声明范围内的固定资源和 Profile 证据；`certified` 用例还具有结构重载、语义比较和固定版本的生态兼容证据。1.0 之前，API 可能在次版本升级时发生变化。
 
 公开人形流水线注册表现有九个完整 beta 组合：`gltf-animation` 到 `gltf-humanoid` 可输出 `animated-glb`、`fbx-animation`、`vrma`、`gltf-animation` 或 `motion-json`；`vrma` 到 `gltf-humanoid` 可输出 `animated-glb`；`gltf-animation`、`bvh` 或 `vmd` 到 `vrm` 可输出 `baked-vrm`。查询必须同时提供三个格式 ID，`pipeline.run(...)` 返回声明的输出字节和已求解动作。其中固定的 Golden `gltf-animation -> gltf-humanoid -> animated-glb` 用例另有仅适用于该用例的 Blender 与 Godot 认证证据。
 
 浏览器入口还公开 `runRiggedGLTFPipeline`，用于非人形 rigged glTF 配对。其 beta 范围覆盖五个固定 Mesh2Motion family 的 Animated GLB 矩阵：Fox 四足（12 个动作/目标配对）、Bird/Eagle（4）、Snake（7）、Spider（9）和 Dragon（4）。这 36 个配对只保证固定资源和 profile，不泛化为任意 rigged glTF 配对。
 
-当前本地就绪标准见[功能库稳定性门禁](docs/zh-CN/stabilization-gates.md)。
+## 错误与安全
+
+公开接口的失败使用[错误码注册表](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/architecture/error-code-registry.md)中的结构化错误码。浏览器输入准备和 Worker 任务支持通过 AbortSignal 取消。应始终将文件视为不可信输入：文件名仅是提示，内容探测有明确边界，解析和归档处理保留格式安全限制。产品专属的文件大小、耗时和内存策略由消费端负责。
+
+## 文档
+
+- [文档地图](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/README.md)
+- [公开 API 契约](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/architecture/public-api-contract.md)
+- [浏览器输入准备](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/architecture/browser-input-preparation.md)
+- [Node 资源工具层](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/architecture/node-artifact-tooling.md)
+- [功能库稳定性门禁](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/stabilization-gates.md)
+- [供应链与发布流程](https://github.com/krapnikkk/3dretarget/blob/main/docs/zh-CN/supply-chain-security.md)
+- [安全政策](https://github.com/krapnikkk/3dretarget/blob/main/SECURITY.zh-CN.md)
+
+## 开发
+
+```sh
+pnpm install
+pnpm hooks:install # 每个工作副本执行一次
+pnpm verify
+pnpm verify:ecosystem # 需要固定版本的 Blender 和 Godot
+```
+
+纳入版本控制的 pre-commit hook 会运行 `pnpm verify`。绕过后，交接前仍须记录一次成功的验证。大型研究语料保存在由 Git 忽略的 `references/` 中；已提交的固定资源包含来源与哈希记录。
+
+## 许可证
+
+[MIT](https://github.com/krapnikkk/3dretarget/blob/main/LICENSE)。许可证覆盖本库代码，不会重新许可用户资源、输入、输出或独立安装的依赖。详见[第三方声明](https://github.com/krapnikkk/3dretarget/blob/main/THIRD_PARTY_NOTICES.md)。

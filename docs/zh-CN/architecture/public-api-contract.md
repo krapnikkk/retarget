@@ -1,8 +1,8 @@
-# 本地公开 API 契约
+# 公开 API 契约
 
 [English](../../architecture/public-api-contract.md)
 
-本审查记录 `3dretarget` 仍为私有、本地维护期间的包边界。它是稳定化兼容边界，不代表已经承诺发布到注册表。
+本文记录 `3dretarget` 公共 npm 包的公开接口范围，定义功能库稳定化过程中的兼容性边界。
 
 ## 入口
 

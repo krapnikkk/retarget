@@ -1,10 +1,9 @@
-# Local public API contract
+# Public API contract
 
 [简体中文](../zh-CN/architecture/public-api-contract.md)
 
-This review records the package surface while `3dretarget` remains private and
-locally maintained. It is a compatibility boundary for stabilization, not a
-registry publication promise.
+This document records the public npm package surface of `3dretarget`.
+It defines the compatibility boundary for library stabilization.
 
 ## Entries
 
