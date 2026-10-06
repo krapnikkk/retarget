@@ -15,7 +15,7 @@
 
 Worker task 使用判别联合消息，`RetargetJobResult<TTask>` 将每种 task 映射到对应结果类型；公开失败统一使用 `RetargetErrorCode` 注册表，可转移输入在进入解析前保留结构校验。产品特定的字节和时间限制属于消费端可选策略。
 
-实验性的[人形绑定任务](humanoid-binding.md)将拟合、骨架/权重修正、蒙皮、校验及 GLB 导出分开调用。浏览器与 Node 隔离执行共享版本化字节/JSON 快照；受信任工具可使用显式 `processHumanoidBinding` 内联 IO 操作。
+实验性的[人形绑定任务](humanoid-binding.md)将拟合、骨架/权重修正、蒙皮、校验及 GLB 导出分开调用。浏览器与 Node 隔离执行共享版本化字节/JSON 快照；受信任工具可使用显式 `processHumanoidBinding` 内联 IO 操作。浏览器端的 `exportPairedAvatarMotionZip` 为实验性操作：它会校验目标身份和动作重载，但失败时抛出不带公开错误码的普通错误，尚无取消、进度或预算契约，其签名可能在次版本中变化。
 
 Avatar exporter 只接受 `TargetBoundSolvedHumanoidMotionClip`；该类型要求携带目标骨架签名，避免已求解动作被静默重新绑定到另一套骨架。
 

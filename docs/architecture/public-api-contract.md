@@ -42,6 +42,10 @@ The experimental [humanoid binding](humanoid-binding.md) task separates fitting,
 rig/weight editing, skinning, validation and GLB export. It shares versioned
 byte/JSON snapshots across browser and Node isolation; trusted tools can use
 the explicit `processHumanoidBinding` inline IO operation.
+The browser `exportPairedAvatarMotionZip` operation is experimental: it
+validates target identity and motion reload, but failures are plain errors
+without public codes, it has no cancellation, progress, or budget contract, and
+its signature may change in a minor release.
 Avatar exporters accept `TargetBoundSolvedHumanoidMotionClip`, whose target rig
 signature prevents a solved clip from being silently rebound to another rig.
 
