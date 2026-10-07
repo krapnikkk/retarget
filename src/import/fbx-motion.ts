@@ -1,11 +1,11 @@
 import {
+  Loader,
   LoadingManager,
   Quaternion,
   Texture,
   Vector3,
   type AnimationClip,
   type KeyframeTrack,
-  type Loader,
   type Object3D,
 } from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
@@ -287,21 +287,48 @@ function quaternionTuple(value: Quaternion): [number, number, number, number] {
 
 function parseFBX(arrayBuffer: ArrayBuffer) {
   try {
-    return new FBXLoader(createMotionOnlyLoadingManager()).parse(arrayBuffer, "");
+    return withMotionOnlyBrowserGlobals(() =>
+      new FBXLoader(createMotionOnlyLoadingManager()).parse(arrayBuffer, ""),
+    );
   } catch (cause) {
     throw createRetargetError("FBX_PARSE_FAILED", cause);
   }
 }
 
+// Motion import never needs textures: every texture resolves to an empty
+// placeholder without fetching. Extending Loader provides the path/setPath API
+// FBXLoader calls on texture handlers.
+class MotionOnlyTextureLoader extends Loader<Texture> {
+  override load(): Texture {
+    return new Texture();
+  }
+}
+
 function createMotionOnlyLoadingManager() {
   const manager = new LoadingManager();
-  manager.addHandler(
-    /.*/,
-    {
-      load: () => new Texture(),
-    } as unknown as Loader<Texture>,
-  );
+  manager.addHandler(/.*/, new MotionOnlyTextureLoader(manager));
   return manager;
+}
+
+const MOTION_ONLY_IMAGE_URL = "blob:motion-only-texture";
+
+// FBXLoader reads `window` for embedded images (`window.URL.createObjectURL`)
+// and cameras (`window.innerWidth`), which Workers and Node lack. Parsing is
+// synchronous, so the globals are scoped to this call and always restored.
+// Embedded images map to a placeholder URL instead of a real blob URL, since
+// the motion-only texture loader ignores it; nothing is created or leaked.
+function withMotionOnlyBrowserGlobals<T>(parse: () => T): T {
+  const scope = globalThis as { window?: unknown };
+  const hadWindow = "window" in scope;
+  const createObjectURL = URL.createObjectURL;
+  URL.createObjectURL = () => MOTION_ONLY_IMAGE_URL;
+  if (!hadWindow) scope.window = { URL, innerWidth: 1, innerHeight: 1 };
+  try {
+    return parse();
+  } finally {
+    URL.createObjectURL = createObjectURL;
+    if (!hadWindow) delete scope.window;
+  }
 }
 
 function createMotionTrackFromFBXTrack(
