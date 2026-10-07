@@ -79,7 +79,18 @@ export function importMotionBytes(bytes: Uint8Array) {
 
 保证等级按具体用例划分：`experimental` 能力仅供评估；`beta` 组合具有声明范围内的固定资源和 Profile 证据；`certified` 用例还具有结构重载、语义比较和固定版本的生态兼容证据。1.0 之前，API 可能在次版本升级时发生变化。
 
-公开人形流水线注册表现有九个完整 beta 组合：`gltf-animation` 到 `gltf-humanoid` 可输出 `animated-glb`、`fbx-animation`、`vrma`、`gltf-animation` 或 `motion-json`；`vrma` 到 `gltf-humanoid` 可输出 `animated-glb`；`gltf-animation`、`bvh` 或 `vmd` 到 `vrm` 可输出 `baked-vrm`。查询必须同时提供三个格式 ID，`pipeline.run(...)` 返回声明的输出字节和已求解动作。其中固定的 Golden `gltf-animation -> gltf-humanoid -> animated-glb` 用例另有仅适用于该用例的 Blender 与 Godot 认证证据。
+公开人形流水线注册表现有十二个完整 beta 组合和一个 experimental 组合：
+
+| 动作 | 角色 | 输出 | 保证等级 |
+| --- | --- | --- | --- |
+| `gltf-animation` | `gltf-humanoid` | `animated-glb`、`fbx-animation`、`vrma`、`gltf-animation`、`motion-json` | beta |
+| `vrma` | `gltf-humanoid` | `animated-glb` | beta |
+| `gltf-animation`、`bvh`、`vmd` | `vrm` | `baked-vrm`、`vrma` | beta |
+| `mixamo-fbx` | `vrm` | `vrma` | experimental |
+
+`mixamo-fbx -> vrm -> vrma` 注册为 experimental：其 Mixamo 骨骼名 FBX 证据仅由本库 FBX 导出器生成，并非独立的 Mixamo 结构固定资源。
+
+查询必须同时提供三个格式 ID，`pipeline.run(...)` 返回声明的输出字节和已求解动作。其中固定的 Golden `gltf-animation -> gltf-humanoid -> animated-glb` 用例另有仅适用于该用例的 Blender 与 Godot 认证证据。
 
 浏览器入口还公开 `runRiggedGLTFPipeline`，用于非人形 rigged glTF 配对。其 beta 范围覆盖五个固定 Mesh2Motion family 的 Animated GLB 矩阵：Fox 四足（12 个动作/目标配对）、Bird/Eagle（4）、Snake（7）、Spider（9）和 Dragon（4）。这 36 个配对只保证固定资源和 profile，不泛化为任意 rigged glTF 配对。
 

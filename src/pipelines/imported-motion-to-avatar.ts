@@ -1,5 +1,6 @@
 import type {
   AvatarFormatId,
+  CapabilityAssurance,
   MotionExportFormatId,
   MotionFormatId,
 } from "@/formats";
@@ -45,6 +46,12 @@ export const importedMotionToAvatarPipelines = [
   ),
   createImportedMotionToAvatarPipeline("gltf-animation", "vrm", "baked-vrm"),
   createImportedMotionToAvatarPipeline("vmd", "vrm", "baked-vrm"),
+  createImportedMotionToAvatarPipeline("bvh", "vrm", "vrma"),
+  createImportedMotionToAvatarPipeline("gltf-animation", "vrm", "vrma"),
+  createImportedMotionToAvatarPipeline("vmd", "vrm", "vrma"),
+  // Experimental: the only Mixamo-named FBX evidence is written by this
+  // library's own FBX exporter, not an independent Mixamo-structured fixture.
+  createImportedMotionToAvatarPipeline("mixamo-fbx", "vrm", "vrma", "experimental"),
   createImportedMotionToAvatarPipeline(
     "vrma",
     "gltf-humanoid",
@@ -56,6 +63,7 @@ function createImportedMotionToAvatarPipeline(
   motionFormat: MotionFormatId,
   avatarFormat: AvatarFormatId,
   outputFormat: ImportedMotionPipelineOutput,
+  assurance: CapabilityAssurance = "beta",
 ): RetargetPipeline {
   const pipeline: RetargetPipeline = {
     id: `${motionFormat}-to-${avatarFormat}-to-${outputFormat}` as RetargetPipelineId,
@@ -63,7 +71,7 @@ function createImportedMotionToAvatarPipeline(
     motionFormat,
     avatarFormat,
     outputFormat,
-    assurance: "beta",
+    assurance,
     async retarget({
       motionFile,
       avatarFile,

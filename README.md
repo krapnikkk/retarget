@@ -89,11 +89,20 @@ Assurance is case-scoped: `experimental` capabilities are evaluation-only;
 cases additionally have structural reload, semantic comparison, and pinned
 ecosystem evidence. Before 1.0, APIs may change between minor releases.
 
-The public humanoid pipeline registry exposes nine complete beta combinations:
-`gltf-animation` to `gltf-humanoid` with `animated-glb`, `fbx-animation`,
-`vrma`, `gltf-animation`, or `motion-json` output; `vrma` to `gltf-humanoid`
-with `animated-glb` output; and `gltf-animation`, `bvh`, or `vmd` to `vrm`
-with `baked-vrm` output.
+The public humanoid pipeline registry exposes twelve complete beta combinations
+and one experimental combination:
+
+| Motion | Avatar | Output | Assurance |
+| --- | --- | --- | --- |
+| `gltf-animation` | `gltf-humanoid` | `animated-glb`, `fbx-animation`, `vrma`, `gltf-animation`, `motion-json` | beta |
+| `vrma` | `gltf-humanoid` | `animated-glb` | beta |
+| `gltf-animation`, `bvh`, `vmd` | `vrm` | `baked-vrm`, `vrma` | beta |
+| `mixamo-fbx` | `vrm` | `vrma` | experimental |
+
+`mixamo-fbx -> vrm -> vrma` is registered as experimental: its only
+Mixamo-named FBX evidence is written by this library's FBX exporter, not an
+independent Mixamo-structured fixture.
+
 Lookup requires all three format IDs. Calling `pipeline.run(...)` returns the
 declared bytes together with the solved motion. The pinned Golden
 `gltf-animation -> gltf-humanoid -> animated-glb` case has stronger,

@@ -33,7 +33,7 @@ x 执行模式 x 骨架检测模式
 x 求解器修订 x 目标绑定修订
 ```
 
-因此，公开人形流水线查询必须提供动作、角色和导出格式 ID。注册表现准入九个 beta 组合：`gltf-animation -> gltf-humanoid` 的五种输出（`animated-glb`、`fbx-animation`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation`、`bvh` 或 `vmd` 到 `vrm -> baked-vrm`。这些固定用例均有结构重载与独立语义证据；只有第一个 Golden Motion 固定用例另在 Blender 与 Godot 中达到认证。
+因此，公开人形流水线查询必须提供动作、角色和导出格式 ID。注册表现准入十二个 beta 组合：`gltf-animation -> gltf-humanoid` 的五种输出（`animated-glb`、`fbx-animation`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation`、`bvh` 或 `vmd` 到 `vrm` 并输出 `baked-vrm` 或 `vrma`。`mixamo-fbx -> vrm -> vrma` 注册为 experimental：其 Mixamo 骨骼名 FBX 证据仅由本库 FBX 导出器生成，并非独立的 Mixamo 结构固定资源。这些固定用例均有结构重载与独立语义证据；只有第一个 Golden Motion 固定用例另在 Blender 与 Godot 中达到认证。
 
 非人形 rigged glTF 使用独立的粗粒度浏览器入口 `runRiggedGLTFPipeline`。Fox 四足、Bird/Eagle、Snake、Spider 和 Dragon 五个固定 family 的 Animated GLB 矩阵为 beta；其 36 个锁定动作/目标配对不会泛化为所有 rigged glTF 配对。
 
