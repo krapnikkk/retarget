@@ -7,6 +7,7 @@ import {
 import { Quaternion, Vector3 } from "three";
 import {
   getMotionTargetBinding,
+  resolveRootTranslationExportScale,
   type HumanoidBoneName,
   type RetargetedMotionClip,
   validateMotionClip,
@@ -64,6 +65,8 @@ export function createVRMADocument(
   const scene = document.createScene("VRMA motion scene");
   document.getRoot().setDefaultScene(scene);
   const restHipsHeight = getVRMARestHipsHeight(clip);
+  // VRMA hips translations share units with the declared rest hips height.
+  const rootTranslationScale = resolveRootTranslationExportScale(clip);
 
   const extension = document
     .createExtension(VRMCVRMAnimation)
@@ -120,7 +123,11 @@ export function createVRMADocument(
       .setArray(
         new Float32Array(
           track.path === "translation"
-            ? encodeVRMATranslations(track.values, restHipsHeight)
+            ? encodeVRMATranslations(
+                track.values,
+                restHipsHeight,
+                rootTranslationScale,
+              )
             : encodeVRMARotations(track.values),
         ),
       )
@@ -150,6 +157,7 @@ export function createVRMADocument(
 function encodeVRMATranslations(
   values: readonly number[],
   restHipsHeight: number,
+  scale: number,
 ) {
   const encoded: number[] = [];
   const translation = new Vector3();
@@ -160,6 +168,7 @@ function encodeVRMATranslations(
         values[index + 1] ?? 0,
         values[index + 2] ?? 0,
       )
+      .multiplyScalar(scale)
       .applyQuaternion(CANONICAL_TO_VRMA_ROTATION);
     encoded.push(translation.x, translation.y + restHipsHeight, translation.z);
   }

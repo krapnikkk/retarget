@@ -62,6 +62,50 @@ describe("VRMA export", () => {
     expect(hipsTranslation?.[4]).toBeCloseTo(0.95, 6);
   });
 
+  it("scales source-unit root motion into the declared target rest units", async () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "avatar.vrm" },
+      fbxFile: { name: "dance.vmd" },
+    });
+    // MMD-style source: rest hips 10 units, a 2-unit step; target hips 0.9 m.
+    clip.metadata = {
+      ...clip.metadata,
+      rootTranslationSpace: "offset-source-units",
+      restHipsHeight: 10,
+      targetHeight: 0.9,
+    };
+    clip.tracks[0]!.values = [0, 0, 0, 0, 0, 2, 0, 0, 0];
+
+    const document = createVRMADocument(clip);
+    const hips = document
+      .getRoot()
+      .listAnimations()[0]!
+      .listChannels()
+      .find((channel) => channel.getTargetPath() === "translation")!;
+    const values = Array.from(hips.getSampler()!.getOutput()!.getArray()!);
+
+    expect(hips.getTargetNode()?.getTranslation()).toEqual([0, 0.9, 0]);
+    // 2 units * (0.9 / 10) = 0.18 m step, on top of the 0.9 m rest height.
+    expect(values[4]).toBeCloseTo(0.9, 6);
+    expect(Math.hypot(values[3]!, values[5]!)).toBeCloseTo(0.18, 6);
+  });
+
+  it("rejects source-unit root motion without a source rest height", () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "avatar.vrm" },
+      fbxFile: { name: "dance.vmd" },
+    });
+    clip.metadata = {
+      ...clip.metadata,
+      rootTranslationSpace: "offset-source-units",
+      restHipsHeight: undefined,
+    };
+
+    expect(() => createVRMADocument(clip)).toThrow(
+      expect.objectContaining({ code: "ROOT_MOTION_SCALE_UNRESOLVED" }),
+    );
+  });
+
   it("omits non-hips translations from the document and roundtrip", async () => {
     const clip = createRetargetedMotionClipStub({
       vrmFile: { name: "avatar.vrm" },

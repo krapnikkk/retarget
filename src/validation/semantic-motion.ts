@@ -68,6 +68,7 @@ export function validateHumanoidMotionSemantics({
   endEffectors = DEFAULT_END_EFFECTORS,
   expected,
   restPose,
+  rootScale,
   rotationBones,
   sampleFractions = [],
   thresholds = DEFAULT_SEMANTIC_THRESHOLDS,
@@ -75,6 +76,9 @@ export function validateHumanoidMotionSemantics({
   actual: RetargetedMotionClip;
   expected: RetargetedMotionClip;
   restPose?: HumanoidSemanticRestPose;
+  /** Expected-to-actual root scale from bound export evidence. When given,
+   * `expected` may stay in source units. */
+  rootScale?: number;
   rotationBones?: readonly HumanoidBoneName[];
   endEffectors?: readonly HumanoidBoneName[];
   sampleFractions?: readonly number[];
@@ -86,7 +90,8 @@ export function validateHumanoidMotionSemantics({
   );
   if (
     comparesRootTranslation &&
-    (expected.metadata?.rootTranslationSpace !== "offset-meters" ||
+    ((rootScale === undefined &&
+      expected.metadata?.rootTranslationSpace !== "offset-meters") ||
       actual.metadata?.rootTranslationSpace !== "offset-meters")
   ) {
     issues.push("root displacement cannot be certified without meter-normalized tracks");
@@ -118,7 +123,8 @@ export function validateHumanoidMotionSemantics({
     issues.push(`missing rotation tracks: ${missingRotationTracks.join(", ")}`);
   }
 
-  const expectedRootScale = resolveExpectedRootScale(expected, restPose);
+  const expectedRootScale =
+    rootScale ?? resolveExpectedRootScale(expected, restPose);
   const sampleTimes = createSemanticSampleTimes({
     actual,
     expected,

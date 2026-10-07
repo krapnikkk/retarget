@@ -7,6 +7,7 @@ import type {
   TargetBoundSolvedHumanoidMotionClip,
 } from "./types";
 import { MOTION_ARTIFACT_ENVELOPE_SCHEMA_VERSION } from "./types";
+import { RetargetError } from "./errors";
 import { sha256Hex } from "@/core/sha256";
 
 export function createCanonicalHumanoidMotionClip(
@@ -40,6 +41,36 @@ export function getMotionTargetBinding(
   clip: RetargetedMotionClip,
 ): RetargetTargetBinding | undefined {
   return "target" in clip ? clip.target : undefined;
+}
+
+/**
+ * Scale from the clip's root translation units to the rest hips height a
+ * target-relative export declares (`targetRestHipsHeight / sourceRestHipsHeight`),
+ * matching the scale target binding applies to avatar outputs. Without a target
+ * height the export declares the source rest height, so the scale is 1.
+ */
+export function resolveRootTranslationExportScale(clip: RetargetedMotionClip) {
+  const sourceRestHipsHeight = clip.metadata?.restHipsHeight;
+  const hasSourceHeight =
+    typeof sourceRestHipsHeight === "number" && sourceRestHipsHeight > 0;
+  if (
+    clip.metadata?.rootTranslationSpace === "offset-source-units" &&
+    !hasSourceHeight
+  ) {
+    throw new RetargetError("ROOT_MOTION_SCALE_UNRESOLVED", {
+      details: {
+        sourceKind: clip.source.kind,
+        sourceFilename: clip.source.filename,
+      },
+    });
+  }
+  const targetRestHipsHeight =
+    getMotionTargetBinding(clip)?.restHipsHeight ?? clip.metadata?.targetHeight;
+  return hasSourceHeight &&
+    typeof targetRestHipsHeight === "number" &&
+    targetRestHipsHeight > 0
+    ? targetRestHipsHeight / sourceRestHipsHeight
+    : 1;
 }
 
 export function isTargetBoundHumanoidMotionClip(
