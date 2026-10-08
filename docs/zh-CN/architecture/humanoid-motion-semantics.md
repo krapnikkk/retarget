@@ -19,7 +19,7 @@ SolvedHumanoidMotionClip
 - 旋转轨道是在 VRM 人形坐标基中表达的、相对静止姿势的世界空间增量。四元数必须归一化并保持半球连续。
 - Hips 平移轨道是相对静止姿势的世界空间偏移。源配置具有已知单位比例时使用米。
 - 单位未知的源标记为 `offset-source-units`。其 Hips 轨道保留供检查，但除非源静止身高提供比例证据，否则目标绑定会忽略它，避免把 MMD 或任意 BVH 单位暗中当成米。
-- BVH 从 Hips 到最低已映射脚/脚趾关节的层级偏移推导比例。VMD 没有模型骨架，因此使用显式的“标准模型静止 Hips 高度为 10 单位”预设，并在 `metadata.rootMotionEvidence.scaleSource` 中记录假设。
+- BVH 从 Hips 到最低已映射脚/脚趾关节的层级偏移推导比例。VMD 没有模型骨架，因此使用显式的“标准模型静止 Hips 高度为 10 单位”预设，并在 `metadata.rootMotionEvidence.scaleSource` 中记录假设。该预设指腿根（`左足`）高度处的 Hips 关节，与其他格式的规范 `restHipsHeight` 一致；实测腿根高度为 10.48（MMDAgent-EX Gene）和 10.75（nanoem emapp `test.pmx`），对这两个模型约偏低 5–7%。VMD 导入与导出共用同一常量。
 - 源规范化后，规范 Hips 平移始终是根相对偏移。`metadata.rootTranslationOrigin` 防止目标绑定再次减去源静止高度。
 - glTF `STEP`、`CUBICSPLINE` 和 VMD 骨骼 Bezier 曲线按源插值求值，并重采样为有界线性轨道；`metadata.resampledTracks` 记录受影响轨道数。
 - `metadata.normalizationVersion` 区分已规范化轨道和旧片段，防止配置覆盖重复转换同一数值。

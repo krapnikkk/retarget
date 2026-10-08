@@ -29,7 +29,11 @@ Target-local animation
 - BVH derives that scale evidence from the hierarchy offsets between Hips and
   the lowest mapped foot/toe joint. VMD has no model skeleton, so it uses an
   explicit 10-unit standard-model rest-hips preset and records that assumption
-  as `metadata.rootMotionEvidence.scaleSource`.
+  as `metadata.rootMotionEvidence.scaleSource`. The preset is the hips joint at
+  leg-root (`左足`) height, matching canonical `restHipsHeight` for other
+  formats; measured leg roots are 10.48 (MMDAgent-EX Gene) and 10.75 (nanoem
+  emapp `test.pmx`), so it is about 5–7% low for those models. VMD import and
+  export share the one constant.
 - Canonical hips translations are always root-relative offsets after source
   normalization. `metadata.rootTranslationOrigin` prevents target binding from
   subtracting the source rest height a second time.

@@ -4,6 +4,10 @@ import { GrowableBuffer } from "@/parsers/binary-writer";
 export const VMD_FPS = 30;
 // VMD stores no model, so root motion is read and written against one
 // standard-model rest hips height. Import and export must share this value.
+// Like canonical restHipsHeight elsewhere, it stands for the hips joint at
+// leg-root height (the 左足 joint), not センター or 下半身. Measured leg roots:
+// MMDAgent-EX Gene 10.48, nanoem emapp test.pmx 10.75, so 10 reads root
+// motion about 5-7% long against those models (issue #14).
 export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
 // Conventional MMD unit size, for meter clips that carry no rest hips height.
 export const MMD_UNIT_METERS = 0.08;
