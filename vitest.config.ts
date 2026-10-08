@@ -17,6 +17,8 @@ const slowTests = [
   "tests/asset-validation.test.ts",
   // Real Gene PMX/VMD runs; skipped when the gitignored corpus is absent.
   "tests/mmd-research-corpus.test.ts",
+  // Independent MMD Tools / Blender fixtures across three targets (#10).
+  "tests/pipelines/handmade-fixtures.test.ts",
 ];
 
 export default defineConfig({
