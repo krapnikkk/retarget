@@ -11,6 +11,7 @@ import {
 } from "@/retarget";
 import {
   bindCanonicalTracksToTargetRest,
+  resolveRestHipsHeight,
   type TargetBoneRestTransform,
 } from "@/retarget/target-binding";
 
@@ -40,7 +41,10 @@ export function bindCanonicalClipToGLTFTarget(
       worldQuaternion: new Quaternion(...node.getWorldRotation()),
     });
   }
-  const hipsHeight = bones.get("hips")?.worldPosition.y;
+  const hipsHeight = resolveRestHipsHeight(
+    profile?.id,
+    (bone) => bones.get(bone)?.worldPosition.y,
+  );
   return {
     ...clip,
     tracks: bindCanonicalTracksToTargetRest(clip, {

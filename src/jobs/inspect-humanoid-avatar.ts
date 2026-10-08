@@ -41,6 +41,7 @@ import {
   type HumanoidBoneName,
   type RetargetSkeletonNode,
 } from "@/retarget";
+import { resolveRestHipsHeight } from "@/retarget/target-binding";
 import type {
   SerializedGLTFResources,
   SerializedHumanoidAvatarRig,
@@ -128,7 +129,10 @@ function inspectDocument(
   if (nodesByBone.size === 0) {
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", filename);
   }
-  const hipsHeight = nodesByBone.get("hips")?.getWorldTranslation()[1];
+  const hipsHeight = resolveRestHipsHeight(
+    profile.id,
+    (bone) => nodesByBone.get(bone)?.getWorldTranslation()[1],
+  );
   return {
     format,
     filename,
@@ -158,7 +162,10 @@ function inspectObject(
   if (bones.size === 0) {
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", filename);
   }
-  const hipsHeight = bones.get("hips")?.getWorldPosition(new Vector3()).y;
+  const hipsHeight = resolveRestHipsHeight(
+    profile.id,
+    (bone) => bones.get(bone)?.getWorldPosition(new Vector3()).y,
+  );
   return {
     format,
     filename,
@@ -209,10 +216,12 @@ function inspectStructuralJSON(
       if (parentBone) entries.get(parentBone)?.children.push(entry);
       else roots.push(entry);
     }
-    const hipsIndex = nodesByBone.get("hips");
-    const hipsHeight = hipsIndex === undefined
-      ? undefined
-      : getRawWorldMatrix(nodes, parents, hipsIndex).elements[13];
+    const hipsHeight = resolveRestHipsHeight(profile.id, (bone) => {
+      const index = nodesByBone.get(bone);
+      return index === undefined
+        ? undefined
+        : getRawWorldMatrix(nodes, parents, index).elements[13];
+    });
     return {
       format,
       filename,

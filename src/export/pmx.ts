@@ -6,6 +6,8 @@ import {
   bindCanonicalRotationDeltasToTargetLocal,
   bindCanonicalTranslationOffsetsToTargetLocal,
   createCanonicalToTargetWorldCorrection,
+  isNativeMMDRootMotion,
+  resolveRestHipsHeight,
 } from "@/retarget/target-binding";
 import {
   normalizeMotionTime,
@@ -213,13 +215,18 @@ function bindCanonicalClipToPMXTarget(
   clip: AvatarExportInput["clip"],
 ) {
   const boneLookup = new Map(layout.bones.map((name, index) => [name, index]));
-  const hipsIndex = boneLookup.get(resolveExportBoneName("hips", "mmd"));
-  const targetRestHipsHeight = hipsIndex === undefined
-    ? undefined
-    : Math.abs(layout.bonePositions[hipsIndex]?.[1] ?? 0);
+  const targetRestHipsHeight = resolveRestHipsHeight(MMD_BODY_PROFILE.id, (bone) => {
+    const index = boneLookup.get(resolveExportBoneName(bone, "mmd"));
+    return index === undefined
+      ? undefined
+      : Math.abs(layout.bonePositions[index]?.[1] ?? 0);
+  });
   const sourceRestHipsHeight = clip.metadata?.restHipsHeight;
   const rootScale =
-    targetRestHipsHeight && sourceRestHipsHeight && sourceRestHipsHeight > 0
+    !isNativeMMDRootMotion(clip, MMD_BODY_PROFILE.id) &&
+    targetRestHipsHeight &&
+    sourceRestHipsHeight &&
+    sourceRestHipsHeight > 0
       ? targetRestHipsHeight / sourceRestHipsHeight
       : 1;
   const canonicalToTargetWorld = createCanonicalToTargetWorldCorrection(

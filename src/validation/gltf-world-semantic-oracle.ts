@@ -6,7 +6,16 @@ import type {
 } from "@gltf-transform/core";
 import { Matrix4, Quaternion, Vector3 } from "three";
 import { assertParentChains } from "@/core/parent-graph";
-import { HUMANOID_BONES, type HumanoidBoneName, type RetargetedMotionClip } from "@/retarget";
+import {
+  getMotionTargetBinding,
+  HUMANOID_BONES,
+  type HumanoidBoneName,
+  type RetargetedMotionClip,
+} from "@/retarget";
+import {
+  isNativeMMDRootMotion,
+  resolveRestHipsHeight,
+} from "@/retarget/target-binding";
 import {
   createSemanticSampleTimes,
   solveSemanticWorldPose,
@@ -45,7 +54,15 @@ export function validateGLTFWorldSemantics({
   );
   const actualDuration = getAnimationDuration(animation);
   const restPose = createGLTFHumanoidSemanticRestPose(nodesByBone);
-  const targetRestHipsHeight = restPose.get("hips")?.worldPosition[1];
+  // Same rest-hips definition and native VMD-on-MMD rule as target binding.
+  const targetProfileId = getMotionTargetBinding(expected)?.profile;
+  const measuredRestHipsHeight = resolveRestHipsHeight(
+    targetProfileId,
+    (bone) => restPose.get(bone)?.worldPosition[1],
+  );
+  const targetRestHipsHeight = isNativeMMDRootMotion(expected, targetProfileId)
+    ? expected.metadata?.restHipsHeight ?? measuredRestHipsHeight
+    : measuredRestHipsHeight;
   const rootScale = resolveExpectedRootScale(expected, targetRestHipsHeight);
   const sampleTimes = createSemanticSampleTimes({
     actual: expected,

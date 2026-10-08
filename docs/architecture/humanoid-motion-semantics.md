@@ -34,6 +34,11 @@ Target-local animation
   formats; measured leg roots are 10.48 (MMDAgent-EX Gene) and 10.75 (nanoem
   emapp `test.pmx`), so it is about 5–7% low for those models. VMD import and
   export share the one constant.
+- MMD (PMX/PMD) targets map `hips` to `センター`, which sits below the leg
+  roots, so their rest hips height is the average `左足`/`右足` height while
+  root motion is still driven on `センター`. VMD bound to an MMD target keeps
+  its root motion unscaled, as MMD itself plays it; other sources scale to the
+  leg-root height.
 - Canonical hips translations are always root-relative offsets after source
   normalization. `metadata.rootTranslationOrigin` prevents target binding from
   subtracting the source rest height a second time.

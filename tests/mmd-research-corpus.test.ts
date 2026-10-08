@@ -1,3 +1,5 @@
+import { WebIO } from "@gltf-transform/core";
+import { importGLTFAnimation } from "@/import/gltf-animation";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -35,7 +37,6 @@ import {
   validateMotionExportReload,
   validateMotionExportSemantics,
 } from "@/export";
-import { WebIO } from "@gltf-transform/core";
 import {
   deriveShortLegs,
   deriveVRM0,
@@ -157,6 +158,52 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
     ).resolves.toMatchObject({ level: "semantic", ok: true });
   });
 
+  // #15: MMD avatars report rest hips at leg-root height, like every other
+  // format, while root motion is still driven on センター.
+  it("reports Gene's rest hips at its leg-root height, not センター", async () => {
+    const heights = await readGeneHeights();
+    const bound = await bindMotionClipToAvatar({
+      avatarFile: new File([await readFile(path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx"))], "Gene_light.pmx"),
+      avatarFormatId: "mmd-model",
+      clip: importVMD(
+        new Uint8Array(await readFile(path.join(corpusRoot, "mmdagent-gene", "motion", "stand.vmd"))),
+        "stand.vmd",
+      ),
+    });
+    expect(bound.target.restHipsHeight).toBeCloseTo(heights.legRoot, 3);
+    expect(bound.target.restHipsHeight!).toBeGreaterThan(heights.center + 1);
+  });
+
+  it("scales a glTF walk to Gene in proportion to its leg-root height", async () => {
+    const heights = await readGeneHeights();
+    const avatarFile = new File([await readFile(path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx"))], "Gene_light.pmx");
+    const source = await importGLTFAnimation(
+      Uint8Array.from(await readFile("tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.animation.glb")),
+      "walk.glb",
+    );
+    const bound = await bindMotionClipToAvatar({ avatarFile, avatarFormatId: "mmd-model", clip: source });
+    const output = await exportAnimatedGLB({ avatarFile, avatarFormatId: "mmd-model", clip: bound });
+
+    const sourceStride = span(component(trackValues(source, "hips"), 2));
+    const expected = sourceStride * heights.legRoot / source.metadata!.restHipsHeight!;
+    expect(await centerTravel(output)).toBeCloseTo(expected, 1);
+    await expect(
+      validateAvatarExportSemantics("animated-glb", output, bound),
+    ).resolves.toMatchObject({ level: "semantic", ok: true });
+  });
+
+  it("plays a Gene VMD on Gene with unscaled root motion, as MMD does", async () => {
+    const geneRoot = path.join(corpusRoot, "mmdagent-gene");
+    const avatarFile = new File([await readFile(path.join(geneRoot, "Gene_light.pmx"))], "Gene_light.pmx");
+    const motion = importVMD(new Uint8Array(await readFile(path.join(geneRoot, "motion", "stand.vmd"))), "stand.vmd");
+    const bound = await bindMotionClipToAvatar({ avatarFile, avatarFormatId: "mmd-model", clip: motion });
+    const output = await exportAnimatedGLB({ avatarFile, avatarFormatId: "mmd-model", clip: bound });
+
+    const sway = Math.max(...[0, 1, 2].map((axis) => span(component(trackValues(motion, "hips"), axis))));
+    expect(sway).toBeGreaterThan(0.05);
+    expect(await centerTravel(output, "max-axis")).toBeCloseTo(sway, 3);
+  });
+
   it("keeps the expression-only Gene VMD as a negative fixture", async () => {
     const filename = "00_normal.vmd";
     const bytes = new Uint8Array(
@@ -270,4 +317,41 @@ function horizontalSpan(values: ArrayLike<number>) {
   return xs.length
     ? Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs))
     : 0;
+}
+
+async function readGeneHeights() {
+  const file = path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx");
+  const document = convertMMDModelToGLBDocument(new Uint8Array(readFileSync(file)), "Gene_light.pmx", (uri) => {
+    try {
+      return new Uint8Array(readFileSync(path.join(path.dirname(file), ...uri.split(/[\/]+/))));
+    } catch {
+      return new Uint8Array();
+    }
+  });
+  const y = (name: string) =>
+    document.getRoot().listNodes().find((node) => node.getName() === name)!.getWorldTranslation()[1];
+  return { center: y("センター"), legRoot: (y("左足") + y("右足")) / 2 };
+}
+
+function trackValues(clip: { tracks: ReadonlyArray<{ bone: string; path: string; values: readonly number[] }> }, bone: string) {
+  return clip.tracks.find((track) => track.bone === bone && track.path === "translation")!.values;
+}
+
+async function centerTravel(bytes: Uint8Array, mode: "z" | "max-axis" = "z") {
+  const document = await new WebIO().readBinary(bytes);
+  const center = document.getRoot().listNodes().find((node) => node.getName() === "センター")!;
+  const channel = document.getRoot().listAnimations().at(-1)!.listChannels()
+    .find((candidate) => candidate.getTargetNode() === center && candidate.getTargetPath() === "translation")!;
+  const values = Array.from(channel.getSampler()!.getOutput()!.getArray()!);
+  return mode === "z"
+    ? span(component(values, 2))
+    : Math.max(...[0, 1, 2].map((axis) => span(component(values, axis))));
+}
+
+function component(values: ArrayLike<number>, axis: number) {
+  return Array.from({ length: Math.floor(values.length / 3) }, (_, index) => values[index * 3 + axis]!);
+}
+
+function span(values: readonly number[]) {
+  return Math.max(...values) - Math.min(...values);
 }
