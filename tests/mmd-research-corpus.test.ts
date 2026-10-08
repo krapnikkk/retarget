@@ -187,6 +187,8 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
     const sourceStride = span(component(trackValues(source, "hips"), 2));
     const expected = sourceStride * heights.legRoot / source.metadata!.restHipsHeight!;
     expect(await centerTravel(output)).toBeCloseTo(expected, 1);
+    // MMD faces -Z in its own space; Gene must walk the way its eyes face.
+    expect(await travelTowardFace(output)).toBeGreaterThan(0.9);
     await expect(
       validateAvatarExportSemantics("animated-glb", output, bound),
     ).resolves.toMatchObject({ level: "semantic", ok: true });
@@ -354,4 +356,20 @@ function component(values: ArrayLike<number>, axis: number) {
 
 function span(values: readonly number[]) {
   return Math.max(...values) - Math.min(...values);
+}
+
+async function travelTowardFace(bytes: Uint8Array) {
+  const document = await new WebIO().readBinary(bytes);
+  const nodes = document.getRoot().listNodes();
+  const world = (name: string) => nodes.find((node) => node.getName() === name)!.getWorldTranslation();
+  const faceZ = Math.sign(world("左目")[2] - world("頭")[2]);
+  const center = nodes.find((node) => node.getName() === "センター")!;
+  const values = Array.from(
+    document.getRoot().listAnimations().at(-1)!.listChannels()
+      .find((channel) => channel.getTargetNode() === center && channel.getTargetPath() === "translation")!
+      .getSampler()!.getOutput()!.getArray()!,
+  );
+  const travelX = values.at(-3)! - values[0]!;
+  const travelZ = values.at(-1)! - values[2]!;
+  return (travelZ * faceZ) / Math.hypot(travelX, travelZ);
 }

@@ -200,14 +200,16 @@ export const MMD_BODY_PROFILE = {
   avatarFormats: ["mmd-model"],
   restPose: "a-pose",
   upAxis: "y",
-  forwardAxis: "-z",
+  // MMD models face -Z in MMD's left-handed space; mirrored into right-handed
+  // space (z negated) they face +Z.
+  forwardAxis: "z",
   scaleUnit: "unknown",
   rootMotion: "hips",
   supportsFingers: false,
   supportsFacialAnimation: false,
   bones: MMD_BONES,
   notes: [
-    "VMD adapters mirror the raw left-handed MMD basis into this right-handed -Z-forward staging profile before shared canonical normalization; body tracks use the explicit 10-unit standard-model rest-hips preset for root-motion scaling.",
+    "VMD adapters mirror the raw left-handed MMD basis (forward -Z) into this right-handed +Z-forward staging profile before shared canonical normalization; body tracks use the explicit 10-unit standard-model rest-hips preset for root-motion scaling.",
     "Camera, expression, and physics semantics remain out of scope.",
   ],
 } as const satisfies RigProfile;

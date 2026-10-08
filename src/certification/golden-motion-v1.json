@@ -349,7 +349,7 @@
       "status": "semantic-passed",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.vmd",
-        "sha256": "306e09659f0f6700c4532c10bcd1e51107e8209097215603831d6742cf28b710",
+        "sha256": "28863dc031aa13974908a3cc028850da9cb55551c6f23a0c2e17511545924d38",
         "license": "CC0-1.0",
         "sourceUrl": "https://quaternius.itch.io/universal-animation-library"
       },

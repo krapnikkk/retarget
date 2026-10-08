@@ -1,4 +1,5 @@
 import { VmdObject } from "@moeru/three-mmd";
+import { Quaternion, Vector3 } from "three";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 
 export const VMD_FPS = 30;
@@ -11,6 +12,48 @@ export const VMD_FPS = 30;
 export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
 // Conventional MMD unit size, for meter clips that carry no rest hips height.
 export const MMD_UNIT_METERS = 0.08;
+// VMD rotations are relative to the model's rest pose, an A-pose in MMD, while
+// canonical tracks are relative to a T-pose. Upper arm, forearm and hand rest
+// collinear, lowered by this angle (MMDAgent-EX Gene 34.0, nanoem 29.7 upper /
+// 40.3 forearm).
+export const MMD_STANDARD_ARM_REST_DEGREES = 34;
+
+const ARM_CHAIN_DESCENDANTS = /^(LowerArm|Hand|Thumb|Index|Middle|Ring|Little)/;
+
+/**
+ * Converts a rotation of an arm-chain bone between the MMD A-pose rest (VMD)
+ * and the canonical T-pose rest, in the right-handed +Z-forward MMD staging
+ * frame (model left = +X). Bones outside the arm chains are returned as is.
+ * MMD local frames are world-aligned at rest, so the upper arm takes the rest
+ * offset and its descendants are conjugated by it.
+ */
+export function convertMMDArmRest(
+  bone: string,
+  rotation: readonly [number, number, number, number],
+  direction: "a-pose-to-t-pose" | "t-pose-to-a-pose",
+): [number, number, number, number] {
+  const side = bone.startsWith("left") ? 1 : bone.startsWith("right") ? -1 : 0;
+  const part = bone.replace(/^(left|right)/, "");
+  const upper = part === "UpperArm";
+  if (side === 0 || (!upper && !ARM_CHAIN_DESCENDANTS.test(part))) {
+    return [...rotation];
+  }
+  const rest = new Quaternion().setFromAxisAngle(
+    new Vector3(0, 0, 1),
+    (-side * MMD_STANDARD_ARM_REST_DEGREES * Math.PI) / 180,
+  );
+  const restInverse = rest.clone().invert();
+  const q = new Quaternion(...rotation);
+  if (direction === "a-pose-to-t-pose") {
+    if (upper) q.multiply(rest);
+    else q.premultiply(restInverse).multiply(rest);
+  } else if (upper) {
+    q.multiply(restInverse);
+  } else {
+    q.premultiply(rest).multiply(restInverse);
+  }
+  return [q.x, q.y, q.z, q.w];
+}
 
 export type VMDBoneFrame = {
   boneName: string;

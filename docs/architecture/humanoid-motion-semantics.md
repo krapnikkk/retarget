@@ -39,6 +39,13 @@ Target-local animation
   root motion is still driven on `センター`. VMD bound to an MMD target keeps
   its root motion unscaled, as MMD itself plays it; other sources scale to the
   leg-root height.
+- MMD models face -Z in MMD's left-handed space with their left side at +X.
+  VMD import mirrors into right-handed space (MMD forward becomes +Z), then
+  turns into the canonical -Z-forward basis; VMD export is the exact inverse.
+  VMD rotations are relative to the MMD model's A-pose rest, so arm chains are
+  rebased by `MMD_STANDARD_ARM_REST_DEGREES` (34°, measured on MMDAgent-EX
+  Gene): the upper arm takes the rest offset, forearm/hand/fingers are
+  conjugated by it.
 - Canonical hips translations are always root-relative offsets after source
   normalization. `metadata.rootTranslationOrigin` prevents target binding from
   subtracting the source rest height a second time.
