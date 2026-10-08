@@ -82,6 +82,21 @@ export function importMotionBytes(bytes: Uint8Array) {
 }
 ```
 
+## Solve options
+
+`RetargetSolveOptions` (`DEFAULT_RETARGET_SOLVE_OPTIONS`) is passed as `solveOptions`
+to `pipeline.run` / `bindMotionClipToAvatar`, or as `options` to the
+`solve-humanoid` job. The last two fields are optional; leaving them out keeps
+output unchanged.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `rootMotion` | `true` | `false` keeps the motion in place (root offsets removed). |
+| `heightScale` | `1` | Multiplies root offsets. |
+| `armOffsetDegrees` | `0` | Raises (+) or lowers (−) the arms. |
+| `grounding` | `"none"` | `"constant"` applies one vertical root offset so the lowest foot joint over the clip matches the target's rest foot height. Needs the target's rest joints, which avatar inspection provides; jumps keep their relative height. |
+| `yawOffsetDegrees` | `0` | Turns the whole motion (root facing and travel) about the vertical axis, for sources recorded facing the wrong way; for example `180`, or `90`/`-90` for sideways sources. |
+
 ## Supported combinations and assurance
 
 Assurance is case-scoped: `experimental` capabilities are evaluation-only;

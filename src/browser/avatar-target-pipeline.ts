@@ -87,6 +87,7 @@ export async function bindMotionClipToAvatar({
         bones: rig.bones,
         skeleton: rig.skeleton,
         restHipsHeight: rig.restHipsHeight,
+        restJoints: rig.restJoints,
       },
     },
     { signal },

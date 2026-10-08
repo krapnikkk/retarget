@@ -39,6 +39,7 @@ import {
   createRetargetError,
   isHumanoidBoneName,
   type HumanoidBoneName,
+  type HumanoidRestJoints,
   type RetargetSkeletonNode,
 } from "@/retarget";
 import { resolveRestHipsHeight } from "@/retarget/target-binding";
@@ -143,6 +144,10 @@ function inspectDocument(
       (bone) => !nodesByBone.has(bone),
     ),
     restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+    restJoints: createRestJoints(nodesByBone, (node) => ({
+      position: node.getWorldTranslation(),
+      rotation: node.getWorldRotation(),
+    })),
     rigSignature: createGLTFHumanoidRigSignature(nodesByBone, profile.id),
   };
 }
@@ -174,6 +179,10 @@ function inspectObject(
     skeleton: createObjectSkeleton(filename, bones),
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
     restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+    restJoints: createRestJoints(bones, (object) => ({
+      position: object.getWorldPosition(new Vector3()).toArray(),
+      rotation: object.getWorldQuaternion(new Quaternion()).toArray(),
+    })),
     rigSignature: createObjectRigSignature(profile.id, bones),
   };
 }
@@ -232,6 +241,8 @@ function inspectStructuralJSON(
         (bone) => !nodesByBone.has(bone),
       ),
       restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+      restJoints: createRestJoints(nodesByBone, (index) =>
+        decomposeRestJoint(getRawWorldMatrix(nodes, parents, index))),
       rigSignature: inspectRawGLTFHumanoidRigSignature(
         nodes,
         nodesByBone,
@@ -552,4 +563,26 @@ function profileIdForFormat(format: AvatarFormatId, vrm1 = false): RigProfileId 
   if (format === "mmd-model") return "mmd-body";
   if (format === "generic-fbx-avatar") return "generic-fbx-humanoid";
   return "generic-gltf-humanoid";
+}
+
+function createRestJoints<T>(
+  bones: ReadonlyMap<HumanoidBoneName, T>,
+  read: (value: T) => { position: ArrayLike<number>; rotation: ArrayLike<number> },
+): HumanoidRestJoints {
+  const joints: HumanoidRestJoints = {};
+  for (const [bone, value] of bones) {
+    const { position, rotation } = read(value);
+    joints[bone] = {
+      position: [position[0] ?? 0, position[1] ?? 0, position[2] ?? 0],
+      rotation: [rotation[0] ?? 0, rotation[1] ?? 0, rotation[2] ?? 0, rotation[3] ?? 1],
+    };
+  }
+  return joints;
+}
+
+function decomposeRestJoint(world: Matrix4) {
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  world.decompose(position, rotation, new Vector3());
+  return { position: position.toArray(), rotation: rotation.toArray() };
 }

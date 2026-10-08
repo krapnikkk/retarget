@@ -15,6 +15,8 @@ const slowTests = [
   "tests/rigs/mesh2motion-acceptance.test.ts",
   "tests/node/node-tooling.test.ts",
   "tests/asset-validation.test.ts",
+  // Real Gene PMX/VMD runs; skipped when the gitignored corpus is absent.
+  "tests/mmd-research-corpus.test.ts",
 ];
 
 export default defineConfig({

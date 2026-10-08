@@ -75,6 +75,18 @@ export function importMotionBytes(bytes: Uint8Array) {
 }
 ```
 
+## 求解选项
+
+`RetargetSolveOptions`（默认值 `DEFAULT_RETARGET_SOLVE_OPTIONS`）作为 `solveOptions` 传给 `pipeline.run` / `bindMotionClipToAvatar`，或作为 `options` 传给 `solve-humanoid` 任务。最后两项可选，省略时输出不变。
+
+| 选项 | 默认值 | 作用 |
+| --- | --- | --- |
+| `rootMotion` | `true` | `false` 时原地播放（去掉根位移）。 |
+| `heightScale` | `1` | 根位移的倍数。 |
+| `armOffsetDegrees` | `0` | 抬高（+）或放低（−）手臂。 |
+| `grounding` | `"none"` | `"constant"` 时整体施加一个垂直根偏移，使整段动作中最低的脚部关节与目标静止姿势的脚部高度一致。需要目标的静止关节数据（角色检查会提供）；跳跃的相对高度保持不变。 |
+| `yawOffsetDegrees` | `0` | 绕竖直轴整体旋转动作（根朝向与位移一起转），用于朝向录错的来源，例如 `180`，侧向来源用 `90`/`-90`。 |
+
 ## 支持的组合与保证等级
 
 保证等级按具体用例划分：`experimental` 能力仅供评估；`beta` 组合具有声明范围内的固定资源和 Profile 证据；`certified` 用例还具有结构重载、语义比较和固定版本的生态兼容证据。1.0 之前，API 可能在次版本升级时发生变化。
