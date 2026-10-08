@@ -77,7 +77,7 @@ export function validateHumanoidMotionSemantics({
   expected: RetargetedMotionClip;
   restPose?: HumanoidSemanticRestPose;
   /** Expected-to-actual root scale from bound export evidence. When given,
-   * `expected` may stay in source units. */
+   * both clips may stay in their own declared units. */
   rootScale?: number;
   rotationBones?: readonly HumanoidBoneName[];
   endEffectors?: readonly HumanoidBoneName[];
@@ -90,8 +90,8 @@ export function validateHumanoidMotionSemantics({
   );
   if (
     comparesRootTranslation &&
-    ((rootScale === undefined &&
-      expected.metadata?.rootTranslationSpace !== "offset-meters") ||
+    rootScale === undefined &&
+    (expected.metadata?.rootTranslationSpace !== "offset-meters" ||
       actual.metadata?.rootTranslationSpace !== "offset-meters")
   ) {
     issues.push("root displacement cannot be certified without meter-normalized tracks");

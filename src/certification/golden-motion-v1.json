@@ -349,7 +349,7 @@
       "status": "semantic-passed",
       "source": {
         "path": "tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.vmd",
-        "sha256": "cb32834ae6083762dedd98d8ce7b6b0c914fe1934f1f12a23ca335783144eb1c",
+        "sha256": "306e09659f0f6700c4532c10bcd1e51107e8209097215603831d6742cf28b710",
         "license": "CC0-1.0",
         "sourceUrl": "https://quaternius.itch.io/universal-animation-library"
       },
@@ -368,7 +368,154 @@
         "endEffectorMeters": 0.01,
         "symmetryMeters": 0.01
       },
-      "expectedCanonicalFrom": "quaternius-walk-gltf-to-studio-mannequin-glb",
+      "expectedCanonical": {
+        "duration": 1.333333,
+        "fps": 30,
+        "trackCount": 53,
+        "samples": [
+          {
+            "hips": {
+              "rotation": [
+                0.000368,
+                0.017448,
+                0.021089,
+                0.999625
+              ],
+              "position": [
+                0.202722,
+                -0.502444,
+                -0.003256
+              ]
+            },
+            "leftHand": {
+              "rotation": [
+                -0.015807,
+                -0.10577,
+                0.011018,
+                0.994204
+              ]
+            },
+            "rightHand": {
+              "rotation": [
+                -0.012974,
+                0.1607,
+                -0.010255,
+                0.986865
+              ]
+            },
+            "leftFoot": {
+              "rotation": [
+                0.080503,
+                -0.018328,
+                0.010678,
+                0.996529
+              ]
+            },
+            "rightFoot": {
+              "rotation": [
+                0.077961,
+                -0.005848,
+                -0.021411,
+                0.996709
+              ]
+            }
+          },
+          {
+            "hips": {
+              "rotation": [
+                0.000347,
+                -0.015822,
+                -0.021918,
+                0.999635
+              ],
+              "position": [
+                -0.286945,
+                -0.502322,
+                -7.093697
+              ]
+            },
+            "leftHand": {
+              "rotation": [
+                -0.012974,
+                -0.1607,
+                0.010255,
+                0.986865
+              ]
+            },
+            "rightHand": {
+              "rotation": [
+                -0.015807,
+                0.10577,
+                -0.011018,
+                0.994204
+              ]
+            },
+            "leftFoot": {
+              "rotation": [
+                0.077564,
+                0.006449,
+                0.018493,
+                0.996795
+              ]
+            },
+            "rightFoot": {
+              "rotation": [
+                0.080709,
+                0.015691,
+                -0.01536,
+                0.996496
+              ]
+            }
+          },
+          {
+            "hips": {
+              "rotation": [
+                0.000368,
+                0.017448,
+                0.021089,
+                0.999625
+              ],
+              "position": [
+                0.202722,
+                -0.502444,
+                -14.184556
+              ]
+            },
+            "leftHand": {
+              "rotation": [
+                -0.015807,
+                -0.10577,
+                0.011018,
+                0.994204
+              ]
+            },
+            "rightHand": {
+              "rotation": [
+                -0.012974,
+                0.1607,
+                -0.010255,
+                0.986865
+              ]
+            },
+            "leftFoot": {
+              "rotation": [
+                0.080502,
+                -0.018328,
+                0.010678,
+                0.996529
+              ]
+            },
+            "rightFoot": {
+              "rotation": [
+                0.077962,
+                -0.005848,
+                -0.021411,
+                0.996709
+              ]
+            }
+          }
+        ]
+      },
       "evidence": {
         "structural": "passed",
         "semantic": "passed",

@@ -36,6 +36,7 @@ import { validateGLTFWorldSemantics } from "@/validation/gltf-world-semantic-ora
 import { collectHumanoidNodes } from "./avatar-glb";
 import { validateFBXAnimationBytes } from "./fbx";
 import { validateAnimatedPMXBytes } from "./pmx";
+import { resolveVMDRootScale } from "./vmd";
 import { readZipArchive } from "@/archive/zip";
 
 export type ExportReloadValidationResult = {
@@ -194,6 +195,7 @@ export async function validateMotionExportSemantics(
     );
   } else if (formatId === "vmd") {
     actual = importVMD(bytes, "semantic.vmd");
+    rootScale = resolveScaleOrUndefined(() => resolveVMDRootScale(expected));
   } else if (formatId === "fbx-animation") {
     actual = importFBXHumanoidMotionBytes({
       bytes: bytes.buffer.slice(
@@ -217,8 +219,12 @@ export async function validateMotionExportSemantics(
 // (see exportVRMA); compare against the same scale. Unresolved source scale
 // leaves it undefined so the meter-normalization check reports it.
 function resolveVRMARootScale(expected: RetargetedMotionClip) {
+  return resolveScaleOrUndefined(() => resolveRootTranslationExportScale(expected));
+}
+
+function resolveScaleOrUndefined(resolve: () => number) {
   try {
-    return resolveRootTranslationExportScale(expected);
+    return resolve();
   } catch {
     return undefined;
   }

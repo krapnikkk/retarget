@@ -2,6 +2,11 @@ import { VmdObject } from "@moeru/three-mmd";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 
 export const VMD_FPS = 30;
+// VMD stores no model, so root motion is read and written against one
+// standard-model rest hips height. Import and export must share this value.
+export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
+// Conventional MMD unit size, for meter clips that carry no rest hips height.
+export const MMD_UNIT_METERS = 0.08;
 
 export type VMDBoneFrame = {
   boneName: string;

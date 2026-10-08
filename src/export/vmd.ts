@@ -1,12 +1,15 @@
 import {
   HUMANOID_BONES,
   normalizeMotionTime,
+  resolveRootTranslationExportScale,
   sampleMotionClipPose,
   type RetargetedMotionClip,
 } from "@/retarget";
 import { validateMotionClip } from "@/retarget";
 import {
   LINEAR_VMD_BONE_INTERPOLATION,
+  MMD_STANDARD_REST_HIPS_HEIGHT,
+  MMD_UNIT_METERS,
   serializeVMDBoneMotion,
   VMD_FPS,
   type VMDBoneFrame,
@@ -61,6 +64,7 @@ function* createVMDBoneFrames(
   bones: ReturnType<typeof collectVMDBones>,
   frameCount: number,
 ): Generator<VMDBoneFrame> {
+  const rootScale = resolveVMDRootScale(clip);
   for (let frameNumber = 0; frameNumber < frameCount; frameNumber += 1) {
     const time = normalizeMotionTime(frameNumber / VMD_FPS, clip.duration, false);
     const pose = sampleMotionClipPose(clip, time, false);
@@ -71,12 +75,29 @@ function* createVMDBoneFrames(
       yield {
         boneName: MMD_EXPORT_BONE_NAMES[bone],
         frameNumber,
-        position: [position?.[0] ?? 0, position?.[1] ?? 0, -(position?.[2] ?? 0)],
+        position: [
+          (position?.[0] ?? 0) * rootScale,
+          (position?.[1] ?? 0) * rootScale,
+          -(position?.[2] ?? 0) * rootScale,
+        ],
         rotation: [-rotation[0], -rotation[1], rotation[2], rotation[3]],
         interpolation: LINEAR_VMD_BONE_INTERPOLATION,
       };
     }
   }
+}
+
+// The inverse of VMD import: root offsets are written in MMD units against the
+// standard-model rest hips height that import reads them with.
+export function resolveVMDRootScale(clip: RetargetedMotionClip) {
+  const sourceRestHipsHeight = clip.metadata?.restHipsHeight;
+  if (
+    !(typeof sourceRestHipsHeight === "number" && sourceRestHipsHeight > 0) &&
+    clip.metadata?.rootTranslationSpace === "offset-meters"
+  ) {
+    return 1 / MMD_UNIT_METERS;
+  }
+  return resolveRootTranslationExportScale(clip, MMD_STANDARD_REST_HIPS_HEIGHT);
 }
 
 function collectVMDBones(clip: RetargetedMotionClip) {

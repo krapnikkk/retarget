@@ -146,9 +146,7 @@ describe("<source> -> vrm -> vrma pipelines", () => {
       expect(semantic).toMatchObject({ level: "semantic", ok: true });
       expect(semantic.metrics?.maxEndEffectorErrorMeters).toBeLessThanOrEqual(0.01);
       const travel = readHipsWorldTravel(result.output.bytes);
-      // Enough travel for a meaningful direction. The SDK-derived VMD declares
-      // MMD units over near-meter values, so its scaled walk is only ~0.1 m.
-      expect(travel.length()).toBeGreaterThan(0.05);
+      expect(travel.length()).toBeGreaterThan(0.3);
       expect(travel.normalize().dot(readAvatarForward(avatar))).toBeGreaterThan(0.9);
     },
   );

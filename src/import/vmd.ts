@@ -1,5 +1,6 @@
 import { MMD_EXPORT_BONE_NAMES } from "@/profiles/bone-naming";
 import {
+  MMD_STANDARD_REST_HIPS_HEIGHT,
   parseVMDDocument,
   VMD_FPS,
   type VMDBoneFrame,
@@ -28,7 +29,7 @@ type VMDChannel = VMDBoneBinding & {
   frames: VMDBoneFrame[];
 };
 
-export const MMD_STANDARD_REST_HIPS_HEIGHT = 10;
+export { MMD_STANDARD_REST_HIPS_HEIGHT };
 
 const VMD_BONE_MAP = createVMDBoneMap();
 const MAX_VMD_GENERATED_TRACK_SAMPLES = 1_000_000;

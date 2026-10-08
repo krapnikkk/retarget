@@ -48,8 +48,13 @@ export function getMotionTargetBinding(
  * target-relative export declares (`targetRestHipsHeight / sourceRestHipsHeight`),
  * matching the scale target binding applies to avatar outputs. Without a target
  * height the export declares the source rest height, so the scale is 1.
+ * Formats with a fixed reference rest height (VMD) pass it as
+ * `declaredRestHipsHeight` in place of the target's.
  */
-export function resolveRootTranslationExportScale(clip: RetargetedMotionClip) {
+export function resolveRootTranslationExportScale(
+  clip: RetargetedMotionClip,
+  declaredRestHipsHeight?: number,
+) {
   const sourceRestHipsHeight = clip.metadata?.restHipsHeight;
   const hasSourceHeight =
     typeof sourceRestHipsHeight === "number" && sourceRestHipsHeight > 0;
@@ -65,7 +70,9 @@ export function resolveRootTranslationExportScale(clip: RetargetedMotionClip) {
     });
   }
   const targetRestHipsHeight =
-    getMotionTargetBinding(clip)?.restHipsHeight ?? clip.metadata?.targetHeight;
+    declaredRestHipsHeight ??
+    getMotionTargetBinding(clip)?.restHipsHeight ??
+    clip.metadata?.targetHeight;
   return hasSourceHeight &&
     typeof targetRestHipsHeight === "number" &&
     targetRestHipsHeight > 0
