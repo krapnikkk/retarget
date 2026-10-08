@@ -111,10 +111,11 @@ export function createVRMADocument(
     if (!node) {
       continue;
     }
+    const { times, values } = holdTrackToDuration(track, clip.duration);
 
     const input = document
       .createAccessor(`${track.bone}.${track.path}.time`)
-      .setArray(new Float32Array(track.times))
+      .setArray(new Float32Array(times))
       .setType(Accessor.Type.SCALAR!)
       .setBuffer(buffer);
 
@@ -124,11 +125,11 @@ export function createVRMADocument(
         new Float32Array(
           track.path === "translation"
             ? encodeVRMATranslations(
-                track.values,
+                values,
                 restHipsHeight,
                 rootTranslationScale,
               )
-            : encodeVRMARotations(track.values),
+            : encodeVRMARotations(values),
         ),
       )
       .setType(
@@ -152,6 +153,24 @@ export function createVRMADocument(
   }
 
   return document;
+}
+
+// VRMA playback length is the last key time. Tracks that stop early (e.g. a
+// VMD whose document range is driven by morph frames) hold their last pose so
+// the animation keeps the clip duration.
+function holdTrackToDuration(
+  track: { times: readonly number[]; values: readonly number[] },
+  duration: number,
+) {
+  const lastTime = track.times.at(-1);
+  if (lastTime === undefined || lastTime >= duration - 1e-6) {
+    return { times: track.times, values: track.values };
+  }
+  const size = track.values.length / track.times.length;
+  return {
+    times: [...track.times, duration],
+    values: [...track.values, ...track.values.slice(-size)],
+  };
 }
 
 function encodeVRMATranslations(

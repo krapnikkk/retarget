@@ -90,6 +90,19 @@ describe("VRMA export", () => {
     expect(Math.hypot(values[3]!, values[5]!)).toBeCloseTo(0.18, 6);
   });
 
+  it("holds tracks that end early so the VRMA keeps the clip duration", async () => {
+    const clip = createRetargetedMotionClipStub({
+      vrmFile: { name: "avatar.vrm" },
+      fbxFile: { name: "expression.vmd" },
+    });
+    const lastKey = Math.max(...clip.tracks.map((track) => track.times.at(-1)!));
+    clip.duration = lastKey + 5;
+
+    const imported = await importVRMA(await exportVRMA(clip), "expression.vrma");
+
+    expect(imported.duration).toBeCloseTo(clip.duration, 5);
+  });
+
   it("rejects source-unit root motion without a source rest height", () => {
     const clip = createRetargetedMotionClipStub({
       vrmFile: { name: "avatar.vrm" },
