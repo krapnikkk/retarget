@@ -61,8 +61,12 @@ export async function inspectHumanoidAvatarBytes({
   resources?: SerializedGLTFResources;
   structuralJSONBytes?: ArrayBuffer;
 }): Promise<SerializedHumanoidAvatarRig> {
-  const profile = getRigProfile(profileIdForFormat(formatId));
-  if (!profile) throw createRetargetError("UNSUPPORTED_FORMAT", formatId);
+  const profileFor = (vrm1: boolean) => {
+    const profile = getRigProfile(profileIdForFormat(formatId, vrm1));
+    if (!profile) throw createRetargetError("UNSUPPORTED_FORMAT", formatId);
+    return profile;
+  };
+  profileFor(false); // Fail fast on unsupported formats before parsing.
 
   if (structuralJSONBytes) {
     let structuralJSON: Record<string, unknown>;
@@ -73,7 +77,13 @@ export async function inspectHumanoidAvatarBytes({
     } catch (cause) {
       throw createRetargetError("TARGET_RIG_INVALID", cause);
     }
-    return inspectStructuralJSON(structuralJSON, formatId, filename, profile);
+    const extensions = structuralJSON.extensions as Record<string, unknown> | undefined;
+    return inspectStructuralJSON(
+      structuralJSON,
+      formatId,
+      filename,
+      profileFor(Boolean(extensions && "VRMC_vrm" in extensions)),
+    );
   }
 
   if (formatId === "mmd-model") {
@@ -82,7 +92,7 @@ export async function inspectHumanoidAvatarBytes({
       filename,
       createTransferableAssetPackageResolver(assetPackage),
     );
-    return inspectDocument(document, formatId, filename, profile);
+    return inspectDocument(document, formatId, filename, profileFor(false));
   }
 
   if (isGLTFFormat(formatId, filename)) {
@@ -93,14 +103,18 @@ export async function inspectHumanoidAvatarBytes({
       restoreResources(resources) ?? collectPackageGLTFResources(bytes, assetPackage),
       io,
     );
-    return inspectDocument(document, formatId, filename, profile);
+    const vrm1 = document
+      .getRoot()
+      .listExtensionsUsed()
+      .some((extension) => extension.extensionName === "VRMC_vrm");
+    return inspectDocument(document, formatId, filename, profileFor(vrm1));
   }
 
   return inspectObject(
     parseFBXRig(bytes),
     formatId,
     filename,
-    profile,
+    profileFor(false),
   );
 }
 
@@ -521,8 +535,8 @@ function isGLTFFormat(format: AvatarFormatId, filename: string) {
     /\.(?:glb|gltf|vrm)$/i.test(filename);
 }
 
-function profileIdForFormat(format: AvatarFormatId): RigProfileId {
-  if (format === "vrm") return "vrm-humanoid";
+function profileIdForFormat(format: AvatarFormatId, vrm1 = false): RigProfileId {
+  if (format === "vrm") return vrm1 ? "vrm1-humanoid" : "vrm-humanoid";
   if (format === "mixamo-rigged") return "mixamo";
   if (format === "ready-player-me") return "ready-player-me";
   if (format === "reallusion") return "actorcore";

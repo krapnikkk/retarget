@@ -19,6 +19,7 @@ import { findAvatarImportAdapter } from "@/adapters/avatar";
 import type { AvatarFormatId } from "@/formats";
 import {
   getRigProfile,
+  VRM1_HUMANOID_PROFILE,
   VRM_HUMANOID_PROFILE,
   type RigProfile,
 } from "@/profiles";
@@ -193,6 +194,14 @@ async function loadNativeMMDRig(
   }
 }
 
+// VRM 1.0 avatars face +Z and VRM 0.x avatars face -Z; target binding takes
+// the facing from the profile.
+function resolveVRMVersionProfile(profile: RigProfile, vrm1: boolean): RigProfile {
+  return vrm1 && profile.id === VRM_HUMANOID_PROFILE.id
+    ? VRM1_HUMANOID_PROFILE
+    : profile;
+}
+
 async function loadStructuralGLBRig(
   file: File,
   format: AvatarFormatId,
@@ -202,6 +211,11 @@ async function loadStructuralGLBRig(
   signal?.throwIfAborted();
   const { json, nodes, root } = await loadStructuralGLBScene(file, signal);
   signal?.throwIfAborted();
+  const extensions = json.extensions as Record<string, unknown> | undefined;
+  profile = resolveVRMVersionProfile(
+    profile,
+    Boolean(extensions && "VRMC_vrm" in extensions),
+  );
   const bones = collectStructuralHumanoidBones(json, nodes, profile);
   if (bones.size === 0) {
     disposeStructuralRoot(root);
@@ -396,6 +410,7 @@ async function loadVRMRig(
     throw createRetargetError("VRM_PARSE_FAILED");
   }
 
+  profile = resolveVRMVersionProfile(profile, vrm.meta?.metaVersion !== "0");
   const bones = new Map<HumanoidBoneName, Object3D>();
   const identityBones = new Map<HumanoidBoneName, Object3D>();
   for (const bone of HUMANOID_BONES) {

@@ -6,6 +6,7 @@ export type AxisName = "x" | "y" | "z" | "-x" | "-y" | "-z";
 export type RigProfileId =
   | "mixamo"
   | "vrm-humanoid"
+  | "vrm1-humanoid"
   | "actorcore"
   | "ready-player-me"
   | "mmd-body"

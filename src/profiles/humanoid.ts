@@ -157,6 +157,19 @@ export const VRM_HUMANOID_PROFILE = {
   ],
 } as const satisfies RigProfile;
 
+// VRM 1.0 avatars face +Z in glTF space, while VRM 0.x avatars face -Z. The
+// avatar profile drives target binding, so VRM 1.0 targets need their own.
+export const VRM1_HUMANOID_PROFILE = {
+  ...VRM_HUMANOID_PROFILE,
+  id: "vrm1-humanoid",
+  label: "VRM 1.0 Humanoid",
+  sourceFormats: [],
+  forwardAxis: "z",
+  notes: [
+    "VRM 1.0 avatars (VRMC_vrm) face +Z; VRM 0.x avatars use vrm-humanoid (-Z).",
+  ],
+} as const satisfies RigProfile;
+
 export const BVH_HUMANOID_PROFILE = {
   id: "bvh-humanoid",
   label: "BVH Humanoid",
@@ -294,6 +307,7 @@ export const READY_PLAYER_ME_PROFILE = {
 export const HUMANOID_RIG_PROFILES = [
   MIXAMO_RIG_PROFILE,
   VRM_HUMANOID_PROFILE,
+  VRM1_HUMANOID_PROFILE,
   BVH_HUMANOID_PROFILE,
   MMD_BODY_PROFILE,
   GENERIC_FBX_HUMANOID_PROFILE,
