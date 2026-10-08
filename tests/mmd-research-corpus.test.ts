@@ -25,7 +25,23 @@ import {
   bindSolvedMotionClipStub,
   createRetargetedMotionClipStub,
 } from "./fixtures/retarget-stub";
-import { solveHumanoidCustomRigMotion } from "@/solvers";
+import {
+  DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
+  solveHumanoidCustomRigMotion,
+} from "@/solvers";
+import { getRetargetPipeline } from "@/pipelines";
+import { DEFAULT_RETARGET_SOLVE_OPTIONS } from "@/retarget";
+import {
+  validateMotionExportReload,
+  validateMotionExportSemantics,
+} from "@/export";
+import { WebIO } from "@gltf-transform/core";
+import {
+  deriveShortLegs,
+  deriveVRM0,
+  readRestHipsHeight,
+  readStudioMannequinVRM,
+} from "./fixtures/vrm-variants";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
@@ -187,4 +203,71 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
     expect(clip.tracks).toHaveLength(8);
     expect(clip.duration).toBeCloseTo(2 / 3, 6);
   });
+
+  // Independent VMD in real MMD units (rest hips 10). Gene motions carry
+  // little root motion, so they pin the unit scaling numerically rather than
+  // a walk: VRMA root span = source span * targetRestHips / sourceRestHips.
+  it.each([
+    ["stand.vmd", "VRM 1.0"],
+    ["stand.vmd", "VRM 0.x"],
+    ["stand.vmd", "short legs"],
+    ["01_happy.vmd", "VRM 1.0"],
+  ] as const)("exports Gene %s on %s as a semantically matching VRMA", async (filename, target) => {
+    const standard = await readStudioMannequinVRM();
+    const avatar = target === "VRM 0.x"
+      ? deriveVRM0(standard)
+      : target === "short legs"
+        ? deriveShortLegs(standard)
+        : standard;
+    const motionBytes = await readFile(
+      path.join(corpusRoot, "mmdagent-gene", "motion", filename),
+    );
+    const result = await getRetargetPipeline("vmd", "vrm", "vrma")!.run({
+      motionFile: new File([motionBytes], filename),
+      avatarFile: new File([avatar], "avatar.vrm"),
+      mapping: DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
+      solveOptions: DEFAULT_RETARGET_SOLVE_OPTIONS,
+    });
+
+    expect(result.sourceClip.metadata).toMatchObject({
+      rootTranslationSpace: "offset-source-units",
+      restHipsHeight: 10,
+    });
+    await expect(
+      validateMotionExportReload("vrma", result.output.bytes),
+    ).resolves.toMatchObject({ level: "structural", ok: true });
+    const semantic = await validateMotionExportSemantics(
+      "vrma",
+      result.output.bytes,
+      result.solvedClip,
+    );
+    expect(semantic.issues ?? []).toEqual([]);
+    expect(semantic).toMatchObject({ level: "semantic", ok: true });
+
+    const sourceSpan = horizontalSpan(
+      result.solvedClip.tracks.find(
+        (track) => track.bone === "hips" && track.path === "translation",
+      )?.values ?? [],
+    );
+    const document = await new WebIO().readBinary(result.output.bytes);
+    const rootChannel = document.getRoot().listAnimations()[0]!.listChannels()
+      .find((channel) => channel.getTargetPath() === "translation");
+    const vrmaSpan = horizontalSpan(
+      Array.from(rootChannel?.getSampler()?.getOutput()?.getArray() ?? []),
+    );
+    const scale = (target === "VRM 0.x" ? readRestHipsHeight(standard) : readRestHipsHeight(avatar)) / 10;
+    expect(vrmaSpan).toBeCloseTo(sourceSpan * scale, 4);
+  });
 });
+
+function horizontalSpan(values: ArrayLike<number>) {
+  const xs: number[] = [];
+  const zs: number[] = [];
+  for (let index = 0; index + 2 < values.length; index += 3) {
+    xs.push(values[index]!);
+    zs.push(values[index + 2]!);
+  }
+  return xs.length
+    ? Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs))
+    : 0;
+}
