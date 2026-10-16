@@ -1,12 +1,15 @@
+import { Quaternion, Vector3 } from "three";
 import { describe, expect, it } from "vitest";
 import { readFile } from "node:fs/promises";
 import {
   createLinearVMDBoneInterpolation,
+  MMD_STANDARD_ARM_REST_DEGREES,
   parseVMDDocument,
   serializeVMDDocument,
   type VMDDocument,
 } from "@/mmd/vmd-document";
 import { importVMD } from "@/import/vmd";
+import { exportVMD } from "@/export/vmd";
 import { importVRMA } from "@/import/vrma";
 import { exportVRMA } from "@/export/vrma";
 import { validateHumanoidMotionSemantics } from "@/validation";
@@ -68,10 +71,12 @@ describe("VMD document codec", () => {
       (track) => track.bone === "hips" && track.path === "translation",
     );
 
+    // Raw MMD is left-handed with models facing -Z and their left at +X; the
+    // canonical basis faces -Z with the model's left at -X: (x, y, z) -> (-x, y, z).
     expect(translation?.times).toEqual([0, 1 / 30, 2 / 30]);
-    expect(translation?.values.slice(3, 5)).toEqual([1, 4]);
-    expect(translation?.values[5]).toBeLessThan(-3);
-    expect(translation?.values.slice(-3)).toEqual([2, 7, -6]);
+    expect(translation?.values.slice(3, 5)).toEqual([-1, 4]);
+    expect(translation?.values[5]).toBeGreaterThan(3);
+    expect(translation?.values.slice(-3)).toEqual([-2, 7, 6]);
     expect(clip.metadata?.mmd?.sectionCounts.bone).toBe(4);
     expect(clip.metadata?.rootMotionEvidence).toMatchObject({
       status: "preserved",
@@ -98,14 +103,50 @@ describe("VMD document codec", () => {
       (track) => track.bone === "hips" && track.path === "translation",
     )!;
 
-    expect(translation.values.slice(30 * 3, 30 * 3 + 3)).toEqual([1, 0, 0]);
-    expect(translation.values.slice(60 * 3, 60 * 3 + 3)).toEqual([1, 0, -1]);
+    // MMD forward (-Z) stays canonical forward (-Z); the model's left (+X) maps
+    // to canonical left (-X). Verified against an MMD Tools-written walk (#10).
+    expect(translation.values.slice(30 * 3, 30 * 3 + 3)).toEqual([-1, 0, 0]);
+    expect(translation.values.slice(60 * 3, 60 * 3 + 3)).toEqual([-1, 0, 1]);
     expect(clip.metadata?.rootMotionEvidence?.coordinateTransform).toContain(
       "left-handed",
     );
     expect(clip.diagnostics?.assumptions.forwardAxisCorrection).toContain(
-      "already matches",
+      "normalized to -z",
     );
+  });
+
+  // VMD rotations are relative to the model's A-pose rest. An identity 腕 key is
+  // the rest pose, which in the canonical T-pose basis is an arm lowered by
+  // MMD_STANDARD_ARM_REST_DEGREES; export applies the inverse.
+  it("reads VMD arm rotations relative to the MMD A-pose rest", async () => {
+    const document = createFullDocument();
+    document.boneFrames = ["左腕", "右腕", "左ひじ", "左足"].map((name) =>
+      createBoneFrame(name, 0, [0, 0, 0]),
+    );
+    document.morphFrames = [];
+    document.cameraFrames = [];
+    document.lightFrames = [];
+    document.selfShadowFrames = [];
+    document.propertyFrames = [];
+
+    const clip = importVMD(serializeVMDDocument(document), "rest.vmd");
+    const rotation = (bone: string) => {
+      const values = clip.tracks.find((track) => track.bone === bone && track.path === "rotation")!.values;
+      return new Quaternion(values[0], values[1], values[2], values[3]);
+    };
+    // Canonical faces -Z: the model's left arm points -X, its right arm +X.
+    for (const [bone, out] of [["leftUpperArm", -1], ["rightUpperArm", 1]] as const) {
+      const direction = new Vector3(out, 0, 0).applyQuaternion(rotation(bone));
+      expect(Math.atan2(-direction.y, Math.abs(direction.x)) * 180 / Math.PI)
+        .toBeCloseTo(MMD_STANDARD_ARM_REST_DEGREES, 4);
+    }
+    // Collinear rest: the forearm adds no bend; legs are untouched.
+    expect(rotation("leftLowerArm").angleTo(new Quaternion())).toBeLessThan(1e-6);
+    expect(rotation("leftUpperLeg").angleTo(new Quaternion())).toBeLessThan(1e-6);
+
+    const exported = parseVMDDocument(await exportVMD(clip));
+    const arm = exported.boneFrames.find((frame) => frame.boneName === "左腕")!;
+    expect(new Quaternion(...arm.rotation).angleTo(new Quaternion())).toBeLessThan(1e-5);
   });
 
   it("round-trips the pinned Quaternius walk through native VRMA coordinates", async () => {

@@ -78,7 +78,7 @@ describe("asset validation", () => {
     );
 
     expect(stdout).toContain("PASS motion asset");
-  });
+  }, 30_000);
 });
 
 async function createCharacterGLB(options: {

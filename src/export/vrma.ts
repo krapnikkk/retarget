@@ -7,6 +7,7 @@ import {
 import { Quaternion, Vector3 } from "three";
 import {
   getMotionTargetBinding,
+  resolveRootTranslationExportScale,
   type HumanoidBoneName,
   type RetargetedMotionClip,
   validateMotionClip,
@@ -64,6 +65,8 @@ export function createVRMADocument(
   const scene = document.createScene("VRMA motion scene");
   document.getRoot().setDefaultScene(scene);
   const restHipsHeight = getVRMARestHipsHeight(clip);
+  // VRMA hips translations share units with the declared rest hips height.
+  const rootTranslationScale = resolveRootTranslationExportScale(clip);
 
   const extension = document
     .createExtension(VRMCVRMAnimation)
@@ -108,10 +111,11 @@ export function createVRMADocument(
     if (!node) {
       continue;
     }
+    const { times, values } = holdTrackToDuration(track, clip.duration);
 
     const input = document
       .createAccessor(`${track.bone}.${track.path}.time`)
-      .setArray(new Float32Array(track.times))
+      .setArray(new Float32Array(times))
       .setType(Accessor.Type.SCALAR!)
       .setBuffer(buffer);
 
@@ -120,8 +124,12 @@ export function createVRMADocument(
       .setArray(
         new Float32Array(
           track.path === "translation"
-            ? encodeVRMATranslations(track.values, restHipsHeight)
-            : encodeVRMARotations(track.values),
+            ? encodeVRMATranslations(
+                values,
+                restHipsHeight,
+                rootTranslationScale,
+              )
+            : encodeVRMARotations(values),
         ),
       )
       .setType(
@@ -147,9 +155,28 @@ export function createVRMADocument(
   return document;
 }
 
+// VRMA playback length is the last key time. Tracks that stop early (e.g. a
+// VMD whose document range is driven by morph frames) hold their last pose so
+// the animation keeps the clip duration.
+function holdTrackToDuration(
+  track: { times: readonly number[]; values: readonly number[] },
+  duration: number,
+) {
+  const lastTime = track.times.at(-1);
+  if (lastTime === undefined || lastTime >= duration - 1e-6) {
+    return { times: track.times, values: track.values };
+  }
+  const size = track.values.length / track.times.length;
+  return {
+    times: [...track.times, duration],
+    values: [...track.values, ...track.values.slice(-size)],
+  };
+}
+
 function encodeVRMATranslations(
   values: readonly number[],
   restHipsHeight: number,
+  scale: number,
 ) {
   const encoded: number[] = [];
   const translation = new Vector3();
@@ -160,6 +187,7 @@ function encodeVRMATranslations(
         values[index + 1] ?? 0,
         values[index + 2] ?? 0,
       )
+      .multiplyScalar(scale)
       .applyQuaternion(CANONICAL_TO_VRMA_ROTATION);
     encoded.push(translation.x, translation.y + restHipsHeight, translation.z);
   }

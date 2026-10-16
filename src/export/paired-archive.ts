@@ -33,6 +33,14 @@ export type PairedAvatarMotionZipInput = BoneNamingOptions & {
   motionFormat: PairedMotionExportFormatId;
 };
 
+/**
+ * Exports the target avatar (or its prepared package) and a reloadable motion
+ * file as one ZIP archive.
+ *
+ * @experimental Failures are plain `Error`s without public error codes, and
+ * cancellation, progress, and budget limits are not yet supported. The
+ * signature and error behavior may change in a minor release.
+ */
 export async function exportPairedAvatarMotionZip({
   avatarFile,
   boneNamingProfile,

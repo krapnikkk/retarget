@@ -39,8 +39,10 @@ import {
   createRetargetError,
   isHumanoidBoneName,
   type HumanoidBoneName,
+  type HumanoidRestJoints,
   type RetargetSkeletonNode,
 } from "@/retarget";
+import { resolveRestHipsHeight } from "@/retarget/target-binding";
 import type {
   SerializedGLTFResources,
   SerializedHumanoidAvatarRig,
@@ -61,8 +63,12 @@ export async function inspectHumanoidAvatarBytes({
   resources?: SerializedGLTFResources;
   structuralJSONBytes?: ArrayBuffer;
 }): Promise<SerializedHumanoidAvatarRig> {
-  const profile = getRigProfile(profileIdForFormat(formatId));
-  if (!profile) throw createRetargetError("UNSUPPORTED_FORMAT", formatId);
+  const profileFor = (vrm1: boolean) => {
+    const profile = getRigProfile(profileIdForFormat(formatId, vrm1));
+    if (!profile) throw createRetargetError("UNSUPPORTED_FORMAT", formatId);
+    return profile;
+  };
+  profileFor(false); // Fail fast on unsupported formats before parsing.
 
   if (structuralJSONBytes) {
     let structuralJSON: Record<string, unknown>;
@@ -73,7 +79,13 @@ export async function inspectHumanoidAvatarBytes({
     } catch (cause) {
       throw createRetargetError("TARGET_RIG_INVALID", cause);
     }
-    return inspectStructuralJSON(structuralJSON, formatId, filename, profile);
+    const extensions = structuralJSON.extensions as Record<string, unknown> | undefined;
+    return inspectStructuralJSON(
+      structuralJSON,
+      formatId,
+      filename,
+      profileFor(Boolean(extensions && "VRMC_vrm" in extensions)),
+    );
   }
 
   if (formatId === "mmd-model") {
@@ -82,7 +94,7 @@ export async function inspectHumanoidAvatarBytes({
       filename,
       createTransferableAssetPackageResolver(assetPackage),
     );
-    return inspectDocument(document, formatId, filename, profile);
+    return inspectDocument(document, formatId, filename, profileFor(false));
   }
 
   if (isGLTFFormat(formatId, filename)) {
@@ -93,14 +105,18 @@ export async function inspectHumanoidAvatarBytes({
       restoreResources(resources) ?? collectPackageGLTFResources(bytes, assetPackage),
       io,
     );
-    return inspectDocument(document, formatId, filename, profile);
+    const vrm1 = document
+      .getRoot()
+      .listExtensionsUsed()
+      .some((extension) => extension.extensionName === "VRMC_vrm");
+    return inspectDocument(document, formatId, filename, profileFor(vrm1));
   }
 
   return inspectObject(
     parseFBXRig(bytes),
     formatId,
     filename,
-    profile,
+    profileFor(false),
   );
 }
 
@@ -114,7 +130,10 @@ function inspectDocument(
   if (nodesByBone.size === 0) {
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", filename);
   }
-  const hipsHeight = nodesByBone.get("hips")?.getWorldTranslation()[1];
+  const hipsHeight = resolveRestHipsHeight(
+    profile.id,
+    (bone) => nodesByBone.get(bone)?.getWorldTranslation()[1],
+  );
   return {
     format,
     filename,
@@ -125,6 +144,10 @@ function inspectDocument(
       (bone) => !nodesByBone.has(bone),
     ),
     restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+    restJoints: createRestJoints(nodesByBone, (node) => ({
+      position: node.getWorldTranslation(),
+      rotation: node.getWorldRotation(),
+    })),
     rigSignature: createGLTFHumanoidRigSignature(nodesByBone, profile.id),
   };
 }
@@ -144,7 +167,10 @@ function inspectObject(
   if (bones.size === 0) {
     throw createRetargetError("VRM_MISSING_HUMANOID_BONE", filename);
   }
-  const hipsHeight = bones.get("hips")?.getWorldPosition(new Vector3()).y;
+  const hipsHeight = resolveRestHipsHeight(
+    profile.id,
+    (bone) => bones.get(bone)?.getWorldPosition(new Vector3()).y,
+  );
   return {
     format,
     filename,
@@ -153,6 +179,10 @@ function inspectObject(
     skeleton: createObjectSkeleton(filename, bones),
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
     restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+    restJoints: createRestJoints(bones, (object) => ({
+      position: object.getWorldPosition(new Vector3()).toArray(),
+      rotation: object.getWorldQuaternion(new Quaternion()).toArray(),
+    })),
     rigSignature: createObjectRigSignature(profile.id, bones),
   };
 }
@@ -195,10 +225,12 @@ function inspectStructuralJSON(
       if (parentBone) entries.get(parentBone)?.children.push(entry);
       else roots.push(entry);
     }
-    const hipsIndex = nodesByBone.get("hips");
-    const hipsHeight = hipsIndex === undefined
-      ? undefined
-      : getRawWorldMatrix(nodes, parents, hipsIndex).elements[13];
+    const hipsHeight = resolveRestHipsHeight(profile.id, (bone) => {
+      const index = nodesByBone.get(bone);
+      return index === undefined
+        ? undefined
+        : getRawWorldMatrix(nodes, parents, index).elements[13];
+    });
     return {
       format,
       filename,
@@ -209,6 +241,8 @@ function inspectStructuralJSON(
         (bone) => !nodesByBone.has(bone),
       ),
       restHipsHeight: hipsHeight && hipsHeight > 0 ? hipsHeight : undefined,
+      restJoints: createRestJoints(nodesByBone, (index) =>
+        decomposeRestJoint(getRawWorldMatrix(nodes, parents, index))),
       rigSignature: inspectRawGLTFHumanoidRigSignature(
         nodes,
         nodesByBone,
@@ -521,12 +555,34 @@ function isGLTFFormat(format: AvatarFormatId, filename: string) {
     /\.(?:glb|gltf|vrm)$/i.test(filename);
 }
 
-function profileIdForFormat(format: AvatarFormatId): RigProfileId {
-  if (format === "vrm") return "vrm-humanoid";
+function profileIdForFormat(format: AvatarFormatId, vrm1 = false): RigProfileId {
+  if (format === "vrm") return vrm1 ? "vrm1-humanoid" : "vrm-humanoid";
   if (format === "mixamo-rigged") return "mixamo";
   if (format === "ready-player-me") return "ready-player-me";
   if (format === "reallusion") return "actorcore";
   if (format === "mmd-model") return "mmd-body";
   if (format === "generic-fbx-avatar") return "generic-fbx-humanoid";
   return "generic-gltf-humanoid";
+}
+
+function createRestJoints<T>(
+  bones: ReadonlyMap<HumanoidBoneName, T>,
+  read: (value: T) => { position: ArrayLike<number>; rotation: ArrayLike<number> },
+): HumanoidRestJoints {
+  const joints: HumanoidRestJoints = {};
+  for (const [bone, value] of bones) {
+    const { position, rotation } = read(value);
+    joints[bone] = {
+      position: [position[0] ?? 0, position[1] ?? 0, position[2] ?? 0],
+      rotation: [rotation[0] ?? 0, rotation[1] ?? 0, rotation[2] ?? 0, rotation[3] ?? 1],
+    };
+  }
+  return joints;
+}
+
+function decomposeRestJoint(world: Matrix4) {
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  world.decompose(position, rotation, new Vector3());
+  return { position: position.toArray(), rotation: rotation.toArray() };
 }

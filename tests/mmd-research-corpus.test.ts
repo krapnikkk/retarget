@@ -1,3 +1,5 @@
+import { WebIO } from "@gltf-transform/core";
+import { importGLTFAnimation } from "@/import/gltf-animation";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -25,7 +27,22 @@ import {
   bindSolvedMotionClipStub,
   createRetargetedMotionClipStub,
 } from "./fixtures/retarget-stub";
-import { solveHumanoidCustomRigMotion } from "@/solvers";
+import {
+  DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
+  solveHumanoidCustomRigMotion,
+} from "@/solvers";
+import { getRetargetPipeline } from "@/pipelines";
+import { DEFAULT_RETARGET_SOLVE_OPTIONS } from "@/retarget";
+import {
+  validateMotionExportReload,
+  validateMotionExportSemantics,
+} from "@/export";
+import {
+  deriveShortLegs,
+  deriveVRM0,
+  readRestHipsHeight,
+  readStudioMannequinVRM,
+} from "./fixtures/vrm-variants";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/jobs/browser-retarget-job")>();
@@ -141,6 +158,54 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
     ).resolves.toMatchObject({ level: "semantic", ok: true });
   });
 
+  // #15: MMD avatars report rest hips at leg-root height, like every other
+  // format, while root motion is still driven on センター.
+  it("reports Gene's rest hips at its leg-root height, not センター", async () => {
+    const heights = await readGeneHeights();
+    const bound = await bindMotionClipToAvatar({
+      avatarFile: new File([await readFile(path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx"))], "Gene_light.pmx"),
+      avatarFormatId: "mmd-model",
+      clip: importVMD(
+        new Uint8Array(await readFile(path.join(corpusRoot, "mmdagent-gene", "motion", "stand.vmd"))),
+        "stand.vmd",
+      ),
+    });
+    expect(bound.target.restHipsHeight).toBeCloseTo(heights.legRoot, 3);
+    expect(bound.target.restHipsHeight!).toBeGreaterThan(heights.center + 1);
+  });
+
+  it("scales a glTF walk to Gene in proportion to its leg-root height", async () => {
+    const heights = await readGeneHeights();
+    const avatarFile = new File([await readFile(path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx"))], "Gene_light.pmx");
+    const source = await importGLTFAnimation(
+      Uint8Array.from(await readFile("tests/fixtures/certification/golden-motion/motions/quaternius-walk/quaternius-walk.animation.glb")),
+      "walk.glb",
+    );
+    const bound = await bindMotionClipToAvatar({ avatarFile, avatarFormatId: "mmd-model", clip: source });
+    const output = await exportAnimatedGLB({ avatarFile, avatarFormatId: "mmd-model", clip: bound });
+
+    const sourceStride = span(component(trackValues(source, "hips"), 2));
+    const expected = sourceStride * heights.legRoot / source.metadata!.restHipsHeight!;
+    expect(await centerTravel(output)).toBeCloseTo(expected, 1);
+    // MMD faces -Z in its own space; Gene must walk the way its eyes face.
+    expect(await travelTowardFace(output)).toBeGreaterThan(0.9);
+    await expect(
+      validateAvatarExportSemantics("animated-glb", output, bound),
+    ).resolves.toMatchObject({ level: "semantic", ok: true });
+  });
+
+  it("plays a Gene VMD on Gene with unscaled root motion, as MMD does", async () => {
+    const geneRoot = path.join(corpusRoot, "mmdagent-gene");
+    const avatarFile = new File([await readFile(path.join(geneRoot, "Gene_light.pmx"))], "Gene_light.pmx");
+    const motion = importVMD(new Uint8Array(await readFile(path.join(geneRoot, "motion", "stand.vmd"))), "stand.vmd");
+    const bound = await bindMotionClipToAvatar({ avatarFile, avatarFormatId: "mmd-model", clip: motion });
+    const output = await exportAnimatedGLB({ avatarFile, avatarFormatId: "mmd-model", clip: bound });
+
+    const sway = Math.max(...[0, 1, 2].map((axis) => span(component(trackValues(motion, "hips"), axis))));
+    expect(sway).toBeGreaterThan(0.05);
+    expect(await centerTravel(output, "max-axis")).toBeCloseTo(sway, 3);
+  });
+
   it("keeps the expression-only Gene VMD as a negative fixture", async () => {
     const filename = "00_normal.vmd";
     const bytes = new Uint8Array(
@@ -187,4 +252,124 @@ describe.skipIf(!existsSync(corpusRoot))("MMD research corpus", () => {
     expect(clip.tracks).toHaveLength(8);
     expect(clip.duration).toBeCloseTo(2 / 3, 6);
   });
+
+  // Independent VMD in real MMD units (rest hips 10). Gene motions carry
+  // little root motion, so they pin the unit scaling numerically rather than
+  // a walk: VRMA root span = source span * targetRestHips / sourceRestHips.
+  it.each([
+    ["stand.vmd", "VRM 1.0"],
+    ["stand.vmd", "VRM 0.x"],
+    ["stand.vmd", "short legs"],
+    ["01_happy.vmd", "VRM 1.0"],
+  ] as const)("exports Gene %s on %s as a semantically matching VRMA", async (filename, target) => {
+    const standard = await readStudioMannequinVRM();
+    const avatar = target === "VRM 0.x"
+      ? deriveVRM0(standard)
+      : target === "short legs"
+        ? deriveShortLegs(standard)
+        : standard;
+    const motionBytes = await readFile(
+      path.join(corpusRoot, "mmdagent-gene", "motion", filename),
+    );
+    const result = await getRetargetPipeline("vmd", "vrm", "vrma")!.run({
+      motionFile: new File([motionBytes], filename),
+      avatarFile: new File([avatar], "avatar.vrm"),
+      mapping: DEFAULT_CUSTOM_RIG_MAPPING_CONFIG,
+      solveOptions: DEFAULT_RETARGET_SOLVE_OPTIONS,
+    });
+
+    expect(result.sourceClip.metadata).toMatchObject({
+      rootTranslationSpace: "offset-source-units",
+      restHipsHeight: 10,
+    });
+    await expect(
+      validateMotionExportReload("vrma", result.output.bytes),
+    ).resolves.toMatchObject({ level: "structural", ok: true });
+    const semantic = await validateMotionExportSemantics(
+      "vrma",
+      result.output.bytes,
+      result.solvedClip,
+    );
+    expect(semantic.issues ?? []).toEqual([]);
+    expect(semantic).toMatchObject({ level: "semantic", ok: true });
+
+    const sourceSpan = horizontalSpan(
+      result.solvedClip.tracks.find(
+        (track) => track.bone === "hips" && track.path === "translation",
+      )?.values ?? [],
+    );
+    const document = await new WebIO().readBinary(result.output.bytes);
+    const rootChannel = document.getRoot().listAnimations()[0]!.listChannels()
+      .find((channel) => channel.getTargetPath() === "translation");
+    const vrmaSpan = horizontalSpan(
+      Array.from(rootChannel?.getSampler()?.getOutput()?.getArray() ?? []),
+    );
+    const scale = (target === "VRM 0.x" ? readRestHipsHeight(standard) : readRestHipsHeight(avatar)) / 10;
+    expect(vrmaSpan).toBeCloseTo(sourceSpan * scale, 4);
+  });
 });
+
+function horizontalSpan(values: ArrayLike<number>) {
+  const xs: number[] = [];
+  const zs: number[] = [];
+  for (let index = 0; index + 2 < values.length; index += 3) {
+    xs.push(values[index]!);
+    zs.push(values[index + 2]!);
+  }
+  return xs.length
+    ? Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs))
+    : 0;
+}
+
+async function readGeneHeights() {
+  const file = path.join(corpusRoot, "mmdagent-gene", "Gene_light.pmx");
+  const document = convertMMDModelToGLBDocument(new Uint8Array(readFileSync(file)), "Gene_light.pmx", (uri) => {
+    try {
+      return new Uint8Array(readFileSync(path.join(path.dirname(file), ...uri.split(/[\/]+/))));
+    } catch {
+      return new Uint8Array();
+    }
+  });
+  const y = (name: string) =>
+    document.getRoot().listNodes().find((node) => node.getName() === name)!.getWorldTranslation()[1];
+  return { center: y("センター"), legRoot: (y("左足") + y("右足")) / 2 };
+}
+
+function trackValues(clip: { tracks: ReadonlyArray<{ bone: string; path: string; values: readonly number[] }> }, bone: string) {
+  return clip.tracks.find((track) => track.bone === bone && track.path === "translation")!.values;
+}
+
+async function centerTravel(bytes: Uint8Array, mode: "z" | "max-axis" = "z") {
+  const document = await new WebIO().readBinary(bytes);
+  const center = document.getRoot().listNodes().find((node) => node.getName() === "センター")!;
+  const channel = document.getRoot().listAnimations().at(-1)!.listChannels()
+    .find((candidate) => candidate.getTargetNode() === center && candidate.getTargetPath() === "translation")!;
+  const values = Array.from(channel.getSampler()!.getOutput()!.getArray()!);
+  return mode === "z"
+    ? span(component(values, 2))
+    : Math.max(...[0, 1, 2].map((axis) => span(component(values, axis))));
+}
+
+function component(values: ArrayLike<number>, axis: number) {
+  return Array.from({ length: Math.floor(values.length / 3) }, (_, index) => values[index * 3 + axis]!);
+}
+
+function span(values: readonly number[]) {
+  return Math.max(...values) - Math.min(...values);
+}
+
+async function travelTowardFace(bytes: Uint8Array) {
+  const document = await new WebIO().readBinary(bytes);
+  const nodes = document.getRoot().listNodes();
+  const world = (name: string) => nodes.find((node) => node.getName() === name)!.getWorldTranslation();
+  const faceZ = Math.sign(world("左目")[2] - world("頭")[2]);
+  const center = nodes.find((node) => node.getName() === "センター")!;
+  const values = Array.from(
+    document.getRoot().listAnimations().at(-1)!.listChannels()
+      .find((channel) => channel.getTargetNode() === center && channel.getTargetPath() === "translation")!
+      .getSampler()!.getOutput()!.getArray()!,
+  );
+  const travelX = values.at(-3)! - values[0]!;
+  const travelZ = values.at(-1)! - values[2]!;
+  return (travelZ * faceZ) / Math.hypot(travelX, travelZ);
+}

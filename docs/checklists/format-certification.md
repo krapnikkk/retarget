@@ -4,7 +4,7 @@
 
 - [ ] Name the exact source profile, avatar profile, export format, versions,
       fixture provenance, and expected coordinate/unit/root-motion semantics.
-- [ ] Run the supported UI path, not only a registry or direct function call.
+- [ ] Run the supported public entry / Worker path, not only a registry lookup or internal function call.
 - [ ] Reload the produced bytes with an independent parser and verify structure.
 - [ ] Compare deterministic world-space bone rotations, hips displacement,
       hands, feet, duration, frame range, interpolation, and finite values.

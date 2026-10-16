@@ -16,7 +16,8 @@ vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   return { ...actual, runRetargetJob: actual.runRetargetJobInline };
 });
 
-describe("humanoid binding ecosystem artifacts", () => {
+// Real retargeted artifact reproduction is CPU-bound; parallel coverage runs can exceed the 5s default.
+describe("humanoid binding ecosystem artifacts", { timeout: 30_000 }, () => {
   it.each(manifest.cases)("reproduces $id with real retargeted motion", async (entry) => {
     const fixture = await bindingFixture({ keepSkeleton: entry.path === "existing-rig" });
     const rig = await processHumanoidBinding(fixture.bytes, entry.path === "existing-rig"

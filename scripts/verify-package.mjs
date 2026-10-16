@@ -117,7 +117,9 @@ verifyInputIsolation(
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), "3dretarget-package-"));
 try {
   runPnpm(["pack", "--pack-destination", temporaryRoot], root);
-  const tarball = path.join(temporaryRoot, `${manifest.name}-${manifest.version}.tgz`);
+  // `pnpm pack` names scoped packages `scope-name-version.tgz`.
+  const tarballName = manifest.name.replace(/^@/, "").replace("/", "-");
+  const tarball = path.join(temporaryRoot, `${tarballName}-${manifest.version}.tgz`);
   if (!existsSync(tarball)) throw new Error(`Missing ${path.basename(tarball)}`);
   const tarballBytes = statSync(tarball).size;
   console.log(`[info] packed tarball ${path.basename(tarball)}: ${tarballBytes} bytes`);
@@ -140,7 +142,7 @@ try {
     stdio: "inherit",
   });
   writeFileSync(path.join(temporaryRoot, "browser-input-bundle.ts"), [
-    'import { prepareBrowserAssetInput } from "3dretarget/browser/input";',
+    'import { prepareBrowserAssetInput } from "@krapnik/retarget/browser/input";',
     'export const prepare = prepareBrowserAssetInput;',
     '',
   ].join("\n"));
@@ -190,7 +192,7 @@ try {
     `[ok] production-bundled packed browser input (${packedInputBytes} bytes) without unrelated format runtimes`,
   );
   writeFileSync(path.join(temporaryRoot, "node-tooling-smoke.mjs"), [
-    'import { runNodeToolJob } from "3dretarget/node";',
+    'import { runNodeToolJob } from "@krapnik/retarget/node";',
     'const motion = {',
     '  schemaVersion: 2, rigDefinitionId: "humanoid-v1", family: "humanoid",',
     '  name: "packed-node-tool", duration: 1, fps: 30, createdAt: "2026-08-14T00:00:00.000Z",',
@@ -230,7 +232,7 @@ try {
     'import { Worker } from "node:worker_threads";',
     'import path from "node:path";',
     'import { fileURLToPath, pathToFileURL } from "node:url";',
-    'const browserEntry = fileURLToPath(import.meta.resolve("3dretarget/browser"));',
+    'const browserEntry = fileURLToPath(import.meta.resolve("@krapnik/retarget/browser"));',
     'const workerUrl = pathToFileURL(path.resolve(path.dirname(browserEntry), "../workers/retarget.worker.js")).href;',
     'const worker = new Worker(new URL("./worker-wrapper.mjs", import.meta.url), { workerData: { workerUrl } });',
     'const receive = (predicate, timeoutMs = 10000) => new Promise((resolve, reject) => {',
@@ -293,22 +295,24 @@ try {
   writeFileSync(path.join(temporaryRoot, "binding-smoke.mjs"), readFileSync(path.join(root, "scripts/package-smoke/humanoid-binding.mjs")));
   execFileSync(process.execPath, [path.join(temporaryRoot, "binding-smoke.mjs")], { cwd: temporaryRoot, stdio: "inherit" });
   writeFileSync(path.join(temporaryRoot, "smoke.ts"), [
-    'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "3dretarget";',
-    'import { importBVH, importGLTFAnimationBytes } from "3dretarget/io";',
-    'import { processHumanoidBinding } from "3dretarget/io";',
-    'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "3dretarget";',
-    'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "3dretarget/node";',
-    'import { getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline } from "3dretarget/browser";',
-    'import { prepareBrowserAssetInput, type BrowserInputSelection } from "3dretarget/browser/input";',
-    'import { validateHumanoidMotionSemantics } from "3dretarget/validation";',
-    'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "3dretarget/certification";',
+    'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "@krapnik/retarget";',
+    'import { importBVH, importGLTFAnimationBytes } from "@krapnik/retarget/io";',
+    'import { processHumanoidBinding } from "@krapnik/retarget/io";',
+    'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "@krapnik/retarget";',
+    'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "@krapnik/retarget/node";',
+    'import { exportAnimatedGLBStream, getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline, type AnimatedGLBStreamInput } from "@krapnik/retarget/browser";',
+    'import { prepareBrowserAssetInput, type BrowserInputSelection } from "@krapnik/retarget/browser/input";',
+    'import { validateHumanoidMotionSemantics } from "@krapnik/retarget/validation";',
+    'import { HUMANOID_PIPELINE_CERTIFICATION, NON_HUMANOID_PIPELINE_CERTIFICATION, getNonHumanoidBetaPromotions } from "@krapnik/retarget/certification";',
     'void [createRetargetError, formats, importBVH, importGLTFAnimationBytes];',
     'void [runNodeToolJob, runRetargetJobInline, runRetargetJob, prepareBrowserAssetInputCompat];',
     'const nodeToolTask: NodeToolTask = { type: "validate-artifact", artifactName: "typing.vrm", bytes: new ArrayBuffer(0), format: "vrm" };',
-    'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("3dretarget").RetargetError["code"] = result.error.code; void code; } });',
+    'runNodeToolJob(nodeToolTask).then((result) => { if (!result.ok) { const code: import("@krapnik/retarget").RetargetError["code"] = result.error.code; void code; } });',
     'type RiggedPipelineOutput = Awaited<ReturnType<typeof runRiggedGLTFPipeline>>["output"];',
     'const riggedOutputFormat: RiggedPipelineOutput["format"] = "animated-glb";',
     'void [runRiggedGLTFPipeline, riggedOutputFormat];',
+    'const streamExport: (input: AnimatedGLBStreamInput) => Promise<Blob> = exportAnimatedGLBStream;',
+    'void streamExport;',
     'const betaPipeline = getRetargetPipeline("gltf-animation", "gltf-humanoid", "animated-glb");',
     'const betaAssurance: "beta" | "experimental" | "certified" | undefined = betaPipeline?.assurance;',
     'void [betaAssurance, betaPipeline?.run];',

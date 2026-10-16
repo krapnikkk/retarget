@@ -23,11 +23,11 @@ The machine-readable manifest is
 
 Case assurance and generalized capability assurance are intentionally
 different scopes. The pinned Golden Animated GLB case below is `certified`.
-Nine broader public combinations are beta: five
+Twelve broader public combinations are beta: five
 `gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `fbx-animation`,
 `vrma`, `gltf-animation`, and `motion-json`),
 `vrma -> gltf-humanoid -> animated-glb`, and `gltf-animation`, `bvh`, or `vmd`
-to `vrm -> baked-vrm`. One proven fixture does not certify
+to `vrm` with `baked-vrm` or `vrma` output. `mixamo-fbx -> vrm -> vrma` is registered as experimental: its only Mixamo-named FBX evidence is written by this library's FBX exporter, not an independent Mixamo-structured fixture. One proven fixture does not certify
 every conforming asset, so only the first exact pinned case is certified.
 
 ## Golden evidence

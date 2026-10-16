@@ -1,87 +1,123 @@
-# 3dretarget
+# @krapnik/retarget
 
-[简体中文](README.zh-CN.md)
+[简体中文](https://github.com/krapnikkk/retarget/blob/main/README.zh-CN.md)
 
-`3dretarget` is a consumer-neutral motion-retargeting library. It provides
-bounded format probing, source normalization, canonical motion, rig inspection,
-target solving, semantic validation, export, format-safety validation, and a
-cancellable browser Worker runtime plus isolated Node artifact tooling.
+`@krapnik/retarget` is a consumer-neutral TypeScript library for bounded probing of
+untrusted 3D files and explicit `Source -> Canonical -> Target` animation
+retargeting. It provides source normalization, rig inspection, target solving,
+semantic validation, and export through a cancellable browser Worker runtime
+and Node tooling.
 
-Version `0.7.2` is the provider side of the consumer engine cutover. The package
-remains private in registry metadata and is distributed as an immutable local
-tarball committed by the approved consumer. A sibling checkout may be used for
-coordinated development but is not release evidence. Its roadmap and readiness
-are determined by reusable retargeting capabilities rather than any particular
-application.
+## Install
 
-## Scope
-
-This repository owns:
-
-- reusable `Source -> Canonical -> Target` behavior;
-- serializable public contracts and platform-specific adapters;
-- correctness, security, diagnostics, and compatibility evidence;
-- reproducible fixtures and certification manifests.
-
-It does not own product UI, application state, catalogs, analytics, hosting, or
-deployment. Consumer-specific integration code and acceptance tests belong to
-the consuming application.
-
-## Development
-
-```powershell
-pnpm install
-pnpm hooks:install # once per checkout
-pnpm verify
-pnpm verify:ecosystem # requires the pinned Blender and Godot builds
+```sh
+npm install @krapnik/retarget
 ```
 
-This private repository uses the versioned local pre-commit hook as its normal
-commit gate. Every commit runs `pnpm verify`; hosted CI is reserved for manual
-release/review use so limited CI capacity is not spent on routine commits.
-`git commit --no-verify` is an emergency bypass, not proof of a passing change,
-and must be followed by a recorded successful `pnpm verify` before handoff.
+## Requirements
 
-Large research corpora are downloaded into the ignored `references/` directory.
-Committed fixtures include provenance and hashes.
-
-## Local controlled release
-
-Consumers must install and pin the exact maintainer-supplied `0.7.2` tarball and
-use only the documented public entries. The provider records the verified local
-`pnpm pack` output, while the approved consumer commits that immutable artifact
-under `vendor/` and locks its integrity. Package version `0.7.2` denotes initial
-API development; capability
-assurance remains case-scoped as `experimental`, `beta`, or `certified`.
-Experimental paths are available for evaluation but are not supported as
-production-compatible combinations. The supported Node toolchain is the
-version declared in `package.json`.
-
-The MIT license covers this library code. It does not relicense consumer
-assets, user inputs, generated outputs, or separately installed dependencies.
+- ESM-only; CommonJS is not supported.
+- Node >= 24.11.0 for `@krapnik/retarget/node` and `@krapnik/retarget/io`.
+- Browsers must support module Workers.
+- Bundlers must support `new Worker(new URL("...", import.meta.url), { type: "module" })`,
+  such as Vite, webpack 5, or Rollup with a Worker plugin.
 
 ## Public entries
 
-- `3dretarget`: serializable formats, profiles, motion, rig, pipeline, and error
-  contracts.
-- `3dretarget/browser`: content-first bounded `File`/package preparation,
-  explicit resource disposal, and fail-closed Worker execution.
-- `3dretarget/browser/input`: the input-preparation-only browser surface. Use
-  this entry when a consumer does not need retarget pipelines or format parser
-  runtimes in its main bundle.
-- `3dretarget/io`: byte-oriented motion import/export without DOM or scene
-  objects.
-- `3dretarget/node`: byte-oriented IO, isolated deterministic VRM/PMX and Rig
-  Motion glTF authoring/validation jobs, plus explicit trusted inline retarget
-  jobs. It exposes no filesystem traversal or generic ZIP API.
-- `3dretarget/validation`: serializable semantic validation results.
-- `3dretarget/certification`: provenance and assurance manifests.
+| Entry | Purpose |
+| --- | --- |
+| `@krapnik/retarget` | Serializable format, profile, motion, rig, pipeline, and error contracts. |
+| `@krapnik/retarget/browser` | Content-first bounded File/package preparation, explicit disposal, and fail-closed Worker execution. |
+| `@krapnik/retarget/browser/input` | Input preparation only, without retarget pipelines or format parser runtimes in the main bundle. |
+| `@krapnik/retarget/io` | Byte-oriented motion import/export without DOM or scene objects. |
+| `@krapnik/retarget/node` | Byte IO, isolated deterministic VRM/PMX and Rig Motion glTF authoring/validation jobs, and explicit trusted inline retarget jobs; no filesystem traversal or generic ZIP API. |
+| `@krapnik/retarget/validation` | Serializable semantic validation results. |
+| `@krapnik/retarget/certification` | Provenance and assurance manifests. |
 
-The public humanoid pipeline registry exposes nine complete beta combinations:
-`gltf-animation` to `gltf-humanoid` with `animated-glb`, `fbx-animation`,
-`vrma`, `gltf-animation`, or `motion-json` output; `vrma` to `gltf-humanoid`
-with `animated-glb` output; and `gltf-animation`, `bvh`, or `vmd` to `vrm`
-with `baked-vrm` output.
+## Quick start
+
+Probe a user-selected motion file in a Worker. Inspect the selection's status
+and format before choosing a pipeline; always dispose of prepared resources.
+
+```ts
+import { prepareBrowserAssetInput } from "@krapnik/retarget/browser/input";
+
+export async function inspectMotion(file: File, signal?: AbortSignal) {
+  const prepared = await prepareBrowserAssetInput(file, { role: "motion", signal });
+  try {
+    return prepared.selection;
+  } finally {
+    prepared.dispose();
+  }
+}
+```
+
+For a file identified as BVH, import canonical motion through the browser
+Worker. Pass an AbortSignal to cancel the job.
+
+```ts
+import { runRetargetJob } from "@krapnik/retarget/browser";
+
+export async function importMotion(file: File, signal?: AbortSignal) {
+  return runRetargetJob(
+    {
+      type: "import-motion",
+      formatId: "bvh",
+      filename: file.name,
+      bytes: await file.arrayBuffer(),
+    },
+    { signal },
+  );
+}
+```
+
+Node tools can import BVH bytes directly through the IO entry:
+
+```ts
+import { importBVH } from "@krapnik/retarget/io";
+
+export function importMotionBytes(bytes: Uint8Array) {
+  const motion = importBVH(bytes, "walk.bvh");
+  return { duration: motion.duration, tracks: motion.tracks };
+}
+```
+
+## Solve options
+
+`RetargetSolveOptions` (`DEFAULT_RETARGET_SOLVE_OPTIONS`) is passed as `solveOptions`
+to `pipeline.run` / `bindMotionClipToAvatar`, or as `options` to the
+`solve-humanoid` job. The last two fields are optional; leaving them out keeps
+output unchanged.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `rootMotion` | `true` | `false` keeps the motion in place (root offsets removed). |
+| `heightScale` | `1` | Multiplies root offsets. |
+| `armOffsetDegrees` | `0` | Raises (+) or lowers (−) the arms. |
+| `grounding` | `"none"` | `"constant"` applies one vertical root offset so the lowest foot joint over the clip matches the target's rest foot height. Needs the target's rest joints, which avatar inspection provides; jumps keep their relative height. |
+| `yawOffsetDegrees` | `0` | Turns the whole motion (root facing and travel) about the vertical axis, for sources recorded facing the wrong way; for example `180`, or `90`/`-90` for sideways sources. |
+
+## Supported combinations and assurance
+
+Assurance is case-scoped: `experimental` capabilities are evaluation-only;
+`beta` combinations have the declared fixture/profile evidence; `certified`
+cases additionally have structural reload, semantic comparison, and pinned
+ecosystem evidence. Before 1.0, APIs may change between minor releases.
+
+The public humanoid pipeline registry exposes twelve complete beta combinations
+and one experimental combination:
+
+| Motion | Avatar | Output | Assurance |
+| --- | --- | --- | --- |
+| `gltf-animation` | `gltf-humanoid` | `animated-glb`, `fbx-animation`, `vrma`, `gltf-animation`, `motion-json` | beta |
+| `vrma` | `gltf-humanoid` | `animated-glb` | beta |
+| `gltf-animation`, `bvh`, `vmd` | `vrm` | `baked-vrm`, `vrma` | beta |
+| `mixamo-fbx` | `vrm` | `vrma` | experimental |
+
+`mixamo-fbx -> vrm -> vrma` is registered as experimental: its only
+Mixamo-named FBX evidence is written by this library's FBX exporter, not an
+independent Mixamo-structured fixture.
+
 Lookup requires all three format IDs. Calling `pipeline.run(...)` returns the
 declared bytes together with the solved motion. The pinned Golden
 `gltf-animation -> gltf-humanoid -> animated-glb` case has stronger,
@@ -93,5 +129,42 @@ Animated GLB output: Fox quadruped (12 action/target pairs), Bird/Eagle (4),
 Snake (7), Spider (9), and Dragon (4). These 36 pairs are fixture- and
 profile-scoped; they do not generalize to arbitrary rigged glTF pairs.
 
-See [library stability gates](docs/stabilization-gates.md) for the current local
-readiness criteria.
+## Errors and safety
+
+Public failures use structured codes from the
+[error-code registry](https://github.com/krapnikkk/retarget/blob/main/docs/architecture/error-code-registry.md).
+Browser preparation and Worker jobs support cancellation through AbortSignal.
+Treat files as untrusted: filenames are hints, content probes are bounded,
+and parsing and archive handling retain format-safety bounds. Product-specific
+file-size, elapsed-time, and memory policies belong to the consumer.
+
+## Documentation
+
+- [Documentation map](https://github.com/krapnikkk/retarget/blob/main/docs/README.md)
+- [Public API contract](https://github.com/krapnikkk/retarget/blob/main/docs/architecture/public-api-contract.md)
+- [Browser input preparation](https://github.com/krapnikkk/retarget/blob/main/docs/architecture/browser-input-preparation.md)
+- [Node artifact tooling](https://github.com/krapnikkk/retarget/blob/main/docs/architecture/node-artifact-tooling.md)
+- [Library stability gates](https://github.com/krapnikkk/retarget/blob/main/docs/stabilization-gates.md)
+- [Supply-chain and release procedure](https://github.com/krapnikkk/retarget/blob/main/docs/supply-chain-security.md)
+- [Security policy](https://github.com/krapnikkk/retarget/blob/main/SECURITY.md)
+
+## Development
+
+```sh
+pnpm install
+pnpm hooks:install # once per checkout
+pnpm check        # architecture rule, type check, unit tests (pre-commit)
+pnpm test:slow    # CPU-heavy real-fixture tests
+pnpm verify       # full release gate, also run by prepublishOnly
+pnpm verify:ecosystem # requires the pinned Blender and Godot builds
+```
+
+The versioned pre-commit hook runs `pnpm check`. `pnpm verify` adds
+coverage, certification receipts, fixtures, and package verification. Large research corpora stay
+in ignored `references/`; committed fixtures include provenance and hashes.
+
+## License
+
+[MIT](https://github.com/krapnikkk/retarget/blob/main/LICENSE). The license covers library code; it does not relicense
+user assets, inputs, outputs, or separately installed dependencies. See
+[third-party notices](https://github.com/krapnikkk/retarget/blob/main/THIRD_PARTY_NOTICES.md).

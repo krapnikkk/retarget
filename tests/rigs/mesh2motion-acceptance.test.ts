@@ -32,7 +32,8 @@ const FIXTURE_ROOT = path.resolve(
   "tests/fixtures/non-humanoid/mesh2motion",
 );
 
-describe("Mesh2Motion CC0 non-humanoid acceptance", () => {
+// Full family export matrices are CPU-bound; parallel coverage runs can exceed the 5s default.
+describe("Mesh2Motion CC0 non-humanoid acceptance", { timeout: 30_000 }, () => {
   it("detects every active family with full required-chain coverage", async () => {
     const cases = [
       ["fox-animations.glb", "quadruped", "mesh2motion-fox"],

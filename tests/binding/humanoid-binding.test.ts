@@ -21,7 +21,8 @@ vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
   return { ...actual, runRetargetJob: actual.runRetargetJobInline };
 });
 
-describe("humanoid binding with the pinned CC0 mannequin", () => {
+// Pinned-fixture skinning is CPU-bound; parallel coverage runs can exceed the 5s default.
+describe("humanoid binding with the pinned CC0 mannequin", { timeout: 30_000 }, () => {
   let fixture: Awaited<ReturnType<typeof bindingFixture>>;
   let rig: HumanoidBindingSnapshot;
   let skinned: HumanoidBindingSnapshot;

@@ -16,7 +16,7 @@ x 求解器修订 x 目标绑定修订
 - `semantic-passed`：结构重载和确定性世界空间检查通过；消费端可将该精确组合描述为 beta。
 - `certified`：结构、语义以及固定第三方生态回执要求的全部运行时均通过。代码不会仅根据状态标签推导该状态。
 
-用例保证等级与泛化能力保证等级刻意采用不同范围。下述固定 Golden Animated GLB 用例为 `certified`。九个更宽泛的公开组合为 beta：`gltf-animation -> gltf-humanoid` 的五种输出（`animated-glb`、`fbx-animation`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation`、`bvh` 或 `vmd` 到 `vrm -> baked-vrm`。一个已证明固定资源不能认证所有合规资产，因此只有第一个精确固定用例达到认证。
+用例保证等级与泛化能力保证等级刻意采用不同范围。下述固定 Golden Animated GLB 用例为 `certified`。十二个更宽泛的公开组合为 beta：`gltf-animation -> gltf-humanoid` 的五种输出（`animated-glb`、`fbx-animation`、`vrma`、`gltf-animation`、`motion-json`）、`vrma -> gltf-humanoid -> animated-glb`，以及 `gltf-animation`、`bvh` 或 `vmd` 到 `vrm` 并输出 `baked-vrm` 或 `vrma`。`mixamo-fbx -> vrm -> vrma` 注册为 experimental：其 Mixamo 骨骼名 FBX 证据仅由本库 FBX 导出器生成，并非独立的 Mixamo 结构固定资源。一个已证明固定资源不能认证所有合规资产，因此只有第一个精确固定用例达到认证。
 
 ## Golden 证据
 

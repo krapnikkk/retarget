@@ -19,6 +19,7 @@ import { findAvatarImportAdapter } from "@/adapters/avatar";
 import type { AvatarFormatId } from "@/formats";
 import {
   getRigProfile,
+  VRM1_HUMANOID_PROFILE,
   VRM_HUMANOID_PROFILE,
   type RigProfile,
 } from "@/profiles";
@@ -43,7 +44,10 @@ import {
 } from "@/jobs/asset-input-safety";
 import { readFileArrayBufferWithSignal } from "./read-file";
 import { readGLTFRigMetadata } from "@/import/glb-range";
-import type { TargetBoneRestTransform } from "@/retarget/target-binding";
+import {
+  resolveRestHipsHeight,
+  type TargetBoneRestTransform,
+} from "@/retarget/target-binding";
 import { disposeObject } from "@/resources/dispose-three";
 
 export type LoadedAvatarRig = {
@@ -193,6 +197,14 @@ async function loadNativeMMDRig(
   }
 }
 
+// VRM 1.0 avatars face +Z and VRM 0.x avatars face -Z; target binding takes
+// the facing from the profile.
+function resolveVRMVersionProfile(profile: RigProfile, vrm1: boolean): RigProfile {
+  return vrm1 && profile.id === VRM_HUMANOID_PROFILE.id
+    ? VRM1_HUMANOID_PROFILE
+    : profile;
+}
+
 async function loadStructuralGLBRig(
   file: File,
   format: AvatarFormatId,
@@ -202,6 +214,11 @@ async function loadStructuralGLBRig(
   signal?.throwIfAborted();
   const { json, nodes, root } = await loadStructuralGLBScene(file, signal);
   signal?.throwIfAborted();
+  const extensions = json.extensions as Record<string, unknown> | undefined;
+  profile = resolveVRMVersionProfile(
+    profile,
+    Boolean(extensions && "VRMC_vrm" in extensions),
+  );
   const bones = collectStructuralHumanoidBones(json, nodes, profile);
   if (bones.size === 0) {
     disposeStructuralRoot(root);
@@ -217,7 +234,7 @@ async function loadStructuralGLBRig(
     restTransforms: collectBoneRestTransforms(bones),
     skeleton: createSkeletonTree(root, bones),
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
-    restHipsHeight: estimateRestHipsHeight(bones),
+    restHipsHeight: estimateRestHipsHeight(bones, profile.id),
     vrm0FacingCorrection: hasVRM0Extension(json),
     structuralOnly: true,
   });
@@ -396,6 +413,7 @@ async function loadVRMRig(
     throw createRetargetError("VRM_PARSE_FAILED");
   }
 
+  profile = resolveVRMVersionProfile(profile, vrm.meta?.metaVersion !== "0");
   const bones = new Map<HumanoidBoneName, Object3D>();
   const identityBones = new Map<HumanoidBoneName, Object3D>();
   for (const bone of HUMANOID_BONES) {
@@ -417,7 +435,7 @@ async function loadVRMRig(
     restTransforms: collectBoneRestTransforms(bones),
     skeleton: createSkeletonTree(vrm.scene, bones),
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
-    restHipsHeight: estimateRestHipsHeight(bones),
+    restHipsHeight: estimateRestHipsHeight(bones, profile.id),
     vrm,
     vrm0FacingCorrection: vrm.meta?.metaVersion === "0",
   });
@@ -469,7 +487,7 @@ function loadObjectRig({
     restTransforms: collectBoneRestTransforms(bones),
     skeleton: createSkeletonTree(root, bones),
     missingRequiredBones: REQUIRED_VRM_BONES.filter((bone) => !bones.has(bone)),
-    restHipsHeight: estimateRestHipsHeight(bones),
+    restHipsHeight: estimateRestHipsHeight(bones, profile.id),
     nativeMMD,
     resourceScope,
   });
@@ -609,14 +627,15 @@ function createSkeletonNode(
 
 function estimateRestHipsHeight(
   bones: ReadonlyMap<HumanoidBoneName, Object3D>,
+  profileId: string,
 ) {
-  const hips = bones.get("hips");
-  if (!hips) {
-    return undefined;
-  }
-
-  hips.updateWorldMatrix(true, false);
-  return Number(new Vector3().setFromMatrixPosition(hips.matrixWorld).y.toFixed(6));
+  const height = resolveRestHipsHeight(profileId, (bone) => {
+    const object = bones.get(bone);
+    if (!object) return undefined;
+    object.updateWorldMatrix(true, false);
+    return new Vector3().setFromMatrixPosition(object.matrixWorld).y;
+  });
+  return height === undefined ? undefined : Number(height.toFixed(6));
 }
 
 export function fitObjectToPreview(object: Object3D) {

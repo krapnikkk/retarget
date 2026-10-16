@@ -25,7 +25,7 @@
 一个粗粒度 `{ type: "humanoid-binding", bytes, command }` 任务提供独立的 `inspect`、`fit`、`use-rig`、`edit-rig`、`skin`、`edit-weights`、`export`、`validate`。每次 `bytes` 都是**原始静态资产**，不是上次导出的蒙皮 GLB；结果类型由命令推导。
 
 ```ts
-import { runRetargetJob } from "3dretarget/browser";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 const rig = await runRetargetJob({ type: "humanoid-binding", bytes: inputBytes,
   command: { operation: "fit", pose: "t-pose", forward: "+z", landmarks } });
@@ -39,7 +39,7 @@ const output = await runRetargetJob({ type: "humanoid-binding", bytes: inputByte
 // output.bytes 为 Uint8Array，output.validation 包含结构与变形报告。
 ```
 
-Node 使用 `3dretarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或 `{ ok: false, error }`。受信任工具可显式使用 `3dretarget/io` 的 `processHumanoidBinding(bytes, command, options)` 内联执行，不公开场景对象。
+Node 使用 `@krapnik/retarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或 `{ ok: false, error }`。受信任工具可显式使用 `@krapnik/retarget/io` 的 `processHumanoidBinding(bytes, command, options)` 内联执行，不公开场景对象。
 
 ## 编辑与失效
 
@@ -82,4 +82,4 @@ Node 使用 `3dretarget/node` 的 `runNodeToolJob`，返回 `{ ok, result }` 或
 | 负向路径 | 畸形缓冲、扩展、变换、循环、退化/未引用几何、约束、预算、过期编辑及执行中取消；断开表面带诊断处理。 |
 | 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker，以及包含 10 万顶点快照调用返回、首次进度、完成、总耗时分段和主线程 heartbeat 门禁的单独原生 Chromium 实测。 |
 
-`pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。生成回执/锁与手写实现分别提交，任何消费端仓库均不作为门禁。
+开发 binding 时运行 `pnpm test:slow`，`pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。重新生成的回执/锁可以与引起变化的改动一起提交，任何消费端仓库均不作为门禁。

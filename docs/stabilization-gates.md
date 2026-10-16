@@ -2,7 +2,7 @@
 
 [简体中文](zh-CN/stabilization-gates.md)
 
-The current maintenance profile is local-only. These gates measure the library
+The maintenance gates for the public npm package measure the library
 using commands, packed artifacts, fixtures, and runtime evidence contained in
 this repository. Publication and consumer integration are separate activities
 and do not determine library readiness.

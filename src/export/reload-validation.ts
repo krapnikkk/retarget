@@ -20,6 +20,7 @@ import {
 import {
   getMotionTargetBinding,
   parseMotionClip,
+  resolveRootTranslationExportScale,
   type RetargetedMotionClip,
 } from "@/retarget";
 import {
@@ -35,6 +36,7 @@ import { validateGLTFWorldSemantics } from "@/validation/gltf-world-semantic-ora
 import { collectHumanoidNodes } from "./avatar-glb";
 import { validateFBXAnimationBytes } from "./fbx";
 import { validateAnimatedPMXBytes } from "./pmx";
+import { resolveVMDRootScale } from "./vmd";
 import { readZipArchive } from "@/archive/zip";
 
 export type ExportReloadValidationResult = {
@@ -164,8 +166,10 @@ export async function validateMotionExportSemantics(
   expected: RetargetedMotionClip,
 ): Promise<ExportSemanticValidationResult> {
   let actual: RetargetedMotionClip;
+  let rootScale: number | undefined;
   if (formatId === "vrma") {
     actual = await importVRMA(bytes, "semantic.vrma");
+    rootScale = resolveVRMARootScale(expected);
   } else if (formatId === "motion-json") {
     actual = parseMotionClip(new TextDecoder().decode(bytes));
   } else if (formatId === "gltf-animation") {
@@ -191,6 +195,7 @@ export async function validateMotionExportSemantics(
     );
   } else if (formatId === "vmd") {
     actual = importVMD(bytes, "semantic.vmd");
+    rootScale = resolveScaleOrUndefined(() => resolveVMDRootScale(expected));
   } else if (formatId === "fbx-animation") {
     actual = importFBXHumanoidMotionBytes({
       bytes: bytes.buffer.slice(
@@ -206,8 +211,23 @@ export async function validateMotionExportSemantics(
   }
   return {
     formatId,
-    ...validateHumanoidMotionSemantics({ actual, expected }),
+    ...validateHumanoidMotionSemantics({ actual, expected, rootScale }),
   };
+}
+
+// VRMA hips translations are written in the declared rest hips units
+// (see exportVRMA); compare against the same scale. Unresolved source scale
+// leaves it undefined so the meter-normalization check reports it.
+function resolveVRMARootScale(expected: RetargetedMotionClip) {
+  return resolveScaleOrUndefined(() => resolveRootTranslationExportScale(expected));
+}
+
+function resolveScaleOrUndefined(resolve: () => number) {
+  try {
+    return resolve();
+  } catch {
+    return undefined;
+  }
 }
 
 function normalizeBoundBVHRootUnits(
@@ -269,7 +289,11 @@ export async function validateAvatarExportSemantics(
     const actual = await importVRMA(motionEntry.bytes, "semantic.vrma");
     return {
       formatId,
-      ...validateHumanoidMotionSemantics({ actual, expected }),
+      ...validateHumanoidMotionSemantics({
+        actual,
+        expected,
+        rootScale: resolveVRMARootScale(expected),
+      }),
     };
   }
   return unsupportedSemanticResult(

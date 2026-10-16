@@ -1,13 +1,40 @@
 {
-  "name": "3dretarget",
-  "version": "0.7.2",
-  "private": true,
+  "name": "@krapnik/retarget",
+  "version": "0.8.0",
   "description": "Format-aware 3D animation retargeting engine and browser worker runtime",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "krapnikkk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krapnikkk/retarget.git"
+  },
+  "homepage": "https://github.com/krapnikkk/retarget#readme",
+  "bugs": {
+    "url": "https://github.com/krapnikkk/retarget/issues"
+  },
+  "keywords": [
+    "animation",
+    "retargeting",
+    "retarget",
+    "humanoid",
+    "vrm",
+    "vrma",
+    "gltf",
+    "glb",
+    "bvh",
+    "vmd",
+    "mmd",
+    "fbx",
+    "three",
+    "webworker"
+  ],
   "type": "module",
   "packageManager": "pnpm@10.24.0",
   "engines": {
-    "node": "24.11.x"
+    "node": ">=24.11.0"
   },
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -48,15 +75,20 @@
   ],
   "sideEffects": false,
   "scripts": {
+    "prepublishOnly": "pnpm verify",
     "build": "tsup",
     "hooks:install": "node scripts/install-git-hooks.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
-    "typecheck": "pnpm typecheck:browser && pnpm typecheck:node && pnpm typecheck:test",
+    "check": "pnpm check:architecture && pnpm typecheck && pnpm test",
+    "typecheck": "pnpm run \"/^typecheck:/\"",
     "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:test": "tsc --noEmit -p tsconfig.test.json",
-    "test": "vitest run",
-    "test:correctness-coverage": "vitest run --config vitest.correctness.config.ts --coverage",
+    "test": "vitest run --project unit",
+    "test:slow": "vitest run --project slow",
+    "test:certification": "vitest run --project certification",
+    "test:all": "vitest run",
+    "test:correctness-coverage": "vitest run --project unit --project slow --coverage",
     "verify:package": "pnpm build && node scripts/verify-package.mjs",
     "verify:package:only": "node scripts/verify-package.mjs",
     "verify:ecosystem": "node scripts/verify-humanoid-ecosystem.mjs --check",
@@ -65,8 +97,7 @@
     "update:binding:ecosystem": "node scripts/verify-humanoid-ecosystem.mjs --update --binding",
     "verify:binding:browser": "pnpm build && node scripts/serve-binding-smoke.mjs",
     "verify:fixtures": "pnpm check:mesh2motion-fixtures && pnpm check:gltf-extension-fixtures && pnpm check:non-humanoid-certification",
-    "verify": "pnpm check:docs-localization && pnpm check:architecture && pnpm typecheck && pnpm verify:fixtures && pnpm test && pnpm test:correctness-coverage && pnpm verify:package",
-    "verify:precommit": "pnpm verify",
+    "verify": "pnpm check:docs-localization && pnpm check:architecture && pnpm typecheck && pnpm verify:fixtures && pnpm test:correctness-coverage && pnpm test:certification && pnpm verify:package",
     "validate-asset": "node scripts/validate-asset.mjs",
     "fetch:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs",
     "check:mmd-research-corpus": "node scripts/fetch-mmd-research-corpus.mjs --check",
@@ -80,14 +111,14 @@
     "check:docs-localization": "node scripts/check-doc-localizations.mjs"
   },
   "dependencies": {
-    "@gltf-transform/core": "4.3.0",
-    "@moeru/three-mmd": "0.1.1",
-    "@moeru/three-mmd-physics-ammo": "0.1.1",
-    "@pixiv/three-vrm": "3.5.3",
-    "gltf-transform-vrm-extensions": "0.1.6",
-    "three": "0.184.0"
+    "@gltf-transform/core": "^4.3.0",
+    "@moeru/three-mmd": "^0.1.1",
+    "gltf-transform-vrm-extensions": "^0.1.6",
+    "three": "^0.184.0"
   },
   "devDependencies": {
+    "@moeru/three-mmd-physics-ammo": "0.1.1",
+    "@pixiv/three-vrm": "3.5.3",
     "@types/node": "^24.13.3",
     "@types/three": "^0.184.1",
     "@vitest/coverage-v8": "4.1.6",

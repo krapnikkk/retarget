@@ -92,6 +92,7 @@ export type SerializedHumanoidAvatarRig = {
   skeleton: import("@/retarget").RetargetSkeletonNode;
   missingRequiredBones: HumanoidBoneName[];
   restHipsHeight?: number;
+  restJoints?: import("@/retarget").HumanoidRestJoints;
   rigSignature: string;
 };
 

@@ -11,8 +11,13 @@ import {
 import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
 import { VRM_HUMANOID_PROFILE } from "@/profiles";
 import { solveHumanoidCustomRigMotion } from "@/solvers";
+import { exportAnimatedGLBStream as publicExportAnimatedGLBStream } from "@/browser";
 
 describe("streamed animated GLB export", () => {
+  it("is exposed on the browser entry", () => {
+    expect(publicExportAnimatedGLBStream).toBe(exportAnimatedGLBStream);
+  });
+
   it("appends animation through Blob parts without reading the whole avatar", async () => {
     const avatarFile = createRangeOnlyAvatarFile();
     const canonical = createRetargetedMotionClipStub({

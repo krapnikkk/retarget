@@ -269,7 +269,22 @@ export type RetargetSolveOptions = {
   heightScale: number;
   rootMotion: boolean;
   armOffsetDegrees: number;
+  /**
+   * `constant` applies one vertical root offset so the lowest foot joint over
+   * the clip matches the target's rest foot height. Needs target rest joints.
+   */
+  grounding?: "none" | "constant";
+  /** Rotation of root orientation and root travel about the vertical axis. */
+  yawOffsetDegrees?: number;
 };
+
+/** A humanoid bone's world rest transform, serializable across Workers. */
+export type HumanoidRestJoint = {
+  position: [number, number, number];
+  rotation: [number, number, number, number];
+};
+
+export type HumanoidRestJoints = Partial<Record<HumanoidBoneName, HumanoidRestJoint>>;
 
 export type RetargetPreviewOptions = {
   playbackSpeed: number;

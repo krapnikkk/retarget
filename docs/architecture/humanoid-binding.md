@@ -25,7 +25,7 @@ Pose labels do not establish anatomy: callers must confirm the model and draft. 
 One coarse task, `{ type: "humanoid-binding", bytes, command }`, has separate `inspect`, `fit`, `use-rig`, `edit-rig`, `skin`, `edit-weights`, `export` and `validate` commands. On every call, `bytes` contains the **original static input**, not an exported skinned GLB. Command types infer result types.
 
 ```ts
-import { runRetargetJob } from "3dretarget/browser";
+import { runRetargetJob } from "@krapnik/retarget/browser";
 
 const rig = await runRetargetJob({ type: "humanoid-binding", bytes: inputBytes,
   command: { operation: "fit", pose: "t-pose", forward: "+z", landmarks } });
@@ -39,7 +39,7 @@ const output = await runRetargetJob({ type: "humanoid-binding", bytes: inputByte
 // output.bytes: Uint8Array; output.validation: structural + deformation report.
 ```
 
-Node uses `runNodeToolJob` from `3dretarget/node`, returning `{ ok, result }` or `{ ok: false, error }`. Trusted tooling can explicitly run inline with `processHumanoidBinding(bytes, command, options)` from `3dretarget/io`. No scene/document objects leak through these contracts.
+Node uses `runNodeToolJob` from `@krapnik/retarget/node`, returning `{ ok, result }` or `{ ok: false, error }`. Trusted tooling can explicitly run inline with `processHumanoidBinding(bytes, command, options)` from `@krapnik/retarget/io`. No scene/document objects leak through these contracts.
 
 ## Editing and invalidation
 
@@ -82,4 +82,4 @@ The [fixture manifest and evidence guide](../../tests/binding/README.md) record 
 | Negative paths | Malformed buffers, extensions, transforms, cycles, degenerate/unreferenced geometry, constraints, budgets, stale edits and running cancellation. Disconnected surfaces are accepted with diagnostics. |
 | Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including 100k-vertex call-return, first-progress, resolve and total timing plus a main-thread heartbeat gate. |
 
-Run `pnpm verify` for all repository gates and `pnpm verify:binding:ecosystem` for external runtimes. Generated receipts/locks belong in a separate commit from handwritten implementation. No consumer repository is a gate.
+Run `pnpm test:slow` while developing binding, `pnpm verify` for all repository gates, and `pnpm verify:binding:ecosystem` for external runtimes. Regenerated receipts/locks may land with the change that caused them. No consumer repository is a gate.

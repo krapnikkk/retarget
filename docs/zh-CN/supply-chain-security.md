@@ -1,17 +1,22 @@
 # 供应链安全
 
-> 本文是 [English](../supply-chain-security.md) 的中文同步版。若中英文在法律、安全、治理或规范性要求上存在冲突，以英文版为准。
+[English](../supply-chain-security.md)
 
-本包以维护者提供的精确本地 tarball 交付给获准的下游。相邻 checkout 只允许用于协同开发，不能作为发布证据。获准的消费端把不可变 tarball 提交到 `vendor/`，并通过 lockfile 锁定完整性。消费端应用不是库就绪度门禁，库发布也不会修改消费端应用。
+`@krapnik/retarget` 以带作用域的公开包发布到公共 npm 注册表。消费端应用不是库的发布门禁，库发布也不会修改消费端应用。
 
-每次受控发布前，本地发布操作方必须记录：
+## 发布流程
 
-- `pnpm install --frozen-lockfile`；
-- `pnpm verify`，包括类型检查、固定资源、完整测试套件、正确性覆盖率、包体积诊断、打包入口安装以及打包浏览器 Worker 请求/结果冒烟测试；
-- 对固定认证用例运行 `pnpm verify:ecosystem`；
-- `pnpm audit --prod` 及生产依赖许可证清单；
-- 在已提交的发布回执中记录 tarball 文件名、字节数、SHA-256、包版本和验证结果。
+1. 使用声明的 Node 和 pnpm 工具链运行 `pnpm install --frozen-lockfile`。
+2. 运行 `pnpm verify`，覆盖类型检查、固定资源、完整测试套件、正确性覆盖率、包体积诊断、打包入口安装，以及打包后浏览器 Worker 的请求/结果冒烟测试。发布时，`prepublishOnly` 也会强制执行 `pnpm verify`。
+3. 使用要求的 Blender 和 Godot 版本，为固定的认证用例运行 `pnpm verify:ecosystem`。生态兼容证据应与本地检查结果分开记录。
+4. 运行 `pnpm audit --prod`，记录生产依赖许可证清单，并在发布前审查发现的问题。
+5. 使用维护者的 npm 账号，通过双重身份验证（2FA）执行 `npm publish --registry https://registry.npmjs.org/`。包的 `publishConfig.access` 为 `public`。注册表凭据由维护者保管，不得泄露。
+6. 为已发布的提交打上 `vVERSION` 标签并推送，再基于该标签发布 GitHub Release，概述变更内容和生态兼容验证结果。npm 注册表会记录 tarball 的完整性校验值，且已发布版本不可覆盖。
 
-本私有仓库的日常提交应在每个 checkout 中执行一次 `pnpm hooks:install`。纳入版本控制的 pre-commit hook 会运行完整 `pnpm verify` 门禁，其中包括领域层导入规则。托管 CI 是发布或审查时的可选人工复核，不是每次提交的依赖。绕过 hook 不会免除补充并记录本地验证成功结果的要求。
+打包产物继续由 Git 忽略。发布是验证通过后的独立步骤。当前维护模式仍暂缓自动更新消费端、强制托管 CI 和发布 SBOM。
 
-提供端仓库继续忽略打包制品，且只将其传递给获准的消费端。消费端提交精确 tarball；当前不提供注册表发布或自动更新通道。在本地维护模式下，强制托管 CI 和发布 SBOM 继续延后。MIT 许可证仅覆盖库代码；消费端资源和生成输出保留各自的来源及许可证义务。
+## 提交验证
+
+每个工作副本执行一次 `pnpm hooks:install`。纳入版本控制的 pre-commit hook 会运行 `pnpm check`：领域层导入规则、增量类型检查和 `unit` 测试项目。完整的 `pnpm verify` 门禁在发布前及 `prepublishOnly` 中执行。托管 CI 是发布或审查时的可选人工复核，不是每次提交的依赖。
+
+MIT 许可证仅覆盖本库代码；消费端资源和生成输出仍须遵守各自的来源与许可要求。

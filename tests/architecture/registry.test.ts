@@ -49,18 +49,33 @@ describe("adapter registries", () => {
     return bytes;
   }
 
-  it("registers only evidence-backed complete beta combinations", () => {
+  it("registers only evidence-backed complete combinations", () => {
     expect(RETARGET_PIPELINES.map((pipeline) => pipeline.id)).toEqual([
       "bvh-to-vrm-to-baked-vrm",
+      "bvh-to-vrm-to-vrma",
       "gltf-animation-to-gltf-humanoid-to-animated-glb",
       "gltf-animation-to-gltf-humanoid-to-fbx-animation",
       "gltf-animation-to-gltf-humanoid-to-gltf-animation",
       "gltf-animation-to-gltf-humanoid-to-motion-json",
       "gltf-animation-to-gltf-humanoid-to-vrma",
       "gltf-animation-to-vrm-to-baked-vrm",
+      "gltf-animation-to-vrm-to-vrma",
+      "mixamo-fbx-to-vrm-to-vrma",
       "vmd-to-vrm-to-baked-vrm",
+      "vmd-to-vrm-to-vrma",
       "vrma-to-gltf-humanoid-to-animated-glb",
     ]);
+    expect(
+      RETARGET_PIPELINES.filter((pipeline) => pipeline.assurance !== "beta")
+        .map((pipeline) => [pipeline.id, pipeline.assurance]),
+    ).toEqual([["mixamo-fbx-to-vrm-to-vrma", "experimental"]]);
+    for (const motionFormat of ["bvh", "gltf-animation", "vmd"] as const) {
+      expect(getRetargetPipeline(motionFormat, "vrm", "vrma")).toMatchObject({
+        assurance: "beta",
+        outputFormat: "vrma",
+        run: expect.any(Function),
+      });
+    }
     expect(Object.isFrozen(RETARGET_PIPELINES)).toBe(true);
     expect(RETARGET_PIPELINES.every(Object.isFrozen)).toBe(true);
     expect(

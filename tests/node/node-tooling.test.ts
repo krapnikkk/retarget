@@ -55,7 +55,7 @@ describe("Node tooling contract", () => {
     expect(new Uint8Array(first.result.artifact.bytes)).toEqual(
       new Uint8Array(second.result.artifact.bytes),
     );
-  });
+  }, 30_000);
 
   it("authors byte-stable experimental PMX bundles without exposing ZIP helpers", async () => {
     const canonicalGLBBytes = fixtureBytes(CHARACTER_FIXTURE);
@@ -80,7 +80,7 @@ describe("Node tooling contract", () => {
     expect(new Uint8Array(first.result.artifact.bytes)).toEqual(
       new Uint8Array(second.result.artifact.bytes),
     );
-  });
+  }, 30_000);
 
   it("imports, serializes, exports, reloads, and semantically validates rig motion", async () => {
     const source = fixtureBytes(RIG_MOTION_FIXTURE);

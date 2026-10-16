@@ -5,6 +5,7 @@ import {
   REQUIRED_VRM_BONES,
   RetargetError,
   type HumanoidBoneName,
+  type HumanoidRestJoints,
   type CanonicalHumanoidMotionClip,
   type MotionTrack,
   type RetargetSkeletonNode,
@@ -12,6 +13,13 @@ import {
   type SolvedHumanoidMotionClip,
 } from "@/retarget";
 import { getRigProfile, type RigProfile, type RigProfileId } from "@/profiles";
+import { CANONICAL_AXIS_FRAME, createAxisCorrection } from "@/retarget/coordinate-space";
+import { isNativeMMDRootMotion } from "@/retarget/target-binding";
+import { solveSemanticWorldPose } from "@/validation/semantic-fk-oracle";
+import type {
+  HumanoidSemanticRestPose,
+  SemanticRestBone,
+} from "@/validation/semantic-motion";
 import {
   assertMotionProcessingBudget,
   assertRetargetSolveBudget,
@@ -52,6 +60,8 @@ export type HumanoidSolverTargetRig = {
   bones: ReadonlySet<HumanoidBoneName>;
   skeleton: RetargetSkeletonNode;
   restHipsHeight?: number;
+  /** World rest transforms; required for `grounding: "constant"`. */
+  restJoints?: HumanoidRestJoints;
 };
 
 export type SolveHumanoidMotionInput = {
@@ -149,9 +159,14 @@ export function solveHumanoidMotion({
     });
   }
   const optionTracks = applyRetargetSolveOptions(remappedTracks, options);
-  const cleanedTracks = config.enabled && config.footCleanup
+  const footTracks = config.enabled && config.footCleanup
     ? applyBasicFootCleanup(optionTracks)
     : optionTracks;
+  const yawedTracks = applyYawOffset(footTracks, options.yawOffsetDegrees ?? 0);
+  const grounding = options.grounding === "constant"
+    ? applyConstantGrounding(clip, yawedTracks, targetRig)
+    : undefined;
+  const cleanedTracks = grounding?.tracks ?? yawedTracks;
   const overrideProfiles = resolveOverrideProfiles(
     clip,
     config,
@@ -234,6 +249,12 @@ export function solveHumanoidMotion({
                 ? `user height scale ${options.heightScale}`
                 : "",
               report.footCleanup ? "basic foot cleanup applied" : "",
+              options.yawOffsetDegrees
+                ? `yaw offset ${options.yawOffsetDegrees} degrees`
+                : "",
+              grounding
+                ? `constant grounding offset ${grounding.offset.toFixed(6)} target units`
+                : "",
             ]
               .filter(Boolean)
               .join("; "),
@@ -690,6 +711,141 @@ function assertSufficientTargetMapping({
       },
     });
   }
+}
+
+// Rotates the whole motion about canonical up (+Y): root orientation and root
+// travel turn together, so the body keeps walking the way it faces.
+function applyYawOffset(tracks: MotionTrack[], degrees: number) {
+  if (degrees === 0) return tracks;
+  const yaw = new Quaternion().setFromAxisAngle(
+    new Vector3(0, 1, 0),
+    (degrees * Math.PI) / 180,
+  );
+  return tracks.map((track) => {
+    if (track.bone !== "hips") return track;
+    const values = [...track.values];
+    if (track.path === "translation") {
+      const offset = new Vector3();
+      for (let index = 0; index + 2 < values.length; index += 3) {
+        offset.fromArray(values, index).applyQuaternion(yaw).toArray(values, index);
+      }
+    } else {
+      const rotation = new Quaternion();
+      for (let index = 0; index + 3 < values.length; index += 4) {
+        rotation.fromArray(values, index).premultiply(yaw).normalize().toArray(values, index);
+      }
+    }
+    return { ...track, values };
+  });
+}
+
+const GROUNDING_FOOT_BONES = ["leftFoot", "rightFoot", "leftToes", "rightToes"] as const;
+
+// One vertical root offset so the lowest foot joint over the clip sits at the
+// target's rest foot height. Computed in target units on the target skeleton
+// with the root scale binding applies, then stored in source units.
+function applyConstantGrounding(
+  clip: CanonicalHumanoidMotionClip,
+  tracks: MotionTrack[],
+  targetRig: HumanoidSolverTargetRig | undefined,
+) {
+  const restPose = targetRig?.restJoints
+    ? createSemanticRestPose(targetRig.restJoints, targetRig.skeleton)
+    : undefined;
+  const feet = GROUNDING_FOOT_BONES.filter((bone) => restPose?.has(bone));
+  if (!targetRig || !restPose || !restPose.has("hips") || feet.length === 0) {
+    throw new RetargetError("PROCESSING_OPTION_INVALID", {
+      details: {
+        option: "grounding",
+        reason: "constant grounding requires target rest joints with hips and feet",
+      },
+    });
+  }
+  const sourceRestHipsHeight = clip.metadata?.restHipsHeight;
+  if (
+    clip.metadata?.rootTranslationSpace === "offset-source-units" &&
+    !(sourceRestHipsHeight && sourceRestHipsHeight > 0)
+  ) {
+    throw new RetargetError("ROOT_MOTION_SCALE_UNRESOLVED", {
+      details: { sourceKind: clip.source.kind, sourceFilename: clip.source.filename },
+    });
+  }
+  const rootScale =
+    !isNativeMMDRootMotion(clip, targetRig.profile.id) &&
+    targetRig.restHipsHeight &&
+    sourceRestHipsHeight &&
+    sourceRestHipsHeight > 0
+      ? targetRig.restHipsHeight / sourceRestHipsHeight
+      : 1;
+  const motion = { ...clip, tracks };
+  const worldAxisCorrection = createAxisCorrection(CANONICAL_AXIS_FRAME, targetRig.profile);
+  const frameCount = Math.max(2, Math.ceil(clip.duration * clip.fps) + 1);
+  let lowest = Number.POSITIVE_INFINITY;
+  for (let frame = 0; frame < frameCount; frame += 1) {
+    const pose = solveSemanticWorldPose({
+      clip: motion,
+      restPose,
+      rootScale,
+      time: Math.min(clip.duration, frame / clip.fps),
+      worldAxisCorrection,
+    });
+    for (const bone of feet) {
+      const y = pose.get(bone)?.position.y;
+      if (y !== undefined) lowest = Math.min(lowest, y);
+    }
+  }
+  const restLowest = Math.min(...feet.map((bone) => restPose.get(bone)!.worldPosition[1]));
+  const offset = Number.isFinite(lowest) ? restLowest - lowest : 0;
+  const sourceOffset = offset / rootScale;
+  const hasRootTranslation = tracks.some(
+    (track) => track.bone === "hips" && track.path === "translation",
+  );
+  const grounded = hasRootTranslation
+    ? tracks.map((track) =>
+        track.bone === "hips" && track.path === "translation"
+          ? {
+              ...track,
+              values: track.values.map((value, index) =>
+                index % 3 === 1 ? value + sourceOffset : value,
+              ),
+            }
+          : track,
+      )
+    : [
+        ...tracks,
+        {
+          bone: "hips" as const,
+          path: "translation" as const,
+          times: [0, clip.duration],
+          values: [0, sourceOffset, 0, 0, sourceOffset, 0],
+        },
+      ];
+  return { tracks: grounded, offset };
+}
+
+function createSemanticRestPose(
+  joints: HumanoidRestJoints,
+  skeleton: RetargetSkeletonNode,
+): HumanoidSemanticRestPose {
+  const parents = new Map<HumanoidBoneName, HumanoidBoneName | undefined>();
+  const visit = (node: RetargetSkeletonNode, parent?: HumanoidBoneName) => {
+    const bone = node.bone;
+    if (bone) parents.set(bone, parent);
+    for (const child of node.children) visit(child, bone ?? parent);
+  };
+  visit(skeleton);
+  const restPose = new Map<HumanoidBoneName, SemanticRestBone>();
+  for (const [bone, joint] of Object.entries(joints) as Array<
+    [HumanoidBoneName, NonNullable<HumanoidRestJoints[HumanoidBoneName]>]
+  >) {
+    const parent = parents.get(bone);
+    restPose.set(bone, {
+      parent: parent && joints[parent] ? parent : undefined,
+      worldPosition: joint.position,
+      worldQuaternion: joint.rotation,
+    });
+  }
+  return restPose;
 }
 
 function applyBasicFootCleanup(tracks: MotionTrack[]) {

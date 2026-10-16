@@ -38,11 +38,11 @@ x solver revision x target-binding revision
 ```
 
 Accordingly, public humanoid pipeline lookup requires the motion, avatar, and
-export format IDs. The registry admits nine beta combinations: five
+export format IDs. The registry admits twelve beta combinations: five
 `gltf-animation -> gltf-humanoid` outputs (`animated-glb`, `fbx-animation`,
 `vrma`, `gltf-animation`, and `motion-json`),
 `vrma -> gltf-humanoid -> animated-glb`, and `gltf-animation`, `bvh`, or `vmd`
-to `vrm -> baked-vrm`. Their pinned cases have structural
+to `vrm` with `baked-vrm` or `vrma` output. `mixamo-fbx -> vrm -> vrma` is registered as experimental: its only Mixamo-named FBX evidence is written by this library's FBX exporter, not an independent Mixamo-structured fixture. Their pinned cases have structural
 reload and independent semantic evidence. Only the first pinned Golden Motion
 case is independently certified in Blender and Godot.
 

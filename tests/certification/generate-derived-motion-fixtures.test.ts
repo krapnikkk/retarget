@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { exportBVH, validateMotionExportSemantics } from "@/export";
+import { exportBVH, exportVMD, validateMotionExportSemantics } from "@/export";
 import { importGLTFAnimation } from "@/import/gltf-animation";
 
 const SOURCE_PATH = path.join(
@@ -28,6 +28,26 @@ describe("Golden Motion derived fixtures", () => {
       await mkdir(path.dirname(absolutePath), { recursive: true });
       await writeFile(absolutePath, bytes);
       console.log(`[golden-bvh] ${absolutePath}`);
+    }
+  });
+
+  it("rebuilds VMD in MMD units from the pinned canonical animation without semantic drift", async () => {
+    const source = await importGLTFAnimation(
+      new Uint8Array(await readFile(SOURCE_PATH)),
+      "quaternius-walk.animation.glb",
+    );
+    const bytes = await exportVMD({ ...source, name: "quaternius-walk" });
+    const semantic = await validateMotionExportSemantics("vmd", bytes, source);
+
+    expect(semantic).toMatchObject({ level: "semantic", ok: true, issues: [] });
+    expect(semantic.metrics.maxRotationErrorDegrees).toBeLessThan(0.1);
+
+    const outputPath = process.env.RETARGET_GOLDEN_VMD_PATH;
+    if (outputPath) {
+      const absolutePath = path.resolve(outputPath);
+      await mkdir(path.dirname(absolutePath), { recursive: true });
+      await writeFile(absolutePath, bytes);
+      console.log(`[golden-vmd] ${absolutePath}`);
     }
   });
 });

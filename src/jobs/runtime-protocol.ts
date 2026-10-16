@@ -332,7 +332,7 @@ function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
         const targetRig = asRecord(task.targetRig, "solve-humanoid.targetRig");
         assertExactKeys(
           targetRig,
-          ["rigSignature", "profile", "bones", "skeleton", "restHipsHeight"],
+          ["rigSignature", "profile", "bones", "skeleton", "restHipsHeight", "restJoints"],
           "solve-humanoid.targetRig",
         );
         if (typeof targetRig.rigSignature !== "string" ||
@@ -341,6 +341,7 @@ function assertTaskFields(task: RetargetJobTask, budget: ProcessingBudget) {
           !isRecord(targetRig.skeleton)) {
           protocolError("solve-humanoid.targetRig is invalid.");
         }
+        assertRestJoints(targetRig.restJoints, "solve-humanoid.targetRig.restJoints");
       }
       return;
     case "retarget-rigged-gltf":
@@ -493,6 +494,7 @@ function assertTaskResult(
         if (!Array.isArray(record.bones) || !isRecord(record.skeleton)) {
           protocolError("inspect-humanoid-avatar result is invalid.");
         }
+        assertRestJoints(record.restJoints, "inspect-humanoid-avatar result.restJoints");
         return;
       }
       case "inspect-rigged-gltf": {
@@ -745,7 +747,7 @@ function assertSolveOptions(value: unknown) {
   const options = asRecord(value, "solve-humanoid.options");
   assertExactKeys(
     options,
-    ["heightScale", "rootMotion", "armOffsetDegrees"],
+    ["heightScale", "rootMotion", "armOffsetDegrees", "grounding", "yawOffsetDegrees"],
     "solve-humanoid.options",
   );
   if (
@@ -753,10 +755,38 @@ function assertSolveOptions(value: unknown) {
     !Number.isFinite(options.heightScale) ||
     typeof options.rootMotion !== "boolean" ||
     typeof options.armOffsetDegrees !== "number" ||
-    !Number.isFinite(options.armOffsetDegrees)
+    !Number.isFinite(options.armOffsetDegrees) ||
+    (options.grounding !== undefined &&
+      options.grounding !== "none" &&
+      options.grounding !== "constant") ||
+    (options.yawOffsetDegrees !== undefined &&
+      (typeof options.yawOffsetDegrees !== "number" ||
+        !Number.isFinite(options.yawOffsetDegrees)))
   ) {
     protocolError("solve-humanoid.options is invalid.");
   }
+}
+
+function assertRestJoints(value: unknown, label: string) {
+  if (value === undefined) return;
+  const joints = asRecord(value, label);
+  for (const [bone, joint] of Object.entries(joints)) {
+    if (!isHumanoidBone(bone)) protocolError(`${label} contains an unknown bone.`);
+    const record = asRecord(joint, label);
+    assertExactKeys(record, ["position", "rotation"], label);
+    if (
+      !isFiniteTuple(record.position, 3) ||
+      !isFiniteTuple(record.rotation, 4)
+    ) {
+      protocolError(`${label} is invalid.`);
+    }
+  }
+}
+
+function isFiniteTuple(value: unknown, length: number) {
+  return Array.isArray(value) &&
+    value.length === length &&
+    value.every((item) => typeof item === "number" && Number.isFinite(item));
 }
 
 const HUMANOID_BONE_NAMES = new Set<string>(HUMANOID_BONES);

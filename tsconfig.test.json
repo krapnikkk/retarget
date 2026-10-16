@@ -2,7 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "lib": ["DOM", "DOM.Iterable", "ES2023"],
-    "types": ["node", "vitest/globals"]
+    "types": ["node", "vitest/globals"],
+    "incremental": true,
+    "tsBuildInfoFile": "node_modules/.cache/tsc/test.tsbuildinfo"
   },
   "include": ["src/**/*.ts", "tests/**/*.ts", "*.ts"],
   "exclude": ["node_modules", "dist", "references"]

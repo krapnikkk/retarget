@@ -19,6 +19,41 @@ export type TargetRestPose = {
   restHipsHeight?: number;
 };
 
+const MMD_PROFILE_ID = "mmd-body";
+
+/**
+ * Rest hips height of a target, as canonical `restHipsHeight` defines it: the
+ * hips joint at about leg-root height. MMD rigs map `hips` to センター, which
+ * sits well below the leg roots, so MMD targets use the average 左足/右足 height.
+ */
+export function resolveRestHipsHeight(
+  profileId: string | undefined,
+  heightOf: (bone: HumanoidBoneName) => number | undefined,
+) {
+  const positive = (value: number | undefined) =>
+    typeof value === "number" && value > 0 ? value : undefined;
+  if (profileId === MMD_PROFILE_ID) {
+    const legRoots = [heightOf("leftUpperLeg"), heightOf("rightUpperLeg")]
+      .map(positive)
+      .filter((value): value is number => value !== undefined);
+    if (legRoots.length > 0) {
+      return legRoots.reduce((sum, value) => sum + value, 0) / legRoots.length;
+    }
+  }
+  return positive(heightOf("hips"));
+}
+
+/**
+ * VMD root motion is authored in the units of the MMD model it plays on, and
+ * MMD applies it unscaled; binding VMD to an MMD target keeps that behavior.
+ */
+export function isNativeMMDRootMotion(
+  clip: RetargetedMotionClip,
+  targetProfileId: string | undefined,
+) {
+  return clip.source.kind === "vmd" && targetProfileId === MMD_PROFILE_ID;
+}
+
 export function createCanonicalToTargetWorldCorrection(profile?: RigProfile) {
   return profile
     ? createAxisCorrection(CANONICAL_AXIS_FRAME, profile)
@@ -65,6 +100,7 @@ export function bindCanonicalTracksToTargetRest(
       target.restHipsHeight && target.restHipsHeight > 0
         ? target.restHipsHeight
         : rest.worldPosition.y;
+    const native = isNativeMMDRootMotion(clip, target.profile?.id);
     boundTracks.push({
       ...track,
       values: bindCanonicalHipsTranslationsToRest({
@@ -72,7 +108,7 @@ export function bindCanonicalTracksToTargetRest(
         rootTranslationSpace: clip.metadata?.rootTranslationSpace,
         rootTranslationOrigin: clip.metadata?.rootTranslationOrigin,
         sourceRestHipsHeight,
-        targetRestHipsHeight,
+        targetRestHipsHeight: native ? sourceRestHipsHeight ?? targetRestHipsHeight : targetRestHipsHeight,
         values: track.values,
         canonicalToTargetWorld,
       }),
