@@ -1,5 +1,6 @@
 import { MMD_EXPORT_BONE_NAMES } from "@/profiles/bone-naming";
 import {
+  convertMMDArmRest,
   parseVMDDocument,
   VMD_FPS,
   type VMDBoneFrame,
@@ -77,7 +78,7 @@ export function importVMD(
       scaleSource: "mmd-standard-model-preset",
       sourceRestHipsHeight: MMD_STANDARD_REST_HIPS_HEIGHT,
       coordinateTransform:
-        "VMD left-handed position/quaternion mirrored once into the canonical right-handed -Z-forward basis",
+        "VMD left-handed (-Z forward) position/quaternion mirrored into a right-handed +Z-forward basis, turned into the canonical -Z-forward basis; arm chains rebased from the MMD A-pose rest",
     },
     metadata: {
       mmd: {
@@ -204,7 +205,9 @@ function createVMDTracks(
         );
         rotation = multiplyQuaternion(rotation, toCanonicalRotation(sampled.rotation));
       }
-      rotations.push(...normalizeQuaternion(rotation));
+      rotations.push(
+        ...normalizeQuaternion(convertMMDArmRest(bone, rotation, "a-pose-to-t-pose")),
+      );
       translations.push(...translation);
     }
 

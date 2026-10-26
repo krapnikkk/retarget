@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { exportBVH, validateMotionExportSemantics } from "@/export";
+import { exportBVH, exportVMD, validateMotionExportSemantics } from "@/export";
 import { importGLTFAnimation } from "@/import/gltf-animation";
 
 const SOURCE_PATH = path.join(
@@ -10,6 +10,13 @@ const SOURCE_PATH = path.join(
 );
 
 describe("Golden Motion derived fixtures", () => {
+  it("rebuilds VMD using the current MMD facing and rest convention", async () => {
+    const source = await importGLTFAnimation(new Uint8Array(await readFile(SOURCE_PATH)), "quaternius-walk.animation.glb");
+    const bytes = await exportVMD(source);
+    const outputPath = process.env.RETARGET_GOLDEN_VMD_PATH;
+    expect(bytes.byteLength).toBeGreaterThan(54);
+    if (outputPath) await writeFile(path.resolve(outputPath), bytes);
+  });
   it("rebuilds BVH from the pinned canonical animation without semantic drift", async () => {
     const source = await importGLTFAnimation(
       new Uint8Array(await readFile(SOURCE_PATH)),
