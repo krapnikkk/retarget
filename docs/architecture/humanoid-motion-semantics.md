@@ -108,7 +108,7 @@ The browser bindMotionClipToAvatar helper accepts optional jobOptions containing
 forwarded to avatar inspection and target solve. Consumers can share their editing budgets
 with these stages instead of leaving target solve unbounded.
 
-## Target-bound pose corrections (0.9.0)
+## Target-bound pose corrections (0.10.0)
 
 `bakeHumanoidPoseEdits` and the cancellable `pose-humanoid` Worker job accept an uncorrected, target-bound solved clip. The order is canonical clip edit, mapping/solve/Foot Cleanup, FK corrections in list order, then two-bone IK in list order, and target binding for preview/export. Never solve or bake the output again. Keep the original canonical and uncorrected solved clips for undo and comparison.
 

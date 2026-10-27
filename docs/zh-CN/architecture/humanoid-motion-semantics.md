@@ -56,7 +56,7 @@ SolvedHumanoidMotionClip
 浏览器 bindMotionClipToAvatar 接收可选 jobOptions（budget 与 deadlineMs），
 并传递给角色检查和目标求解。消费者可以在编辑与目标求解阶段共享预算。
 
-## 目标绑定姿态修正（0.9.0）
+## 目标绑定姿态修正（0.10.0）
 
 `bakeHumanoidPoseEdits` 和可取消的 `pose-humanoid` Worker job 接收未修正、已绑定目标的 solved 动作。顺序为规范动作裁剪、映射/求解/Foot Cleanup、按列表应用 FK、再按列表应用双骨 IK，最后为预览/导出绑定目标。禁止对结果再次求解或叠加烘焙；调用方保留原始 canonical 和未修正 solved 供撤销、对比。
 
