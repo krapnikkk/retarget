@@ -1,6 +1,7 @@
 import { Quaternion, Vector3 } from "three";
 import { MMD_BODY_PROFILE, VRM_HUMANOID_PROFILE } from "@/profiles";
 import { createAxisCorrection } from "@/retarget/coordinate-space";
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import {
   HUMANOID_BONES,
   normalizeMotionTime,
@@ -31,6 +32,7 @@ export async function exportVMD(
   _options?: import("./bone-naming").BoneNamingOptions,
   budget?: ProcessingBudget,
 ): Promise<Uint8Array> {
+  assertHumanoidPoseExport(clip, "vmd");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));

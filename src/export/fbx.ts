@@ -1,3 +1,4 @@
+import { assertHumanoidPoseExport } from "@/retarget/pose-edit";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
   Document,
@@ -252,6 +253,7 @@ export function createFBXAnimationBinary(
   clip: RetargetedMotionClip,
   { boneNamingProfile = "canonical" }: BoneNamingOptions = {},
 ) {
+  assertHumanoidPoseExport(clip, "fbx-animation");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));
@@ -612,6 +614,7 @@ export function createFBXAvatarSceneBinary(
   humanoidNodes: ReadonlyMap<HumanoidBoneName, GltfDocumentNode>,
   clip: RetargetedMotionClip,
 ): Uint8Array {
+  assertHumanoidPoseExport(clip, "fbx-animation");
   const validation = validateMotionClip(clip);
   if (!validation.ok) {
     throw new Error(validation.issues.join(" "));

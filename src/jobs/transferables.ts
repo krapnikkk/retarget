@@ -46,6 +46,8 @@ export function collectRetargetTaskTransfers(
     case "validate-avatar-export":
       add(task.bytes);
       break;
+    case "pose-humanoid":
+    case "edit-humanoid":
     case "solve-humanoid":
     case "export-motion":
     case "semantic-validate":

@@ -1,3 +1,5 @@
+import { bakeHumanoidPoseEdits } from "@/retarget/pose-edit";
+import { editHumanoidMotion } from "@/retarget/clip-edit";
 import { importBVH } from "@/import/bvh";
 import { importGLTFAnimation } from "@/import/gltf-animation";
 import { importVMD } from "@/import/vmd";
@@ -192,6 +194,20 @@ async function executeTask(
     report("normalize", 0.82);
     assertMotionProcessingBudget(clip, processingBudget);
     return clip;
+  }
+
+  if (task.type === "pose-humanoid") {
+    report("refine",0.2);
+    const result = bakeHumanoidPoseEdits(task.motion,task.edit,processingBudget);
+    deadline.checkpoint("pose");
+    return result;
+  }
+
+  if (task.type === "edit-humanoid") {
+    report("normalize", 0.18);
+    const result = editHumanoidMotion(task.motion, task.edit, processingBudget);
+    deadline.checkpoint("edit");
+    return result;
   }
 
   if (task.type === "solve-humanoid") {

@@ -66,3 +66,9 @@ export type {
   RigTopologyConflict,
   SemanticRigProfile,
 } from "./rigs/public";
+
+export { editHumanoidMotion, assertHumanoidClipEdit } from "./retarget/clip-edit";
+export type { HumanoidClipEdit } from "./retarget/types";
+export { bakeHumanoidPoseEdits, assertHumanoidPoseEdit, sampleHumanoidTargetPose, HUMANOID_IK_CHAINS } from "./retarget/pose-edit";
+export type { HumanoidPoseEdit, HumanoidPoseCorrection, HumanoidPoseWarning } from "./retarget/pose-edit";
+export { supportsHumanoidPoseExport } from "./retarget/pose-edit";

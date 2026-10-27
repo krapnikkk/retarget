@@ -2,6 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { runRetargetJob } from "@/jobs/browser-retarget-job";
 import { RETARGET_JOB_PROTOCOL_VERSION } from "@/jobs/types";
 
+import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
+import { createCanonicalHumanoidMotionClip, createCanonicalMotionFromRetargetedClip } from "@/retarget/canonical-motion";
+
 class PendingWorker extends EventTarget {
   static instances: PendingWorker[] = [];
   static postError: unknown;
@@ -35,6 +38,19 @@ describe("browser retarget worker boundary", () => {
     PendingWorker.postError = undefined;
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it.each(["abort", "deadline"] as const)("terminates clip editing on %s", async (reason) => {
+    vi.useFakeTimers();
+    vi.stubGlobal("Worker", PendingWorker);
+    const controller = new AbortController();
+    const motion = createCanonicalHumanoidMotionClip(createCanonicalMotionFromRetargetedClip(createRetargetedMotionClipStub({ fbxFile: { name: "source.fbx" }, vrmFile: { name: "avatar.vrm" } })));
+    const promise = runRetargetJob({ type: "edit-humanoid", motion, edit: { schemaVersion: 1, startSeconds: 0, endSeconds: motion.duration, speed: 2 } }, { signal: controller.signal, deadlineMs: 50 });
+    const rejected = expect(promise).rejects.toMatchObject(reason === "abort" ? { name: "AbortError" } : { code: "PROCESSING_DEADLINE_EXCEEDED" });
+    if (reason === "abort") controller.abort();
+    else await vi.advanceTimersByTimeAsync(50);
+    await rejected;
+    expect(PendingWorker.instances[0]?.terminated).toBe(true);
   });
 
   it("fails closed when an isolated Worker is unavailable", async () => {

@@ -37,3 +37,31 @@ SolvedHumanoidMotionClip
 共享目标绑定器把规范世界增量转换到目标轴基和父级局部静止基。通用角色预览、基于文档的 GLB/VRM/FBX 导出、流式 GLB 导出以及 PMX 骨骼形变导出均使用这些共享变换。节点动画输出为绝对目标局部值；PMX 骨骼形变按格式要求接收目标局部增量。
 
 结构导出验证与语义认证保持分离。在后续加固阶段的 Golden Motion 清单和世界空间比较通过前，任何格式三元组都不得标记为已认证。
+
+## 单片段编辑 v1
+
+根接口 `editHumanoidMotion(original, edit, processingBudget?)` 与浏览器 Worker
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, budget: { processing: processingBudget } })`
+接收 `HumanoidClipEdit`：`{ schemaVersion: 1, startSeconds, endSeconds, speed }`。
+每次从保留的原始 canonical clip 重建，编辑在映射、求解和脚步清理之前执行。
+仅支持一个连续区间和正数恒定速度。时间归零，结果时长为 `(endSeconds - startSeconds) / speed`。
+边界位移采用线性插值，旋转采用最短路径 SLERP；保留空间根偏移与源 FPS。
+不取整关键帧、不重新居中空间轨迹，也不使用预览播放倍率。
+
+结果具有新的确定性 canonical 身份，`metadata.clipEdit` 保存父动作身份与编辑参数，输入不变。
+范围、版本和非有限数字错误使用 `PROCESSING_OPTION_INVALID`；输出分配前检查时长、帧数、采样和值数量预算。
+取消或调用方指定的 deadline 会终止 Worker；消费者不得让过期结果覆盖新版本。
+编辑能力不增加生态认证等级。
+
+浏览器 bindMotionClipToAvatar 接收可选 jobOptions（budget 与 deadlineMs），
+并传递给角色检查和目标求解。消费者可以在编辑与目标求解阶段共享预算。
+
+## 目标绑定姿态修正（0.9.0）
+
+`bakeHumanoidPoseEdits` 和可取消的 `pose-humanoid` Worker job 接收未修正、已绑定目标的 solved 动作。顺序为规范动作裁剪、映射/求解/Foot Cleanup、按列表应用 FK、再按列表应用双骨 IK，最后为预览/导出绑定目标。禁止对结果再次求解或叠加烘焙；调用方保留原始 canonical 和未修正 solved 供撤销、对比。
+
+姿态配置 v1 绑定完整 humanoid-rest-v1 签名和静止姿态版本 1。换目标必须暂停修正，直到用户明确重新绑定或清除。最多 16 条修正，数值必须有限；每条包含开关、0–1 权重、起止时间、淡入淡出。片段内部的区间边界必须有正淡变；区间外及零权重保持原动作。烘焙保留原关键帧并增加 FPS 采样和淡变边界，受调用方处理预算约束。采样间采用 SLERP；IK 端点精度针对烘焙采样点，点间为插值近似。
+
+FK 将 XYZ 欧拉角（度，±180）后乘至已映射关节的当前局部旋转，SDK 使用真实目标静止轴转换回规范旋转差。IK 目标点/弯曲参考点采用目标世界坐标、角色原生单位，包含根运动；sampleHumanoidTargetPose 可读取当前点位。手脚 IK 要求连续的上段/下段/末端骨骼和非零长度。不可达目标按可达距离限制并报 IK_UNREACHABLE；退化 pole 保留该采样姿态并报 IK_POLE_DEGENERATE；与原弯曲方向相反报 IK_BEND_FLIP。FK 可用于缩放骨架；检查器发现非均匀或反射缩放时禁用 IK。直接调用者须提供刚性、均匀缩放骨链。骨架签名的静止变换精度为 1e-5 单位。
+
+结果 metadata.poseEdit 保存配置、有界告警和可复现结果 ID。VRMA 携带烘焙后的规范旋转，复现世界空间目标必须使用同一角色，第三方播放器不会强制骨架锁。Motion JSON 保留元数据；绑定的动画 GLB 和 baked VRM 保留实际目标。独立 glTF/BVH/FBX、动画 FBX、PMX/VMD 暂不允许导出修正动作，等待目标相关语义的独立证据。结构和语义重载不等于生态认证。不根据骨名推断镜像或姿态预设。

@@ -85,3 +85,35 @@ PMX bone morphs receive target-local delta values as required by that format.
 Structural export validation remains separate from semantic certification.
 No format triple becomes certified until the Golden Motion manifest and
 world-space comparisons in the next hardening stage pass.
+
+## Single-clip editing v1
+
+Root API `editHumanoidMotion(original, edit, processingBudget?)` and browser Worker
+`runRetargetJob({ type: "edit-humanoid", motion: original, edit }, { signal, deadlineMs, budget: { processing: processingBudget } })`
+accept `HumanoidClipEdit`: `{ schemaVersion: 1, startSeconds, endSeconds, speed }`.
+Always rebuild from the retained original canonical clip, before mapping, solve and foot cleanup.
+One contiguous interval and positive constant speed are supported. Times are rebased to zero;
+output duration is `(endSeconds - startSeconds) / speed`. Boundary translation uses linear
+interpolation and rotation uses shortest-path SLERP. Spatial root offsets and source FPS remain
+unchanged. No keyframe rounding, spatial recentering, or preview playback rate enters this operation.
+
+The result is a new canonical clip with deterministic identity and `metadata.clipEdit`
+recording the parent canonical identity and edit settings. The input is never mutated.
+Invalid ranges, versions and non-finite numbers raise `PROCESSING_OPTION_INVALID`;
+duration, frame, sample and value budgets are checked before allocating output tracks.
+The Worker can be terminated by cancellation or the caller-owned deadline; a superseded result
+must not replace a newer consumer revision. Editing does not grant ecosystem certification.
+
+The browser bindMotionClipToAvatar helper accepts optional jobOptions containing budget and deadlineMs,
+forwarded to avatar inspection and target solve. Consumers can share their editing budgets
+with these stages instead of leaving target solve unbounded.
+
+## Target-bound pose corrections (0.9.0)
+
+`bakeHumanoidPoseEdits` and the cancellable `pose-humanoid` Worker job accept an uncorrected, target-bound solved clip. The order is canonical clip edit, mapping/solve/Foot Cleanup, FK corrections in list order, then two-bone IK in list order, and target binding for preview/export. Never solve or bake the output again. Keep the original canonical and uncorrected solved clips for undo and comparison.
+
+Pose edit v1 binds to the exact `humanoid-rest-v1` signature and rest-pose version 1. A different target must suspend corrections until explicit rebinding or clearing. Maximum 16 corrections; all values are finite. Each correction has enabled, weight [0,1], start/end and fades. Interior interval boundaries require positive fades; outside the interval and at zero weight the original animation is preserved. Baking samples the existing key times plus clip-FPS samples and fade boundaries, subject to caller processing budgets. Between baked samples playback uses SLERP; IK endpoint accuracy is guaranteed at baked samples, with interpolation approximation between them.
+
+FK appends an XYZ Euler rotation in degrees [-180,180] to the mapped joint's current local rotation. The SDK converts it back to canonical deltas using actual target rest axes. IK targets/poles use target world coordinates in the avatar's native units, after root motion. `sampleHumanoidTargetPose` supplies those positions. Hand/foot IK requires contiguous mapped upper/lower/end joints and nonzero lengths. It preserves segment lengths; unreachable points clamp to reach and report IK_UNREACHABLE. Degenerate poles leave that sample unchanged and report IK_POLE_DEGENERATE. Opposing bend direction reports IK_BEND_FLIP. FK remains available on scaled rigs; IK rejects known non-uniform/reflected scales from avatar inspection. Direct API callers must provide rigid, uniformly scaled chains. The retained rest signature rounds transforms to 1e-5 units.
+
+The output carries settings, bounded warnings and a reproducible result ID in metadata.poseEdit. VRMA retains baked canonical rotations and must be used with the same avatar to reproduce target-world goals; it does not embed an enforceable rig lock for third-party players. Motion JSON preserves metadata. Bound animated GLB and baked VRM preserve the actual target. Standalone glTF/BVH/FBX, animated FBX and PMX/VMD are disabled for corrected clips until their target-specific semantics have dedicated evidence. Structural and semantic reload checks do not promote ecosystem certification. No mirror or pose preset is inferred from bone names.
