@@ -29,7 +29,7 @@ const MAX_EXPORTED_VMD_KEYFRAMES = 0xffff_ffff;
 
 export async function exportVMD(
   clip: RetargetedMotionClip,
-  _options?: import("./bone-naming").BoneNamingOptions,
+  options?: import("./bone-naming").BoneNamingOptions & { disableLegIK?: boolean },
   budget?: ProcessingBudget,
 ): Promise<Uint8Array> {
   assertHumanoidPoseExport(clip, "vmd");
@@ -53,12 +53,13 @@ export async function exportVMD(
   assertGeneratedExportBudget({
     frameCount,
     valuesPerFrame: bones.length * 7,
-    estimatedOutputBytes: 30 + 20 + 4 + keyframeCount * 111 + 20,
+    estimatedOutputBytes: 30 + 20 + 4 + keyframeCount * 111 + 20 + (options?.disableLegIK ? 93 : 0),
     budget,
     phase: "vmd-export",
   });
 
   return serializeVMDBoneMotion({
+    disableLegIK: options?.disableLegIK,
     boneFrameCount: keyframeCount,
     boneFrames: createVMDBoneFrames(clip, bones, frameCount),
     modelName: clip.name || "retargeted",

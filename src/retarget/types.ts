@@ -82,7 +82,8 @@ export type CanonicalMotionSourceKind =
   | "gltf-animation"
   | "actorcore-fbx"
   | "generic-fbx"
-  | "video-pose";
+  | "video-pose"
+  | "skeletal-motion";
 
 export type RetargetTargetKind =
   | "vrm"

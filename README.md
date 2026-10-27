@@ -82,6 +82,11 @@ export function importMotionBytes(bytes: Uint8Array) {
 }
 ```
 
+Evaluated skeletal motion can be normalized and exported directly to VRMA/VMD
+through the IO entry. See
+[evaluated humanoid motion](https://github.com/krapnikkk/retarget/blob/main/docs/evaluated-humanoid-motion.md)
+for the serializable input contract and numeric bone layouts.
+
 ## Solve options
 
 `RetargetSolveOptions` (`DEFAULT_RETARGET_SOLVE_OPTIONS`) is passed as `solveOptions`

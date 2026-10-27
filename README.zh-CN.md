@@ -75,6 +75,8 @@ export function importMotionBytes(bytes: Uint8Array) {
 }
 ```
 
+已求值的骨骼动画可通过 IO 入口规范化后直接导出为 VRMA/VMD。可序列化输入契约和数字骨骼编号布局见[已求值人形动作](https://github.com/krapnikkk/retarget/blob/main/docs/evaluated-humanoid-motion.md)（英文）。
+
 ## 求解选项
 
 `RetargetSolveOptions`（默认值 `DEFAULT_RETARGET_SOLVE_OPTIONS`）作为 `solveOptions` 传给 `pipeline.run` / `bindMotionClipToAvatar`，或作为 `options` 传给 `solve-humanoid` 任务。最后两项可选，省略时输出不变。
