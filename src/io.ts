@@ -26,3 +26,6 @@ export { exportVMD } from "./export/vmd";
 export { exportVRMA } from "./export/vrma";
 export { parseMotionClip, serializeMotionClip } from "./retarget/motion-clip";
 export type { BoneNamingOptions } from "./export/bone-naming";
+
+export { importHumanoidSkeletalMotion } from "./import/skeletal-motion";
+export type { HumanoidSkeletalMotion } from "./import/skeletal-motion";

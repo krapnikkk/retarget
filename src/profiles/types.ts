@@ -4,6 +4,7 @@ import type { HumanoidBoneName } from "@/retarget";
 export type AxisName = "x" | "y" | "z" | "-x" | "-y" | "-z";
 
 export type RigProfileId =
+  | "skeletal-humanoid"
   | "mixamo"
   | "vrm-humanoid"
   | "vrm1-humanoid"

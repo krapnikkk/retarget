@@ -354,7 +354,9 @@ export function serializeVMDBoneMotion({
   boneFrameCount,
   boneFrames,
   modelName,
+  disableLegIK = false,
 }: {
+  disableLegIK?: boolean;
   boneFrameCount: number;
   boneFrames: Iterable<VMDBoneFrame>;
   modelName: string;
@@ -384,8 +386,18 @@ export function serializeVMDBoneMotion({
       `VMD bone frame iterator produced ${written} frames; expected ${boneFrameCount}.`,
     );
   }
-  for (let section = 0; section < 5; section += 1) {
+  for (let section = 0; section < 4; section += 1) {
     writer.writeUint32(0);
+  }
+  writer.writeUint32(disableLegIK ? 1 : 0);
+  if (disableLegIK) {
+    writer.writeUint32(0); // Apply FK from the first frame; no contact solving.
+    writer.writeUint8(1);
+    writer.writeUint32(4);
+    for (const name of ["左足ＩＫ", "右足ＩＫ", "左つま先ＩＫ", "右つま先ＩＫ"]) {
+      writer.writeFixedString(name, 20);
+      writer.writeUint8(0);
+    }
   }
   return writer.toUint8Array();
 }
@@ -570,6 +582,10 @@ function encodeVMDString(value: string) {
 }
 
 const SHIFT_JIS_BYTES: Readonly<Record<string, readonly number[]>> = {
+  "左足ＩＫ": [141,182,145,171,130,104,130,106],
+  "右足ＩＫ": [137,69,145,171,130,104,130,106],
+  "左つま先ＩＫ": [141,182,130,194,130,220,144,230,130,104,130,106],
+  "右つま先ＩＫ": [137,69,130,194,130,220,144,230,130,104,130,106],
   "センター": [131, 90, 131, 147, 131, 94, 129, 91],
   "上半身": [143, 227, 148, 188, 144, 103],
   "上半身2": [143, 227, 148, 188, 144, 103, 50],
