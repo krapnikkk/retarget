@@ -11,4 +11,3 @@ export * from "./reload-validation";
 export * from "./rig-motion-gltf";
 export * from "./vmd";
 export * from "./vrma";
-export * from "./zip";

@@ -6,7 +6,7 @@ import {
   readZipArchive,
   readZipBlobArchiveAsync,
   type ReadZipArchiveOptions,
-} from "@/export/zip";
+} from "@/archive/zip";
 import {
   createAssetResourceScope,
   collectTransferableAssetPackage,
@@ -19,7 +19,6 @@ import {
   resolveAssetPackageResource,
   type ReadableDirectoryHandle,
 } from "@/import/asset-package";
-import { detectVRMVersion } from "@/import/vrm-version";
 
 describe("ZIP asset package preflight", () => {
   it("enforces ZIP32 writer names and duplicate paths", async () => {
@@ -454,18 +453,6 @@ describe("ZIP asset package preflight", () => {
   });
 });
 
-describe("VRM version detection", () => {
-  it("distinguishes VRM 0.x, VRM 1.0, and unknown glTF", () => {
-    expect(detectVRMVersion(createGLB({ extensions: { VRM: {} } }))).toBe("0.x");
-    expect(detectVRMVersion(createGLB({ extensions: { VRMC_vrm: {} } }))).toBe(
-      "1.0",
-    );
-    expect(detectVRMVersion(createGLB({ asset: { version: "2.0" } }))).toBe(
-      "unknown",
-    );
-  });
-});
-
 function createDeflatedZip(name: string, content: string) {
   const nameBytes = new TextEncoder().encode(name);
   const raw = new TextEncoder().encode(content);
@@ -512,21 +499,6 @@ class RangeOnlyFile extends File {
     this.fullReads += 1;
     throw new Error("Whole-file ZIP reads are forbidden in this fixture.");
   }
-}
-
-function createGLB(json: Record<string, unknown>) {
-  const encoded = new TextEncoder().encode(JSON.stringify(json));
-  const paddedLength = Math.ceil(encoded.length / 4) * 4;
-  const bytes = new Uint8Array(20 + paddedLength);
-  bytes.fill(0x20, 20);
-  bytes.set(encoded, 20);
-  const view = new DataView(bytes.buffer);
-  view.setUint32(0, 0x46546c67, true);
-  view.setUint32(4, 2, true);
-  view.setUint32(8, bytes.length, true);
-  view.setUint32(12, paddedLength, true);
-  view.setUint32(16, 0x4e4f534a, true);
-  return bytes;
 }
 
 function createMinimalTexturedPMD() {

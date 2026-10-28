@@ -27,8 +27,6 @@ if (!certificationCase) {
 }
 
 const mode = process.argv[2];
-const binding = process.argv.includes("--binding");
-const bindingManifest = binding ? readJSON(path.join(root, "tests/binding/manifest.json")) : undefined;
 if (mode !== "--check" && mode !== "--update") {
   throw new Error("Use --check or --update.");
 }
@@ -38,12 +36,7 @@ const godot = findGodot();
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), "3dretarget-ecosystem-"));
 
 try {
-  if (binding) runPnpm(["exec", "vitest", "run", "tests/binding/ecosystem.test.ts"], {
-    ...process.env, RETARGET_BINDING_ARTIFACT_DIR: temporaryRoot,
-  });
-  for (const caseId of binding ? bindingManifest.cases.map((entry) => entry.id) : [pins.caseId]) {
-  const artifactPath = path.join(temporaryRoot, binding ? `${caseId}.animated.glb` : pins.artifactFilename);
-  if (!binding) {
+  const artifactPath = path.join(temporaryRoot, pins.artifactFilename);
   runPnpm(
     ["exec", "vitest", "run", "tests/certification/generate-ecosystem-artifact.test.ts"],
     {
@@ -51,7 +44,6 @@ try {
       RETARGET_ECOSYSTEM_ARTIFACT_PATH: artifactPath,
     },
   );
-  }
   const artifactBytes = readFileSync(artifactPath);
   const artifactSha256 = sha256(artifactBytes);
 
@@ -68,7 +60,6 @@ try {
       blenderResultPath,
       pins.blender.version,
       pins.blender.buildHash,
-      ...(binding ? ["--require-deformation"] : []),
     ],
     inheritedExecutionOptions(),
   );
@@ -117,12 +108,7 @@ try {
     }
   }
 
-  const receipt = binding ? {
-    schemaVersion: 1, caseId,
-    evidence: readJSON(path.join(temporaryRoot, `${caseId}.evidence.json`)),
-    requiredRuntimes: ["blender", "godot"],
-    runtimes: { blender: blenderResult, godot: godotResult }, status: "passed",
-  } : {
+  const receipt = {
     schemaVersion: 1,
     caseId: certificationCase.id,
     pipeline: {
@@ -152,7 +138,7 @@ try {
     status: "passed",
   };
   const serialized = stableJSON(receipt);
-  const relativeReceiptPath = binding ? `tests/binding/receipts/${caseId}.json` : pins.receiptPath;
+  const relativeReceiptPath = pins.receiptPath;
   const receiptPath = path.join(root, ...relativeReceiptPath.split("/"));
 
   if (mode === "--update") {
@@ -168,14 +154,13 @@ try {
     const current = readFileSync(receiptPath, "utf8");
     if (current !== serialized) {
       throw new Error(
-        `Pinned ecosystem receipt is stale; run pnpm ${binding ? "update:binding:ecosystem" : "update:ecosystem-receipt"}.`,
+        "Pinned ecosystem receipt is stale; run pnpm update:ecosystem-receipt.",
       );
     }
     console.log(
       `[ok] verified Blender ${blenderResult.version} and Godot ${godotResult.version}`,
     );
     console.log(`[ok] artifact sha256=${artifactSha256}`);
-  }
   }
 } finally {
   const resolvedTemporary = path.resolve(temporaryRoot);

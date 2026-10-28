@@ -6,7 +6,7 @@ import {
   authorCanonicalGLBAsPMX,
   authorCanonicalGLBAsPMXBundle,
 } from "@/export/pmx-authoring";
-import { readZipArchive } from "@/export/zip";
+import { readZipArchive } from "@/archive/zip";
 import { REQUIRED_VRM_BONES, type HumanoidBoneName } from "@/retarget";
 
 const MMD_BONE_NAMES = MMD_EXPORT_BONE_NAMES as Partial<

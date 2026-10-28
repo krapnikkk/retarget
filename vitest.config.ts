@@ -6,10 +6,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 // - slow: CPU-heavy end-to-end fixtures (real meshes, CLI subprocesses).
 // - certification: byte-exact receipts and golden locks tied to pinned
 //   ecosystem evidence; run before release, not on every change.
-const certificationTests = [
-  "tests/certification/**/*.test.ts",
-  "tests/binding/ecosystem.test.ts",
-];
+const certificationTests = ["tests/certification/**/*.test.ts"];
 const slowTests = [
   "tests/binding/humanoid-binding.test.ts",
   "tests/rigs/mesh2motion-acceptance.test.ts",

@@ -4,7 +4,7 @@
 
 本 v1 文档是规范的**人形**契约。已绑定骨架的非人形 GLB 使用 `docs/non-humanoid-retargeting-plan.md` 定义的版本化 Rig Definition、目录骨架元数据及 Rig Motion JSON v2。不要把尾巴、翅膀或动物腿加入 v1 人形骨骼列表。
 
-这是 SDK 自有转换和验证的受控输入契约。每个获准角色和动作固定资源在进入规范管线前，必须是符合本文的 **GLB**。单一输入约定让所有导出适配器依赖同一组显式假设。
+这是 SDK 自有转换和验证的受控输入契约。每个获准角色和动作固定资源在进入规范管线前，必须是符合本文的 **GLB**。单一输入约定让所有导出器依赖同一组显式假设。
 
 这不是新文件格式，也不是适配器注册表中的新 `AvatarFormatId`/`MotionFormatId`。它是现有 `gltf-humanoid` / `gltf-animation` 导入契约的严格子集，供 Blender 导出脚本和固定资源审查使用统一检查表。
 
@@ -22,7 +22,7 @@
 
 ## 必需与可选骨骼
 
-所有骨骼名来自 `src/retarget/types.ts` 的 `HUMANOID_BONES`（共 55 根）。其中只有一部分承载核心语义；求解器和所有导出适配器会对其余骨骼优雅降级。
+所有骨骼名来自 `src/retarget/types.ts` 的 `HUMANOID_BONES`（共 55 根）。其中只有一部分承载核心语义；求解器和所有导出器会对其余骨骼优雅降级。
 
 **必需**（必须存在且参与蒙皮；与 `REQUIRED_VRM_BONES` 一致）：
 

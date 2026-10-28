@@ -10,7 +10,7 @@ tails, wings, or animal legs to the v1 humanoid bone list.
 This is the controlled input contract for SDK-owned conversion and validation.
 Every admitted character and motion fixture must be a **GLB** conforming to this
 spec before it enters the canonical pipeline. One input convention means every
-export adapter can rely on the same explicit assumptions.
+exporter can rely on the same explicit assumptions.
 
 This is not a new file format or a new `AvatarFormatId`/`MotionFormatId` in
 the adapter registry. It is a stricter subset of the existing
@@ -45,7 +45,7 @@ each bone to itself with no renaming). Exporting to this convention means:
 ## Required vs. optional bones
 
 All bone names come from `HUMANOID_BONES` in `src/retarget/types.ts`
-(55 total). A subset is load-bearing; the solver and every export adapter
+(55 total). A subset is load-bearing; the solver and every exporter
 degrade gracefully around the rest.
 
 **Required** (must be present and skinned; matches `REQUIRED_VRM_BONES`):

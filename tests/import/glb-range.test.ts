@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { loadCanonicalAvatarRig } from "@/browser/avatar-rig";
 import { readGLBRangeInfo } from "@/import/glb-range";
-import { detectVRMVersionFromFile } from "@/import/vrm-version";
 import { readGLTFStructuralDocument } from "@/import/gltf-structural-document";
 import { inspectGLTFRig } from "@/rigs";
 
@@ -16,10 +15,9 @@ describe("range-loaded large GLB and VRM assets", () => {
     expect(source.fullReads).toBe(0);
   });
 
-  it("detects VRM and creates a structural preview rig without materializing the BIN chunk", async () => {
+  it("creates a structural preview rig without materializing the BIN chunk", async () => {
     const source = createRangeOnlyVRM(478.4 * 1024 * 1024);
 
-    await expect(detectVRMVersionFromFile(source.file)).resolves.toBe("1.0");
     const rig = await loadCanonicalAvatarRig(source.file, "vrm");
 
     expect(rig.structuralOnly).toBe(true);
@@ -48,23 +46,6 @@ describe("range-loaded large GLB and VRM assets", () => {
     expect(inspection.nodesByRole.has("hips")).toBe(true);
     expect(inspection.nodesByRole.has("head")).toBe(true);
     expect(source.fullReads).toBe(0);
-  });
-
-  it("does not reject large textual input using a library-owned size policy", async () => {
-    let fullReads = 0;
-    const file = {
-      size: 100 * 1024 * 1024,
-      slice() {
-        return new Blob(['{"asset":{"version":"2.0"}}']);
-      },
-      async arrayBuffer() {
-        fullReads += 1;
-        return new TextEncoder().encode('{"asset":{"version":"2.0"}}').buffer;
-      },
-    } as unknown as Blob;
-
-    await expect(detectVRMVersionFromFile(file)).resolves.toBe("unknown");
-    expect(fullReads).toBe(1);
   });
 });
 

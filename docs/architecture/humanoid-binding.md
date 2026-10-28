@@ -67,7 +67,7 @@ Public errors distinguish `BINDING_INPUT_UNSUPPORTED`, `BINDING_LANDMARKS_REQUIR
 
 ## Evidence and issue #6 audit
 
-The [fixture manifest and evidence guide](../../tests/binding/README.md) record rights, derivation, quality limits and exact ecosystem receipts. Both T-pose paths pass reload, independent five-pose vertex comparison, retargeted animation checks, and pinned Blender 5.2.0 LTS/Godot 4.7.1 import/playback. Blender also samples evaluated vertices. Godot is a headless bone-playback check, not GPU rendering evidence. The derived A-pose has local quality/semantic tests, not separate ecosystem certification. All API outputs remain **experimental**.
+The [fixture manifest and evidence guide](../../tests/binding/README.md) record rights, derivation and quality limits. Both T-pose paths pass reload, independent five-pose vertex comparison and quality tests; the generated target also passes retargeted animation reload and semantic checks. The derived A-pose has local quality/semantic tests. All API outputs remain **experimental**, so there are no byte-exact receipts or external-runtime runs.
 
 | Acceptance | Evidence |
 | --- | --- |
@@ -77,9 +77,9 @@ The [fixture manifest and evidence guide](../../tests/binding/README.md) record 
 | Real skin and bind surface | All vertices at five poses, valid weights/joints/IBMs, corruption counterexample. |
 | Resource preservation | Transformed shared instances, multi-primitives, embedded texture, attribute-loss rejection. |
 | Quality distinct from validity | Shoulder/elbow/hip/knee artist-reference metrics and failing all-hips counterexample. |
-| Explicit target and ecosystem | Existing retarget pipeline, native browser vertex playback, two pinned DCC/engine receipts. |
+| Explicit target | Existing retarget pipeline; animated output passes structural reload and semantic comparison. |
 | Conservative assurance | Experimental API results; exact-case evidence does not promote unrelated inputs. |
 | Negative paths | Malformed buffers, extensions, transforms, cycles, degenerate/unreferenced geometry, constraints, budgets, stale edits and running cancellation. Disconnected surfaces are accepted with diagnostics. |
-| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution; separate native Chromium run including 100k-vertex call-return, first-progress, resolve and total timing plus a main-thread heartbeat gate. |
+| Package and execution | Installed-tarball declarations/entry tests, Node and shipped browser worker execution. |
 
-Run `pnpm test:slow` while developing binding, `pnpm verify` for all repository gates, and `pnpm verify:binding:ecosystem` for external runtimes. Regenerated receipts/locks may land with the change that caused them. No consumer repository is a gate.
+Run `pnpm test:slow` while developing binding, `pnpm verify` for all repository gates. Binding is experimental, so it has no receipts or external-runtime runs. No consumer repository is a gate.

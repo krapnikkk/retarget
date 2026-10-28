@@ -1,8 +1,9 @@
 # Humanoid binding evidence
 
-Both cases in `manifest.json` derive from the existing, SHA-256 pinned Quaternius
-CC0 mannequin. The original `SOURCE.txt` and `LICENSE.txt` remain beside that
-asset. No downloaded corpus or model weights are added to the package.
+The bare-landmark and existing-rig cases derive from the existing, SHA-256
+pinned Quaternius CC0 mannequin recorded in `manifest.json`. The original
+`SOURCE.txt` and `LICENSE.txt` remain beside that asset. No downloaded corpus or
+model weights are added to the package.
 
 `fixtures.ts` removes skins, JOINTS/WEIGHTS attributes, animations and orphaned
 accessors. The bare case also removes the old skeleton after preserving mesh
@@ -19,8 +20,7 @@ as an experimental draft, not certified placement quality.
 
 The A-pose regression rotates the source artist upper arms by 0.55 radians,
 bakes positions/normals and updates inverse binds before removing the source
-skin. Its derived reference is used only for quality comparison; this additional
-case has not received the two pinned external-runtime receipts.
+skin. Its derived reference is used only for quality comparison.
 
 ## Independent evidence
 
@@ -34,19 +34,12 @@ case has not received the two pinned external-runtime receipts.
 - A deliberately bad, fully normalized all-hips skin must fail the quality
   gate. Tests separately cover constraints, stale edits, geometry preservation,
   malformed inputs and edited-rig invalidation of previously solved motion.
-- `ecosystem.test.ts` binds the pinned walk motion to each generated target and
-  independently reloads/compares the animated output before external import.
-- `pnpm verify:binding:ecosystem` repeats generation and verifies the exact
-  Blender/Godot versions and build hashes in `scripts/ecosystem/runtime-pins.json`.
-  Blender also evaluates mesh deformation. Godot verifies import and sampled
-  bone playback; this headless gate does not claim GPU rendering quality.
-- `pnpm verify:binding:browser` serves a local built-public-entry harness. Press
-  **Run browser checks**. It uses native module Workers, compares Node/browser
-  GLB bytes, tests cancellation/deadlines/ownership, retargets the generated
-  target, and checks Three.js animated vertices and a WebGL preview. Tarball
-  isolation and consumer declarations are checked separately by `verify:package`.
+- The pinned walk motion is retargeted to the generated target, and the
+  animated output passes structural reload and semantic comparison.
+- `verify:package` runs binding through the installed tarball's Node and
+  browser-Worker entries.
 
-Generate new pinned external receipts with `pnpm update:binding:ecosystem`.
-Commit generated receipts separately from handwritten code. Source algorithms
-and API results stay **experimental**; passing these two cases does not certify
-all A/T poses, clothing, disconnected surfaces, fingers or arbitrary characters.
+The capability is **experimental**, so it has structural and semantic tests
+only: no byte-exact receipts or external-runtime runs. Passing these cases does
+not certify all A/T poses, clothing, disconnected surfaces, fingers or
+arbitrary characters.

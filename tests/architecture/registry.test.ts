@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findAvatarImportAdapter } from "@/adapters/avatar";
-import {
-  getAvatarExportAdapter,
-  getMotionExportAdapter,
-} from "@/adapters/export";
 import { findMotionImportAdapter } from "@/adapters/motion";
 import { getRetargetPipeline, RETARGET_PIPELINES } from "@/pipelines";
-import { createRetargetedMotionClipStub } from "../fixtures/retarget-stub";
 
 describe("adapter registries", () => {
   const file = (name: string, content: BlobPart = "") =>
@@ -236,65 +231,6 @@ describe("adapter registries", () => {
     ).resolves.toMatchObject({
       id: "generic-fbx-avatar",
       profileId: "generic-fbx-humanoid",
-    });
-  });
-
-  it("exports motion JSON through a format adapter", async () => {
-    const adapter = getMotionExportAdapter("motion-json");
-    expect(adapter).toBeTruthy();
-
-    const bytes = await adapter!.exportMotion(
-      createRetargetedMotionClipStub({
-        vrmFile: { name: "avatar.vrm" },
-        fbxFile: { name: "idle.fbx" },
-      }),
-    );
-    const json = new TextDecoder().decode(bytes);
-
-    expect(JSON.parse(json)).toMatchObject({
-      schemaVersion: 2,
-      source: {
-        kind: "mixamo-fbx",
-      },
-    });
-  });
-
-  it("registers Phase 4 export adapters", () => {
-    expect(getMotionExportAdapter("gltf-animation")).toMatchObject({
-      id: "gltf-animation",
-      maturity: "active",
-    });
-    expect(getMotionExportAdapter("bvh")).toMatchObject({
-      id: "bvh",
-      maturity: "active",
-    });
-    expect(getMotionExportAdapter("vmd")).toMatchObject({
-      id: "vmd",
-      maturity: "active",
-    });
-    expect(getAvatarExportAdapter("animated-glb")).toMatchObject({
-      id: "animated-glb",
-      maturity: "active",
-    });
-    expect(getAvatarExportAdapter("baked-vrm")).toMatchObject({
-      id: "baked-vrm",
-      maturity: "active",
-    });
-    expect(getMotionExportAdapter("fbx-animation")).toMatchObject({
-      maturity: "active",
-    });
-    expect(getAvatarExportAdapter("vrm-external-vrma")).toMatchObject({
-      label: "VRM + external VRMA",
-      maturity: "active",
-      extension: ".zip",
-    });
-    expect(getAvatarExportAdapter("fbx-avatar-animation")).toMatchObject({
-      label: "Animated FBX",
-      maturity: "active",
-    });
-    expect(getAvatarExportAdapter("animated-pmx")).toMatchObject({
-      label: "PMX Motion Morphs",
-      maturity: "experimental",
     });
   });
 });

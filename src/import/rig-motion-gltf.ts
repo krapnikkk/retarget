@@ -5,7 +5,6 @@ import {
   type RigMotionTrack,
   type RigMotionV2,
 } from "@/rig-motion";
-import { readGLTFDocument } from "./gltf-document";
 import { readGLTFAnimationTrack } from "./gltf-interpolation";
 
 export type RigMotionImportOptions = RigInspectionOptions & {
@@ -18,16 +17,6 @@ export type RigMotionAction = {
   index: number;
   name: string;
 };
-
-export async function importRigMotionGLTF(
-  bytes: Uint8Array,
-  filename = "motion.glb",
-  options: RigMotionImportOptions = {},
-  sourceFile?: File,
-): Promise<RigMotionV2> {
-  const document = await readGLTFDocument(bytes, sourceFile);
-  return importRigMotionDocument(document, filename, options);
-}
 
 export function importRigMotionDocument(
   document: Document,

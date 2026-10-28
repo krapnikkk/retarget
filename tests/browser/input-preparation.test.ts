@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createZipArchive } from "@/export/zip";
+import { createZipArchive } from "@/archive/zip";
 import {
   prepareBrowserAssetInput,
 } from "@/browser/input-preparation";

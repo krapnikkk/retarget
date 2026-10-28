@@ -67,7 +67,7 @@ Node 使用 `@krapnik/retarget/node` 的 `runNodeToolJob`，返回 `{ ok, result
 
 ## 证据与 issue #6 逐项审计
 
-[固定夹具与证据说明](../../../tests/binding/README.md)记录授权、派生、质量阈值及生态回执。两条 T-pose 流程通过重载、五姿势独立顶点比较、重定向动画检查，以及固定 build hash 的 Blender 5.2.0 LTS/Godot 4.7.1 导入播放。Blender 另采样求值顶点；Godot 是无头骨骼播放，不代表 GPU 渲染。派生 A-pose 通过本地质量/语义测试，无单独生态认证。所有 API 输出仍为 **experimental**。
+[固定夹具与证据说明](../../../tests/binding/README.md)记录授权、派生和质量阈值。两条 T-pose 流程通过重载、五姿势独立顶点比较和质量测试；生成的目标还通过重定向动画的重载与语义检查。派生 A-pose 通过本地质量/语义测试。所有 API 输出仍为 **experimental**，因此没有字节级回执或外部运行时验证。
 
 | 验收项 | 证据 |
 | --- | --- |
@@ -77,9 +77,9 @@ Node 使用 `@krapnik/retarget/node` 的 `runNodeToolJob`，返回 `{ ok, result
 | 真实 skin/绑定表面 | 全顶点五姿势、合法权重/索引/IBM、损坏反例。 |
 | 资源保留 | 带变换共享实例、多 primitive、嵌入纹理、属性丢失检测。 |
 | 质量与合法性分开 | 肩/肘/髋/膝艺术家权重对比，全髋绑定失败反例。 |
-| 显式目标/生态 | 既有重定向、原生浏览器顶点播放、两份固定 DCC/引擎回执。 |
+| 显式目标 | 既有重定向流水线；动画输出通过结构重载和语义比较。 |
 | 保守保证等级 | API 保持实验性，具体案例证据不扩散到其他输入。 |
 | 负向路径 | 畸形缓冲、扩展、变换、循环、退化/未引用几何、约束、预算、过期编辑及执行中取消；断开表面带诊断处理。 |
-| 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker，以及包含 10 万顶点快照调用返回、首次进度、完成、总耗时分段和主线程 heartbeat 门禁的单独原生 Chromium 实测。 |
+| 打包/执行 | 真正 tarball 声明/入口、Node/打包浏览器 Worker。 |
 
-开发 binding 时运行 `pnpm test:slow`，`pnpm verify` 运行全仓门禁，`pnpm verify:binding:ecosystem` 重跑外部运行时。重新生成的回执/锁可以与引起变化的改动一起提交，任何消费端仓库均不作为门禁。
+开发 binding 时运行 `pnpm test:slow`，`pnpm verify` 运行全仓门禁。binding 是 experimental，因此没有回执或外部运行时验证；任何消费端仓库均不作为门禁。

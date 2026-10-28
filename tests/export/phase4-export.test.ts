@@ -7,10 +7,7 @@ import {
   writeVRM,
 } from "gltf-transform-vrm-extensions";
 import { describe, expect, it, vi } from "vitest";
-import {
-  getAvatarExportAdapter,
-  getMotionExportAdapter,
-} from "@/adapters/export";
+import { createZipArchive } from "@/archive/zip";
 import {
   validateAvatarExportReload,
   validateMotionExportReload,
@@ -19,11 +16,14 @@ import {
 import {
   createBVHText,
   createGLTFAnimationDocument,
-  createZipArchive,
   createVRMADocument,
   exportAnimatedGLB,
+  exportAnimatedPMX,
+  exportBakedVRM,
   exportBVH,
   exportFBXAnimation,
+  exportFBXAvatarAnimation,
+  exportGLTFAnimation,
   exportPairedAvatarMotionZip,
   exportVMD,
   type PairedMotionExportFormatId,
@@ -80,13 +80,11 @@ type WritableVRMExtension = {
   humanoidBoneNodes: Map<string, GltfNode>;
 };
 
-describe("Phase 4 export adapters", () => {
+describe("Phase 4 exports", () => {
   it("exports a glTF/GLB animation document", async () => {
-    const adapter = getMotionExportAdapter("gltf-animation");
-    const bytes = await adapter!.exportMotion(createClip());
+    const bytes = await exportGLTFAnimation(createClip());
     const document = await new WebIO().readBinary(bytes);
 
-    expect(adapter).toMatchObject({ maturity: "active" });
     expect(bytes.byteLength).toBeGreaterThan(100);
     expect(document.getRoot().listAnimations()).toHaveLength(1);
     await expect(validateMotionExportReload("gltf-animation", bytes)).resolves.toMatchObject({
@@ -95,8 +93,7 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("exports BVH motion that can be imported again", async () => {
-    const adapter = getMotionExportAdapter("bvh");
-    const bytes = await adapter!.exportMotion(createClip());
+    const bytes = await exportBVH(createClip());
     const text = new TextDecoder().decode(bytes);
     const imported = importBVH(bytes, "roundtrip.bvh");
 
@@ -277,7 +274,7 @@ describe("Phase 4 export adapters", () => {
       restHipsHeight: 0.9,
       rootTranslationSpace: "offset-meters",
     };
-    const bytes = await getMotionExportAdapter("gltf-animation")!.exportMotion(clip);
+    const bytes = await exportGLTFAnimation(clip);
     const document = await new WebIO().readBinary(bytes);
     const hips = document
       .getRoot()
@@ -393,15 +390,13 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("exports an animated GLB by injecting clip animation into an avatar file", async () => {
-    const adapter = getAvatarExportAdapter("animated-glb");
     const avatarFile = new File([await createMinimalAvatarGLB()], "avatar.glb");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportAnimatedGLB({
       avatarFile,
       clip: await createClipForAvatar(avatarFile),
     });
     const document = await new WebIO().readBinary(bytes);
 
-    expect(adapter).toMatchObject({ maturity: "active" });
     expect(document.getRoot().listAnimations()).toHaveLength(1);
     expect(document.getRoot().listNodes().some((node) => node.getName() === "hips")).toBe(
       true,
@@ -464,9 +459,8 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("exports an animated VRM while preserving VRM extensions", async () => {
-    const adapter = getAvatarExportAdapter("baked-vrm");
     const avatarFile = new File([await createMinimalVRMBlobPart()], "avatar.vrm");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportBakedVRM({
       avatarFile,
       clip: await createClipForAvatar(avatarFile, "vrm"),
     });
@@ -474,7 +468,6 @@ describe("Phase 4 export adapters", () => {
       .registerExtensions(VRMC_VRM_EXTENSIONS)
       .readBinary(bytes);
 
-    expect(adapter).toMatchObject({ maturity: "active" });
     expect(isVRMDocument(document)).toBe(true);
     expect(document.getRoot().listAnimations()).toHaveLength(1);
     await expect(validateAvatarExportReload("baked-vrm", bytes)).resolves.toMatchObject({
@@ -484,16 +477,14 @@ describe("Phase 4 export adapters", () => {
 
 
   it("bundles the original VRM and a reloadable VRMA through vrm-external-vrma", async () => {
-    const adapter = getAvatarExportAdapter("vrm-external-vrma");
     const avatarFile = new File([await createMinimalVRMBlobPart()], "avatar.vrm");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportPairedAvatarMotionZip({
       avatarFile,
-      avatarFormatId: "vrm",
       clip: await createClipForAvatar(avatarFile, "vrm"),
+      motionFormat: "vrma",
     });
     const entries = parseStoredZip(bytes);
 
-    expect(adapter).toMatchObject({ maturity: "active", extension: ".zip" });
     expect(new TextDecoder().decode(entries.get("avatar.vrm")!.slice(0, 4))).toBe(
       "glTF",
     );
@@ -501,20 +492,6 @@ describe("Phase 4 export adapters", () => {
     await expect(
       validateAvatarExportReload("vrm-external-vrma", bytes),
     ).resolves.toMatchObject({ ok: true });
-  });
-
-  it("rejects vrm-external-vrma export without a VRM avatar file", async () => {
-    const adapter = getAvatarExportAdapter("vrm-external-vrma");
-
-    await expect(
-      adapter!.exportAvatar({ avatarFile: null, clip: createClip() }),
-    ).rejects.toThrow(/VRM avatar/);
-    await expect(
-      adapter!.exportAvatar({
-        avatarFile: new File(["not-a-vrm"], "avatar.glb"),
-        clip: createClip(),
-      }),
-    ).rejects.toThrow(/VRM avatar/);
   });
 
   it("converts PMX and PMD avatars into GLB documents with skeleton and mesh data", async () => {
@@ -696,22 +673,16 @@ describe("Phase 4 export adapters", () => {
     expect(semantic.metrics.maxRootDisplacementErrorMeters).toBeLessThan(0.001);
   });
 
-  it("requires an avatar for the active FBX avatar animation adapter", async () => {
-    const adapter = getAvatarExportAdapter("fbx-avatar-animation");
-    expect(adapter).toMatchObject({
-      label: "Animated FBX",
-      maturity: "active",
-    });
-    await expect(adapter!.exportAvatar({
+  it("requires an avatar for the FBX avatar animation export", async () => {
+    await expect(exportFBXAvatarAnimation({
       avatarFormatId: "mixamo-rigged",
       clip: createClip(),
     })).rejects.toThrow(/requires an avatar file/);
   });
 
   it("embeds avatar mesh and skin in the FBX avatar export", async () => {
-    const adapter = getAvatarExportAdapter("fbx-avatar-animation");
     const avatarFile = new File([createMinimalPMXAvatar()], "avatar.pmx");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportFBXAvatarAnimation({
       avatarFile,
       avatarFormatId: "mmd-model",
       clip: await createClipForAvatar(avatarFile, "mmd-model"),
@@ -736,9 +707,8 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("embeds baseColor textures in the FBX avatar export", async () => {
-    const adapter = getAvatarExportAdapter("fbx-avatar-animation");
     const avatarFile = new File([await createMinimalTexturedAvatarGLB()], "avatar.glb");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportFBXAvatarAnimation({
       avatarFile,
       clip: await createClipForAvatar(avatarFile),
     });
@@ -761,9 +731,8 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("exports a reloadable FBX scene from a VRM avatar", async () => {
-    const adapter = getAvatarExportAdapter("fbx-avatar-animation");
     const avatarFile = new File([await createMinimalVRMBlobPart()], "avatar.vrm");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportFBXAvatarAnimation({
       avatarFile,
       avatarFormatId: "vrm",
       clip: await createClipForAvatar(avatarFile, "vrm"),
@@ -777,20 +746,15 @@ describe("Phase 4 export adapters", () => {
   });
 
   it("exports an animated PMX with binary bone morph frames", async () => {
-    const adapter = getAvatarExportAdapter("animated-pmx");
     const avatarBytes = createMinimalPMXAvatar();
     const avatarFile = new File([avatarBytes], "avatar.pmx");
-    const bytes = await adapter!.exportAvatar({
+    const bytes = await exportAnimatedPMX({
       avatarFile,
       avatarFormatId: "mmd-model",
       clip: createClipForPMX(avatarBytes),
     });
     const summary = readAnimatedPMXMotionSummary(bytes);
 
-    expect(adapter).toMatchObject({
-      label: "PMX Motion Morphs",
-      maturity: "experimental",
-    });
     expect(new TextDecoder().decode(bytes.slice(0, 4))).toBe("PMX ");
     expect(summary.morphCount).toBeGreaterThan(0);
     expect(summary.morphNames[0]).toBe("3DR Frame 0000");

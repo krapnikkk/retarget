@@ -1,5 +1,4 @@
 import {
-  Box3,
   Bone,
   Group,
   Matrix4,
@@ -636,30 +635,4 @@ function estimateRestHipsHeight(
     return new Vector3().setFromMatrixPosition(object.matrixWorld).y;
   });
   return height === undefined ? undefined : Number(height.toFixed(6));
-}
-
-export function fitObjectToPreview(object: Object3D) {
-  object.position.set(0, 0, 0);
-  object.scale.setScalar(1);
-  object.updateMatrixWorld(true);
-
-  const initialBox = new Box3().setFromObject(object);
-  if (initialBox.isEmpty()) {
-    return 1;
-  }
-
-  const size = initialBox.getSize(new Vector3());
-  if (size.y > 0) {
-    const scale = Math.min(Math.max(1.65 / size.y, 0.15), 3);
-    object.scale.setScalar(scale);
-    object.updateMatrixWorld(true);
-  }
-
-  const fittedBox = new Box3().setFromObject(object);
-  const center = fittedBox.getCenter(new Vector3());
-  object.position.x -= center.x;
-  object.position.y -= fittedBox.min.y;
-  object.position.z -= center.z;
-  object.updateMatrixWorld(true);
-  return object.scale.x;
 }

@@ -1,7 +1,6 @@
 import { RetargetError } from "@/retarget/errors";
 
 export const LARGE_ASSET_RANGE_LOAD_THRESHOLD_BYTES = 64 * 1024 * 1024;
-export const PREVIEW_EAGER_RELEASE_THRESHOLD_BYTES = 32 * 1024 * 1024;
 
 export function isRangeLoadableGLB(file: Pick<File, "name" | "size">) {
   return (

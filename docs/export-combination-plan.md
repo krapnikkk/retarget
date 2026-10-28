@@ -3,14 +3,14 @@
 [简体中文](zh-CN/export-combination-plan.md)
 
 This document describes dispatch and evidence boundaries. It deliberately does
-not duplicate the live format or adapter matrices.
+not duplicate the live format or pipeline matrices.
 
 ## Current-state sources
 
 | Concern | Authoritative source |
 | --- | --- |
 | Format catalog and assurance | `src/formats/catalog.ts` |
-| Callable export adapters | `src/adapters/export/index.ts` |
+| Export dispatch | `src/jobs/execute-retarget-job.ts` |
 | Humanoid motion/avatar pairings | `src/pipelines/registry.ts` |
 | Rig-family output capabilities | `src/rigs/capabilities.ts` |
 | Humanoid certification cases | `src/certification/golden-motion-v1.json` |
@@ -56,7 +56,7 @@ action/target pairs do not generalize to every rigged glTF pair.
 - Motion-only exporters consume canonical or retargeted motion and do not
   invent an avatar.
 - Avatar exporters that promise a combined scene require a target avatar and a
-  bound retargeted motion unless their adapter contract explicitly says
+  bound retargeted motion unless their exporter contract explicitly says
   otherwise.
 - Standalone character FBX is intentionally unavailable while the active FBX
   scene writer requires bound motion.
@@ -101,6 +101,6 @@ promote assurance.
 
 ## Maintenance rule
 
-When an export changes, update its registry, adapter, compatibility selector,
+When an export changes, update its registry, exporter, compatibility selector,
 tests, and certification manifest. Remove a completed item from this document;
 do not append a dated “implemented” section or a second capability matrix.

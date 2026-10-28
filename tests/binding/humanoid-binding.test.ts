@@ -5,6 +5,7 @@ import { runRetargetJobInline } from "@/jobs/browser-retarget-job";
 import { bindMotionClipToAvatar } from "@/browser/avatar-target-pipeline";
 import { exportAnimatedGLB } from "@/export/avatar-glb";
 import { exportAnimatedGLBStream } from "@/export/streamed-avatar-glb";
+import { validateAvatarExportReload, validateAvatarExportSemantics } from "@/export/reload-validation";
 import { processHumanoidBinding } from "@/io";
 import { readBindingGLB, readBindingContainer } from "@/import/binding-glb";
 import { DEFAULT_PARSE_BUDGET } from "@/import/parse-budget";
@@ -136,6 +137,9 @@ describe("humanoid binding with the pinned CC0 mannequin", { timeout: 30_000 }, 
     const animated = await exportAnimatedGLB({ avatarFile, avatarFormatId: "gltf-humanoid", clip });
     const doc = await new WebIO().readBinary(animated);
     expect(doc.getRoot().listAnimations()[0].listChannels().length).toBeGreaterThan(20);
+    expect((await validateAvatarExportReload("animated-glb", animated)).ok).toBe(true);
+    const semantic = await validateAvatarExportSemantics("animated-glb", animated, clip);
+    expect(semantic.ok, JSON.stringify(semantic)).toBe(true);
     await expect(exportAnimatedGLBStream({ avatarFile, clip })).resolves.toBeDefined();
     const head = skinned.joints.find((joint) => joint.bone === "head")!;
     const edited = await processHumanoidBinding(fixture.bytes, { operation: "edit-rig", snapshot: skinned, expectedRevision: skinned.revision,

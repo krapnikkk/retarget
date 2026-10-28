@@ -411,15 +411,6 @@ export function createTransferableAssetPackageResolver(
   };
 }
 
-export function collectMMDPackageResourceUris(
-  bytes: Uint8Array,
-  filename: string,
-) {
-  return filename.toLowerCase().endsWith(".pmd")
-    ? collectPMDTextureUris(bytes)
-    : collectPMXTextureUris(bytes);
-}
-
 export async function getGLTFPackageResources(
   file: File,
   json: Record<string, unknown>,

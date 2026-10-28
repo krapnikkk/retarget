@@ -1,4 +1,3 @@
-import type { AvatarFormatId } from "@/formats";
 import type { HumanoidBoneName } from "@/retarget";
 
 export type BoneNamingProfileId =
@@ -188,19 +187,4 @@ export function resolveExportBoneName(
   profile: BoneNamingProfileId = "canonical",
 ) {
   return PROFILE_EXPORT_NAMES[profile][bone] ?? bone;
-}
-
-export function recommendBoneNamingProfileForAvatar(
-  avatarFormatId: AvatarFormatId | null | undefined,
-): BoneNamingProfileId {
-  if (avatarFormatId === "mixamo-rigged") {
-    return "mixamo";
-  }
-  if (avatarFormatId === "reallusion" || avatarFormatId === "generic-fbx-avatar") {
-    return "actorcore";
-  }
-  if (avatarFormatId === "mmd-model") {
-    return "mmd";
-  }
-  return "canonical";
 }

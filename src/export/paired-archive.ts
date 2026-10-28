@@ -16,7 +16,7 @@ import { exportGLTFAnimation } from "./gltf-animation";
 import { validateMotionExportReload } from "./reload-validation";
 import { exportVMD } from "./vmd";
 import { exportVRMA } from "./vrma";
-import { createZipArchive, createZipArchiveBlob } from "@/archive/zip";
+import { createZipArchive } from "@/archive/zip";
 import {
   readBlobArrayBufferWithSignal,
   readFileArrayBufferWithSignal,
@@ -97,52 +97,6 @@ export async function exportPairedAvatarMotionZip({
   return createZipArchive([
     ...sourceEntries,
     { name: motionName, bytes: motionBytes },
-  ]);
-}
-
-export async function exportPairedAvatarMotionZipBlob({
-  avatarFile,
-  boneNamingProfile,
-  clip,
-  motionFormat,
-}: PairedAvatarMotionZipInput) {
-  await assertPairedAvatarIdentity(avatarFile, clip);
-  const options: BoneNamingOptions = { boneNamingProfile };
-  const motionBytes = await exportPairedMotion(clip, motionFormat, options);
-  const validation = await validateMotionExportReload(motionFormat, motionBytes);
-  if (!validation.ok) {
-    throw new Error(
-      validation.issue ?? "Paired motion export reload validation failed.",
-    );
-  }
-  const baseName = sanitizeFilename(clip.name || "retargeted-motion");
-  const packageEntries = listAssetPackageEntries(avatarFile);
-  if (packageEntries) {
-    const motionName = createPackageMotionName(
-      packageEntries.map((entry) => entry.name),
-      baseName,
-      getMotionExtension(motionFormat),
-    );
-    return createZipArchiveBlob([
-      ...packageEntries.map((entry) => ({
-        name: entry.name,
-        blob: entry.blob,
-      })),
-      {
-        name: motionName,
-        blob: new Blob([motionBytes.slice().buffer as ArrayBuffer]),
-      },
-    ]);
-  }
-  return createZipArchiveBlob([
-    {
-      name: `avatar${getFileExtension(avatarFile.name)}`,
-      blob: avatarFile,
-    },
-    {
-      name: `${baseName}${getMotionExtension(motionFormat)}`,
-      blob: new Blob([motionBytes.slice().buffer as ArrayBuffer]),
-    },
   ]);
 }
 
