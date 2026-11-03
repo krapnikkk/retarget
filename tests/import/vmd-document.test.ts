@@ -8,7 +8,7 @@ import {
   serializeVMDDocument,
   type VMDDocument,
 } from "@/mmd/vmd-document";
-import { importVMD } from "@/import/vmd";
+import { importVMD, preflightVMD } from "@/import/vmd";
 import { exportVMD } from "@/export/vmd";
 import { importVRMA } from "@/import/vrma";
 import { exportVRMA } from "@/export/vrma";
@@ -182,6 +182,57 @@ describe("VMD document codec", () => {
     expect(comparison.metrics.maxRotationErrorDegrees).toBeLessThan(0.1);
     expect(comparison.metrics.maxRootDisplacementErrorMeters).toBeLessThan(0.001);
     expect(comparison.metrics.maxRootDirectionErrorDegrees).toBeLessThan(0.1);
+  });
+
+  it("preflights structure, counts, and duration without parsing frames", () => {
+    const bytes = serializeVMDDocument(createFullDocument());
+    expect(preflightVMD(bytes, "full.vmd")).toEqual({
+      duration: 0.5,
+      maxFrame: 15,
+      sectionCounts: {
+        bone: 2,
+        morph: 1,
+        camera: 1,
+        light: 1,
+        selfShadow: 1,
+        property: 1,
+      },
+    });
+
+    const boneOnly = serializeVMDDocument({
+      ...createFullDocument(),
+      morphFrames: [],
+      cameraFrames: [],
+      lightFrames: [],
+      selfShadowFrames: [],
+      propertyFrames: [],
+    });
+    // Legacy files end after the bone section, as importVMD accepts them.
+    expect(preflightVMD(boneOnly.slice(0, -20)).sectionCounts.bone).toBe(2);
+
+    expect(() => preflightVMD(bytes.slice(0, -1), "cut.vmd")).toThrow(
+      expect.objectContaining({ code: "VMD_PARSE_FAILED" }),
+    );
+    expect(() => preflightVMD(new TextEncoder().encode("not a vmd file"))).toThrow(
+      expect.objectContaining({ code: "VMD_PARSE_FAILED" }),
+    );
+  });
+
+  it("applies caller budgets in preflight", () => {
+    const bytes = serializeVMDDocument(createFullDocument());
+    for (const budget of [
+      { maxInputBytes: bytes.byteLength - 1 },
+      { maxTotalSamples: 6 },
+      { maxDurationSeconds: 0.4 },
+    ]) {
+      expect(() => preflightVMD(bytes, "full.vmd", budget)).toThrow(
+        expect.objectContaining({ code: "PARSE_BUDGET_EXCEEDED" }),
+      );
+    }
+    expect(preflightVMD(bytes, "full.vmd", {
+      maxTotalSamples: 7,
+      maxDurationSeconds: 0.5,
+    }).duration).toBe(0.5);
   });
 
   it("rejects truncated documents instead of silently dropping frames", () => {

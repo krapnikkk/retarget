@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   convertMMDModelToGLBDocument,
   parsePMX,
-} from "@/export/avatar-conversion";
+} from "@/mmd/model-conversion";
 import {
   exportAnimatedGLB,
   validateAvatarExportReload,

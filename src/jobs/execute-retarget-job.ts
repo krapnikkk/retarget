@@ -110,18 +110,25 @@ async function executeTask(
   }
   if (task.type === "convert-mmd-avatar") {
     report("parse", 0.08);
-    const [{ WebIO }, { convertMMDModelToGLBDocument }] = await Promise.all([
-      import("@gltf-transform/core"),
-      import("@/export/avatar-conversion"),
-    ]);
+    const [{ WebIO }, { convertMMDModelToGLBDocument, toMMDModelError }] =
+      await Promise.all([
+        import("@gltf-transform/core"),
+        import("@/mmd/model-conversion"),
+      ]);
     const resolveResource = createTransferableAssetPackageResolver(
       task.assetPackage,
     );
-    const document = convertMMDModelToGLBDocument(
-      new Uint8Array(task.bytes),
-      task.filename,
-      resolveResource,
-    );
+    let document;
+    try {
+      document = convertMMDModelToGLBDocument(
+        new Uint8Array(task.bytes),
+        task.filename,
+        resolveResource,
+        parseBudget,
+      );
+    } catch (cause) {
+      throw toMMDModelError(cause, task.filename);
+    }
     deadline.checkpoint("convert-mmd-avatar");
     report("export", 0.78);
     const bytes = await new WebIO().writeBinary(document);

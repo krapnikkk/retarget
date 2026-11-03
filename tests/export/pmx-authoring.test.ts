@@ -1,6 +1,6 @@
 import { Accessor, Document, type Node as GltfNode } from "@gltf-transform/core";
 import { describe, expect, it } from "vitest";
-import { parsePMX } from "@/export/avatar-conversion";
+import { parsePMX } from "@/mmd/model-conversion";
 import { MMD_EXPORT_BONE_NAMES } from "@/export/bone-naming";
 import {
   authorCanonicalGLBAsPMX,

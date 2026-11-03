@@ -296,7 +296,11 @@ try {
   execFileSync(process.execPath, [path.join(temporaryRoot, "binding-smoke.mjs")], { cwd: temporaryRoot, stdio: "inherit" });
   writeFileSync(path.join(temporaryRoot, "smoke.ts"), [
     'import { createRetargetError, formats, type CanonicalHumanoidMotionClip } from "@krapnik/retarget";',
-    'import { importBVH, importGLTFAnimationBytes } from "@krapnik/retarget/io";',
+    'import { importBVH, importGLTFAnimationBytes, convertMMDModelToGLB, preflightVMD, type ParseBudget, type VMDPreflight } from "@krapnik/retarget/io";',
+    'const mmdBudget: Partial<ParseBudget> = { maxVertices: 1 };',
+    'const mmdGLB: Promise<Uint8Array> = convertMMDModelToGLB(new Uint8Array(0), "model.pmx", { budget: mmdBudget, resolveResource: () => null });',
+    'const vmdPreflight: (bytes: Uint8Array) => VMDPreflight = preflightVMD;',
+    'void [mmdGLB.catch(() => undefined), vmdPreflight];',
     'import { processHumanoidBinding } from "@krapnik/retarget/io";',
     'import type { HumanoidBindingSnapshot, HumanoidBindingExport } from "@krapnik/retarget";',
     'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "@krapnik/retarget/node";',

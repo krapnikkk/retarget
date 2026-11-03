@@ -16,6 +16,7 @@
 | `VRMA_PARSE_FAILED` | 导入 | VRMA 或其必需扩展数据无效。 |
 | `BVH_PARSE_FAILED` | 导入 | BVH 层级或动作采样无效。 |
 | `VMD_PARSE_FAILED` | 导入 | VMD 头部/骨骼动作无效或不受支持。 |
+| `MMD_MODEL_PARSE_FAILED` | 导入 | PMX/PMD 模型结构无效或不受支持；请检查模型文件。 |
 | `GLTF_ANIMATION_PARSE_FAILED` | 导入 | glTF 动画通道或访问器无效。 |
 | `UNSUPPORTED_FORMAT` | 探测/路由 | 没有基于证据的适配器支持所选输入或流程。 |
 | `WEBGL_UNAVAILABLE` | 预览 | 浏览器无法创建所需 WebGL 上下文；处理仍可能继续。 |

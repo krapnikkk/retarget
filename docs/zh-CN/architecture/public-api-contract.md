@@ -9,7 +9,11 @@
 - `@krapnik/retarget` 仅公开可序列化的格式、配置、规范动作、骨架与结构化错误契约，不公开 `File`、DOM/Worker 句柄、Three.js 对象或 glTF-Transform 文档。
 - `@krapnik/retarget/browser` 负责 `File`/`AbortSignal` 编排、窄化的高层重定向流水线与 fail-closed Worker 执行。人形流水线查询必须同时提供动作、角色和输出格式 ID，使保证等级绑定到完整输入到输出组合，而不是格式二元组。所选流水线的 `run` 方法返回声明的输出字节和已求解动作；`retarget` 保留为仅求解操作。非人形 rigged glTF 使用独立的粗粒度 `runRiggedGLTFPipeline`，在不公开 glTF-Transform 或 Three.js 对象的前提下保持完整输入到 Animated GLB 边界。
 - `@krapnik/retarget/browser/input` 是稳定的仅输入准备子集。它保留相同的 `prepareBrowserAssetInput()` 契约和专用 Worker URL，但入口模块图不包含重定向流水线或格式解析器运行时。完整浏览器入口为兼容性继续重新导出该能力。
-- `@krapnik/retarget/io` 只接收和返回字节与可序列化数据。
+- `@krapnik/retarget/io` 只接收和返回字节与可序列化数据。除动作导入导出外，
+  `convertMMDModelToGLB` 将 PMX 2.0/2.1 或 PMD 模型（按文件头识别格式）转换为
+  自包含的蒙皮 GLB；`preflightVMD` 在不分配帧的情况下校验 VMD 结构并返回时长与
+  各段数量，供使用其他 VMD 运行时播放的调用方使用。两者都接受可选的
+  `ParseBudget` 作为调用方限额策略，并以公开错误码失败。
 - `@krapnik/retarget/node` 公开字节 IO、用于确定性资源生成/验证的隔离式 `runNodeToolJob`，并为受信任本地工具与测试提供显式 inline retarget job。Node tooling 只接收字节和可序列化元数据，不负责文件系统遍历或目录策略；浏览器入口不导出 inline 执行。
 - `@krapnik/retarget/validation` 与 `@krapnik/retarget/certification` 只公开可序列化结果和清单。
 

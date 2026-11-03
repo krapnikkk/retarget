@@ -29,3 +29,9 @@ export type { BoneNamingOptions } from "./export/bone-naming";
 
 export { importHumanoidSkeletalMotion } from "./import/skeletal-motion";
 export type { HumanoidSkeletalMotion } from "./import/skeletal-motion";
+
+export { preflightVMD } from "./import/vmd";
+export type { VMDPreflight, VMDSectionCounts } from "./import/vmd";
+export { convertMMDModelToGLB } from "./mmd/model-conversion";
+export type { MMDModelConversionOptions } from "./mmd/model-conversion";
+export type { ParseBudget } from "./import/parse-budget";

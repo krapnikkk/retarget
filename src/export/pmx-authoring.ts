@@ -12,7 +12,7 @@ import {
 } from "@/core/parent-graph";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { MMD_EXPORT_BONE_NAMES } from "@/export/bone-naming";
-import { parsePMX } from "@/export/avatar-conversion";
+import { parsePMX } from "@/mmd/model-conversion";
 import { createZipArchive, readZipArchive } from "@/archive/zip";
 import { GrowableBuffer } from "@/parsers/binary-writer";
 import type { PMXConfig } from "@/parsers/pmx-binary";

@@ -24,7 +24,7 @@ npm install @krapnik/retarget
 | `@krapnik/retarget` | 可序列化的格式、Profile、动作、骨架、流水线和错误契约。 |
 | `@krapnik/retarget/browser` | 内容优先的有界 File/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。 |
 | `@krapnik/retarget/browser/input` | 仅包含输入准备，避免在主包中引入重定向流水线或格式解析器运行时。 |
-| `@krapnik/retarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出。 |
+| `@krapnik/retarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出、PMX/PMD 转 GLB 与 VMD 预检。 |
 | `@krapnik/retarget/node` | 字节级 IO、隔离式确定性 VRM/PMX 与 Rig Motion glTF 生成/验证任务，以及仅供受信任场景使用的显式内联重定向任务；不公开文件系统遍历或通用 ZIP API。 |
 | `@krapnik/retarget/validation` | 可序列化的语义验证结果。 |
 | `@krapnik/retarget/certification` | 来源和保证等级清单。 |
