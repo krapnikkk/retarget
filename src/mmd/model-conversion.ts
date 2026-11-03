@@ -140,9 +140,10 @@ export type MMDModelConversionOptions = {
 export async function convertMMDModelToGLB(
   bytes: Uint8Array,
   filename = "model.pmx",
-  { resolveResource, budget = {} }: MMDModelConversionOptions = {},
+  options: MMDModelConversionOptions = {},
 ): Promise<Uint8Array> {
-  const resolved = resolveParseBudget(budget);
+  const { resolveResource } = options;
+  const resolved = resolveParseBudget(options.budget);
   let document: Document;
   try {
     document = convertMMDModelToGLBDocument(
