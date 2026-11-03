@@ -24,7 +24,7 @@ import {
   type PMXEncoding,
 } from "@/parsers/pmx-binary";
 import { resolveExportBoneName } from "./bone-naming";
-import { convertMMDModelToGLBDocument } from "./avatar-conversion";
+import { convertMMDModelToGLBDocument } from "@/mmd/model-conversion";
 import { collectHumanoidNodes } from "./avatar-glb";
 import { createGLTFHumanoidRigSignature } from "./gltf-target-binding";
 import { readFileArrayBufferWithSignal } from "@/browser/read-file";

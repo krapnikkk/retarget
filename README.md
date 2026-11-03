@@ -29,7 +29,7 @@ npm install @krapnik/retarget
 | `@krapnik/retarget` | Serializable format, profile, motion, rig, pipeline, and error contracts. |
 | `@krapnik/retarget/browser` | Content-first bounded File/package preparation, explicit disposal, and fail-closed Worker execution. |
 | `@krapnik/retarget/browser/input` | Input preparation only, without retarget pipelines or format parser runtimes in the main bundle. |
-| `@krapnik/retarget/io` | Byte-oriented motion import/export without DOM or scene objects. |
+| `@krapnik/retarget/io` | Byte-oriented motion import/export, PMX/PMD-to-GLB conversion, and VMD preflight without DOM or scene objects. |
 | `@krapnik/retarget/node` | Byte IO, isolated deterministic VRM/PMX and Rig Motion glTF authoring/validation jobs, and explicit trusted inline retarget jobs; no filesystem traversal or generic ZIP API. |
 | `@krapnik/retarget/validation` | Serializable semantic validation results. |
 | `@krapnik/retarget/certification` | Provenance and assurance manifests. |

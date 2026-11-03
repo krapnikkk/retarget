@@ -25,6 +25,13 @@ It defines the compatibility boundary for library stabilization.
   the entry module graph. The full browser entry re-exports it for
   compatibility.
 - `@krapnik/retarget/io` accepts and returns bytes and serializable data only.
+  Besides motion import/export it offers `convertMMDModelToGLB`, which turns
+  a PMX 2.0/2.1 or PMD model (format detected from the header) into a
+  self-contained skinned GLB, and `preflightVMD`, which validates a VMD file's
+  structure and returns its duration and section counts without allocating
+  frames, for callers that play the bytes with another VMD runtime. Both take
+  an optional `ParseBudget` as the caller's limit policy and fail with public
+  error codes.
 - `@krapnik/retarget/node` exposes the byte IO surface, an isolated
   `runNodeToolJob` contract for deterministic artifact authoring/validation,
   and explicit inline retarget jobs for trusted local tools and tests. Node

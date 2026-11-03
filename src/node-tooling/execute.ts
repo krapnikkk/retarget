@@ -4,7 +4,7 @@ import {
   VRMC_VRM_EXTENSIONS,
   assertVRMDocument,
 } from "gltf-transform-vrm-extensions";
-import { convertMMDModelToGLBDocument } from "@/export/avatar-conversion";
+import { convertMMDModelToGLBDocument } from "@/mmd/model-conversion";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
 import { authorCanonicalGLBAsPMX, authorCanonicalGLBAsPMXBundle } from "@/export/pmx-authoring";
 import {

@@ -16,7 +16,7 @@ import {
 } from "@/core/parent-graph";
 import type { AvatarFormatId } from "@/formats";
 import { collectHumanoidNodes } from "@/export/avatar-glb";
-import { convertMMDModelToGLBDocument } from "@/export/avatar-conversion";
+import { convertMMDModelToGLBDocument } from "@/mmd/model-conversion";
 import { createGLTFHumanoidRigSignature } from "@/export/gltf-target-binding";
 import { inspectRawGLTFHumanoidRigSignature } from "@/export/raw-gltf-target-binding";
 import { resolveProfileBoneName } from "@/import/humanoid-motion";

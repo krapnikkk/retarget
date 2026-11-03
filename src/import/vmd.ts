@@ -3,12 +3,15 @@ import {
   convertMMDArmRest,
   MMD_STANDARD_REST_HIPS_HEIGHT,
   parseVMDDocument,
+  preflightVMDDocument,
   VMD_FPS,
   type VMDBoneFrame,
   type VMDDocument,
+  type VMDSectionCounts,
 } from "@/mmd/vmd-document";
 import { MMD_BODY_PROFILE } from "@/profiles";
 import type { HumanoidBoneName, MotionTrack } from "@/retarget";
+import { RetargetError } from "@/retarget/errors";
 import {
   createImportedHumanoidMotionClip,
   normalizeImportedTracks,
@@ -18,8 +21,77 @@ import {
   ParseDomainError,
   assertCountWithinBudget,
   assertInputWithinBudget,
+  resolveParseBudget,
   type ParseBudget,
 } from "./parse-budget";
+
+export type { VMDSectionCounts };
+
+export type VMDPreflight = {
+  /** Seconds from frame 0 to the last keyframe of any section, at 30 fps. */
+  duration: number;
+  /** The last keyframe number of any section. */
+  maxFrame: number;
+  sectionCounts: VMDSectionCounts;
+};
+
+/**
+ * Validates a VMD file's structure without allocating its frames, for callers
+ * that hand the bytes to another VMD runtime. Every section length is checked
+ * against the byte length, and legacy files that end after the bone section
+ * are accepted as `importVMD` accepts them.
+ *
+ * `budget` is the caller's policy for this untrusted input; unset fields are
+ * unbounded. `maxInputBytes` bounds the file, `maxTotalSamples` the keyframes
+ * of all sections together, and `maxDurationSeconds` the last keyframe time.
+ *
+ * Failures throw `RetargetError`: `PARSE_BUDGET_EXCEEDED` for a limit and
+ * `VMD_PARSE_FAILED` for an invalid or truncated file.
+ */
+export function preflightVMD(
+  bytes: Uint8Array,
+  filename = "motion.vmd",
+  budget: Partial<ParseBudget> = {},
+): VMDPreflight {
+  const limits = resolveParseBudget(budget);
+  assertInputWithinBudget(bytes.byteLength, limits, {
+    filename,
+    section: "VMD",
+  });
+  let scan: ReturnType<typeof preflightVMDDocument>;
+  try {
+    scan = preflightVMDDocument(padLegacyVMDSections(bytes));
+  } catch (cause) {
+    if (cause instanceof RetargetError) throw cause;
+    throw new ParseDomainError(
+      "VMD_PARSE_FAILED",
+      cause instanceof Error ? cause.message : "VMD document is invalid.",
+      { filename, section: "VMD" },
+    );
+  }
+  const keyframes = Object.values(scan.sectionCounts).reduce(
+    (total, count) => total + count,
+    0,
+  );
+  assertCountWithinBudget(keyframes, limits.maxTotalSamples, "VMD keyframes", {
+    filename,
+    section: "VMD",
+  });
+  const duration = scan.maxFrame / VMD_FPS;
+  if (duration > limits.maxDurationSeconds) {
+    throw new ParseDomainError(
+      "PARSE_BUDGET_EXCEEDED",
+      "VMD duration exceeds the processing limit",
+      {
+        filename,
+        section: "VMD",
+        declared: Math.ceil(duration),
+        limit: limits.maxDurationSeconds,
+      },
+    );
+  }
+  return { duration, maxFrame: scan.maxFrame, sectionCounts: scan.sectionCounts };
+}
 
 type VMDBoneBinding = {
   bone: HumanoidBoneName;

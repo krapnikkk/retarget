@@ -52,6 +52,12 @@ export type {
   Vec3,
 } from "./rig-motion";
 export type {
+  AxisName,
+  RigProfile,
+  RigProfileBone,
+  RigProfileId,
+} from "./profiles";
+export type {
   ActiveRigDefinitionId,
   RigChain,
   RigCompatibility,

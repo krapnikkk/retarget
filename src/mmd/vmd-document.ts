@@ -237,7 +237,23 @@ export function parseVMDDocument(bytes: Uint8Array): VMDDocument {
   };
 }
 
-function preflightVMDDocument(bytes: Uint8Array) {
+export type VMDSectionCounts = {
+  bone: number;
+  morph: number;
+  camera: number;
+  light: number;
+  selfShadow: number;
+  property: number;
+};
+
+/**
+ * Validates every section length against the byte length without allocating
+ * frames, and returns the frame counts and the last keyframe number.
+ */
+export function preflightVMDDocument(bytes: Uint8Array): {
+  maxFrame: number;
+  sectionCounts: VMDSectionCounts;
+} {
   if (bytes.byteLength < SIGNATURE_BYTES + MODEL_NAME_BYTES + 4) {
     throw new Error("VMD document is too small.");
   }
@@ -247,18 +263,30 @@ function preflightVMDDocument(bytes: Uint8Array) {
   }
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   let offset = SIGNATURE_BYTES + MODEL_NAME_BYTES;
-  for (const [label, recordBytes] of [
-    ["bone", BONE_FRAME_BYTES],
-    ["morph", MORPH_FRAME_BYTES],
-    ["camera", CAMERA_FRAME_BYTES],
-    ["light", LIGHT_FRAME_BYTES],
-    ["self-shadow", SELF_SHADOW_FRAME_BYTES],
+  let maxFrame = 0;
+  const counts: number[] = [];
+  // Bone and morph records start with a 15-byte name; the others with the
+  // frame number.
+  for (const [label, recordBytes, frameNumberOffset] of [
+    ["bone", BONE_FRAME_BYTES, 15],
+    ["morph", MORPH_FRAME_BYTES, 15],
+    ["camera", CAMERA_FRAME_BYTES, 0],
+    ["light", LIGHT_FRAME_BYTES, 0],
+    ["self-shadow", SELF_SHADOW_FRAME_BYTES, 0],
   ] as const) {
     ensureVMDRange(bytes, offset, 4, `${label} count`);
     const count = view.getUint32(offset, true);
     offset += 4;
     const sectionBytes = count * recordBytes;
     ensureVMDRange(bytes, offset, sectionBytes, `${label} frames`);
+    for (let frame = 0; frame < count; frame += 1) {
+      const frameNumber = view.getUint32(
+        offset + frame * recordBytes + frameNumberOffset,
+        true,
+      );
+      if (frameNumber > maxFrame) maxFrame = frameNumber;
+    }
+    counts.push(count);
     offset += sectionBytes;
   }
   ensureVMDRange(bytes, offset, 4, "property count");
@@ -266,6 +294,8 @@ function preflightVMDDocument(bytes: Uint8Array) {
   offset += 4;
   for (let frame = 0; frame < propertyCount; frame += 1) {
     ensureVMDRange(bytes, offset, 9, "property frame");
+    const frameNumber = view.getUint32(offset, true);
+    if (frameNumber > maxFrame) maxFrame = frameNumber;
     const ikStateCount = view.getUint32(offset + 5, true);
     offset += 9;
     ensureVMDRange(bytes, offset, ikStateCount * 21, "property IK states");
@@ -274,6 +304,18 @@ function preflightVMDDocument(bytes: Uint8Array) {
   if (offset !== bytes.byteLength) {
     throw new Error(`VMD document has ${bytes.byteLength - offset} unexpected trailing bytes.`);
   }
+  const [bone = 0, morph = 0, camera = 0, light = 0, selfShadow = 0] = counts;
+  return {
+    maxFrame,
+    sectionCounts: {
+      bone,
+      morph,
+      camera,
+      light,
+      selfShadow,
+      property: propertyCount,
+    },
+  };
 }
 
 function ensureVMDRange(

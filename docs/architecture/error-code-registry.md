@@ -18,6 +18,7 @@ the stable code for support and telemetry.
 | `VRMA_PARSE_FAILED` | import | VRMA or its required extension data is invalid. |
 | `BVH_PARSE_FAILED` | import | BVH hierarchy or motion samples are invalid. |
 | `VMD_PARSE_FAILED` | import | VMD header/body motion is invalid or unsupported. |
+| `MMD_MODEL_PARSE_FAILED` | import | PMX/PMD model structure is invalid or unsupported; validate the model file. |
 | `GLTF_ANIMATION_PARSE_FAILED` | import | glTF animation channels or accessors are invalid. |
 | `UNSUPPORTED_FORMAT` | probe/routing | No evidence-backed adapter supports the selected input/workflow. |
 | `WEBGL_UNAVAILABLE` | preview | Browser cannot create the required WebGL context; processing may still be possible. |
