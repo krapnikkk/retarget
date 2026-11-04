@@ -22,6 +22,7 @@ npm install @krapnik/retarget
 | 入口 | 用途 |
 | --- | --- |
 | `@krapnik/retarget` | 可序列化的格式、Profile、动作、骨架、流水线和错误契约。 |
+| `@krapnik/retarget/profiles` | 人形骨架 Profile 与骨骼表，不包含重定向引擎，适合只需识别骨架的查看器。 |
 | `@krapnik/retarget/browser` | 内容优先的有界 File/资源包准备、显式资源释放，以及无 Worker 即失败的隔离执行。 |
 | `@krapnik/retarget/browser/input` | 仅包含输入准备，避免在主包中引入重定向流水线或格式解析器运行时。 |
 | `@krapnik/retarget/io` | 不暴露 DOM 或场景对象的字节级动作导入导出、PMX/PMD 转 GLB 与 VMD 预检。 |

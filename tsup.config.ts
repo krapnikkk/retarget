@@ -4,6 +4,7 @@ export default defineConfig({
   entry: {
     index: "src/index.ts",
     io: "src/io.ts",
+    profiles: "src/profiles-entry.ts",
     node: "src/node.ts",
     "browser/index": "src/browser/index.ts",
     "browser/input": "src/browser/input.ts",

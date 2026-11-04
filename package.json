@@ -56,6 +56,10 @@
       "types": "./dist/io.d.ts",
       "import": "./dist/io.js"
     },
+    "./profiles": {
+      "types": "./dist/profiles.d.ts",
+      "import": "./dist/profiles.js"
+    },
     "./node": {
       "types": "./dist/node.d.ts",
       "import": "./dist/node.js"

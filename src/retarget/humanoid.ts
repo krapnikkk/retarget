@@ -1,4 +1,4 @@
-import type { HumanoidBoneName } from "./types";
+import type { HumanoidBoneName } from "./humanoid-bones";
 
 export const REQUIRED_VRM_BONES: readonly HumanoidBoneName[] = [
   "hips",

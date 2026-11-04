@@ -1,62 +1,10 @@
+import type { HumanoidBoneName } from "./humanoid-bones";
+
+export { HUMANOID_BONES, isHumanoidBoneName } from "./humanoid-bones";
+export type { HumanoidBoneName } from "./humanoid-bones";
+
 export const MOTION_CLIP_SCHEMA_VERSION = 2 as const;
 export const MOTION_ARTIFACT_ENVELOPE_SCHEMA_VERSION = 1 as const;
-
-export const HUMANOID_BONES = [
-  "hips",
-  "spine",
-  "chest",
-  "upperChest",
-  "neck",
-  "head",
-  "leftShoulder",
-  "leftUpperArm",
-  "leftLowerArm",
-  "leftHand",
-  "leftThumbMetacarpal",
-  "leftThumbProximal",
-  "leftThumbDistal",
-  "leftIndexProximal",
-  "leftIndexIntermediate",
-  "leftIndexDistal",
-  "leftMiddleProximal",
-  "leftMiddleIntermediate",
-  "leftMiddleDistal",
-  "leftRingProximal",
-  "leftRingIntermediate",
-  "leftRingDistal",
-  "leftLittleProximal",
-  "leftLittleIntermediate",
-  "leftLittleDistal",
-  "rightShoulder",
-  "rightUpperArm",
-  "rightLowerArm",
-  "rightHand",
-  "rightThumbMetacarpal",
-  "rightThumbProximal",
-  "rightThumbDistal",
-  "rightIndexProximal",
-  "rightIndexIntermediate",
-  "rightIndexDistal",
-  "rightMiddleProximal",
-  "rightMiddleIntermediate",
-  "rightMiddleDistal",
-  "rightRingProximal",
-  "rightRingIntermediate",
-  "rightRingDistal",
-  "rightLittleProximal",
-  "rightLittleIntermediate",
-  "rightLittleDistal",
-  "leftUpperLeg",
-  "leftLowerLeg",
-  "leftFoot",
-  "leftToes",
-  "rightUpperLeg",
-  "rightLowerLeg",
-  "rightFoot",
-  "rightToes",
-] as const;
-
-export type HumanoidBoneName = (typeof HUMANOID_BONES)[number];
 
 export type MotionTrackPath = "rotation" | "translation";
 
@@ -328,8 +276,4 @@ export function selectRetargetSolveOptions(
     rootMotion: options.rootMotion,
     armOffsetDegrees: options.armOffsetDegrees,
   };
-}
-
-export function isHumanoidBoneName(value: string): value is HumanoidBoneName {
-  return (HUMANOID_BONES as readonly string[]).includes(value);
 }

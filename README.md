@@ -27,6 +27,7 @@ npm install @krapnik/retarget
 | Entry | Purpose |
 | --- | --- |
 | `@krapnik/retarget` | Serializable format, profile, motion, rig, pipeline, and error contracts. |
+| `@krapnik/retarget/profiles` | Humanoid rig profiles and bone tables without the retarget engine, for viewers that only need to recognize a rig. |
 | `@krapnik/retarget/browser` | Content-first bounded File/package preparation, explicit disposal, and fail-closed Worker execution. |
 | `@krapnik/retarget/browser/input` | Input preparation only, without retarget pipelines or format parser runtimes in the main bundle. |
 | `@krapnik/retarget/io` | Byte-oriented motion import/export, PMX/PMD-to-GLB conversion, and VMD preflight without DOM or scene objects. |
