@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { build as viteBuild, createServer } from "vite";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,6 +50,7 @@ for (const relative of new Set(
 const contractBoundaries = {
   "dist/index.d.ts": [/\bFile\b/, /AbortSignal/, /(?:three|gltf-transform)/],
   "dist/io.d.ts": [/\bFile\b/, /AbortSignal/, /(?:three|gltf-transform)/],
+  "dist/profiles.d.ts": [/\bFile\b/, /AbortSignal/, /(?:three|gltf-transform)/, /RetargetError/],
   "dist/node.d.ts": [/\bFile\b/, /(?:three|gltf-transform)/],
   "dist/browser/index.d.ts": [/(?:three|gltf-transform)/, /Object3D/],
   "dist/browser/input.d.ts": [/(?:three|gltf-transform)/, /Object3D/],
@@ -113,6 +115,18 @@ verifyInputIsolation(
   readFileSync(inputWorkerPath, "utf8"),
   JSON.parse(readFileSync(`${inputWorkerPath}.map`, "utf8")).sources,
 );
+// The profiles entry exists so viewers can recognize rigs without the engine.
+// The marker is root-motion binding code; check it still names engine code.
+const ENGINE_MARKER = "offset-source-units";
+if (!readFileSync(path.join(root, "dist/index.js"), "utf8").includes(ENGINE_MARKER)) {
+  throw new Error(`dist/index.js no longer contains engine marker ${ENGINE_MARKER}; pick a new one`);
+}
+const profilesEntryPath = path.join(root, "dist/profiles.js");
+verifyProfilesIsolation(
+  "dist/profiles.js",
+  readFileSync(profilesEntryPath, "utf8"),
+  JSON.parse(readFileSync(`${profilesEntryPath}.map`, "utf8")).sources,
+);
 
 const temporaryRoot = mkdtempSync(path.join(tmpdir(), "3dretarget-package-"));
 try {
@@ -146,40 +160,11 @@ try {
     'export const prepare = prepareBrowserAssetInput;',
     '',
   ].join("\n"));
-  const packedInputBundle = await viteBuild({
-    root: temporaryRoot,
-    configFile: false,
-    logLevel: "silent",
-    build: {
-      write: false,
-      minify: false,
-      target: "es2022",
-      rollupOptions: {
-        input: path.join(temporaryRoot, "browser-input-bundle.ts"),
-      },
-    },
-  });
-  const packedInputOutputs = (Array.isArray(packedInputBundle)
-    ? packedInputBundle.flatMap((result) => result.output)
-    : packedInputBundle.output);
-  const packedInputCode = packedInputOutputs.map((output) =>
-    output.type === "chunk"
-      ? output.code
-      : typeof output.source === "string"
-        ? output.source
-        : Buffer.from(output.source).toString("utf8")
-  ).join("\n");
-  const packedInputModules = packedInputOutputs.flatMap((output) =>
-    output.type === "chunk" ? Object.keys(output.modules) : []
-  );
-  const packedInputBytes = packedInputOutputs.reduce(
-    (total, output) => total + (output.type === "chunk"
-      ? Buffer.byteLength(output.code)
-      : typeof output.source === "string"
-        ? Buffer.byteLength(output.source)
-        : output.source.byteLength),
-    0,
-  );
+  const {
+    code: packedInputCode,
+    modules: packedInputModules,
+    bytes: packedInputBytes,
+  } = await bundleForProduction(path.join(temporaryRoot, "browser-input-bundle.ts"));
   verifyInputIsolation(
     "packed browser-input production bundle",
     packedInputCode,
@@ -191,6 +176,31 @@ try {
   console.log(
     `[ok] production-bundled packed browser input (${packedInputBytes} bytes) without unrelated format runtimes`,
   );
+  writeFileSync(path.join(temporaryRoot, "profiles-bundle.ts"), [
+    'import * as profiles from "@krapnik/retarget/profiles";',
+    '// A global write keeps every export alive through tree shaking.',
+    '(globalThis as Record<string, unknown>).profiles = profiles;',
+    '',
+  ].join("\n"));
+  const packedProfiles = await bundleForProduction(path.join(temporaryRoot, "profiles-bundle.ts"));
+  // "\0" ids are the bundler's own helpers, such as its namespace runtime.
+  const packedProfileModules = packedProfiles.modules.filter((id) =>
+    !id.startsWith("\0") && !id.endsWith("profiles-bundle.ts"));
+  if (
+    !packedProfileModules.some((id) => /dist[\\/]profiles\.js$/.test(id)) ||
+    !packedProfiles.code.includes("vrm-humanoid")
+  ) {
+    throw new Error("Packed profiles production bundle lost the profiles entry");
+  }
+  verifyProfilesIsolation(
+    "packed profiles production bundle",
+    packedProfiles.code,
+    packedProfileModules,
+  );
+  console.log(
+    `[ok] production-bundled packed profiles (${packedProfiles.bytes} bytes) without the retarget engine`,
+  );
+  verifyExportParity(temporaryRoot);
   writeFileSync(path.join(temporaryRoot, "node-tooling-smoke.mjs"), [
     'import { runNodeToolJob } from "@krapnik/retarget/node";',
     'const motion = {',
@@ -307,6 +317,12 @@ try {
     'const mmdProfileId: RigProfileId = "mmd-body";',
     'const mmdProfile: RigProfile | null = profiles.getRigProfile(mmdProfileId);',
     'void mmdProfile;',
+    'import { HUMANOID_BONES, REQUIRED_VRM_BONES, VRM_HUMANOID_PROFILE, getRigProfile, type HumanoidBoneName, type RigProfileId as ProfilesEntryRigProfileId } from "@krapnik/retarget/profiles";',
+    'const entryProfileId: ProfilesEntryRigProfileId = mmdProfileId;',
+    'const entryProfile: RigProfile | null = getRigProfile(entryProfileId);',
+    'const firstBone: HumanoidBoneName = HUMANOID_BONES[0];',
+    'const requiredBones: readonly HumanoidBoneName[] = REQUIRED_VRM_BONES;',
+    'void [entryProfile, firstBone, requiredBones, VRM_HUMANOID_PROFILE.id];',
     'import { runNodeToolJob, runRetargetJobInline, type NodeToolTask } from "@krapnik/retarget/node";',
     'import { exportAnimatedGLBStream, getRetargetPipeline, prepareBrowserAssetInput as prepareBrowserAssetInputCompat, runRetargetJob, runRiggedGLTFPipeline, type AnimatedGLBStreamInput } from "@krapnik/retarget/browser";',
     'import { prepareBrowserAssetInput, type BrowserInputSelection } from "@krapnik/retarget/browser/input";',
@@ -352,6 +368,134 @@ try {
   console.log("[ok] type-checked packed consumer contract");
 } finally {
   rmSync(temporaryRoot, { recursive: true, force: true });
+}
+
+async function bundleForProduction(input) {
+  const result = await viteBuild({
+    root: path.dirname(input),
+    configFile: false,
+    logLevel: "silent",
+    build: {
+      write: false,
+      minify: false,
+      target: "es2022",
+      rollupOptions: { input },
+    },
+  });
+  const outputs = Array.isArray(result)
+    ? result.flatMap((entry) => entry.output)
+    : result.output;
+  const texts = outputs.map((output) =>
+    output.type === "chunk"
+      ? output.code
+      : typeof output.source === "string"
+        ? output.source
+        : Buffer.from(output.source).toString("utf8")
+  );
+  return {
+    code: texts.join("\n"),
+    modules: outputs.flatMap((output) =>
+      output.type === "chunk" ? Object.keys(output.modules) : []
+    ),
+    bytes: texts.reduce((total, text) => total + Buffer.byteLength(text), 0),
+  };
+}
+
+// Only bone tables and profile modules may reach the profiles entry.
+function verifyProfilesIsolation(label, code, sources) {
+  const allowedSource = /(?:src[\\/]profiles[\\/][^\\/]+\.ts|src[\\/]retarget[\\/]humanoid(?:-bones)?\.ts|dist[\\/]profiles\.js)$/;
+  for (const source of sources) {
+    if (!allowedSource.test(source)) {
+      throw new Error(`${label} includes non-profile module ${source}`);
+    }
+  }
+  for (const pattern of [
+    new RegExp(ENGINE_MARKER),
+    /RetargetError/,
+    /DEFAULT_RETARGET/,
+    /^\s*import\s/m,
+  ]) {
+    if (pattern.test(code)) {
+      throw new Error(`${label} contains engine code ${pattern}`);
+    }
+  }
+}
+
+// Every value name a public entry's declarations export must exist at runtime,
+// and every runtime export must be declared.
+function verifyExportParity(projectRoot) {
+  const runtimeNamesPath = path.join(projectRoot, "runtime-export-names.json");
+  writeFileSync(path.join(projectRoot, "runtime-export-names.mjs"), [
+    'import { writeFileSync } from "node:fs";',
+    `const specifiers = ${JSON.stringify(publicSpecifiers)};`,
+    "const names = {};",
+    "for (const specifier of specifiers) names[specifier] = Object.keys(await import(specifier));",
+    `writeFileSync(${JSON.stringify(runtimeNamesPath)}, JSON.stringify(names));`,
+    "",
+  ].join("\n"));
+  execFileSync(process.execPath, [path.join(projectRoot, "runtime-export-names.mjs")], {
+    cwd: projectRoot,
+    stdio: "inherit",
+  });
+  const runtimeNames = JSON.parse(readFileSync(runtimeNamesPath, "utf8"));
+
+  const parityFile = path.join(projectRoot, "export-parity.ts");
+  writeFileSync(parityFile, `${publicSpecifiers
+    .map((specifier, index) => `import * as entry${index} from ${JSON.stringify(specifier)};`)
+    .join("\n")}\n`);
+  const program = ts.createProgram([parityFile], {
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    target: ts.ScriptTarget.ES2022,
+    noEmit: true,
+    skipLibCheck: true,
+  });
+  const checker = program.getTypeChecker();
+  const mismatches = [];
+  for (const statement of program.getSourceFile(parityFile).statements) {
+    const specifier = statement.moduleSpecifier.text;
+    const moduleSymbol = checker.getSymbolAtLocation(statement.moduleSpecifier);
+    if (!moduleSymbol) throw new Error(`TypeScript cannot resolve ${specifier}`);
+    const declared = new Set(checker.getExportsOfModule(moduleSymbol)
+      .filter((symbol) => declaresRuntimeValue(checker, symbol))
+      .map((symbol) => symbol.name));
+    const runtime = new Set(runtimeNames[specifier]);
+    for (const name of declared) {
+      if (!runtime.has(name)) mismatches.push(`${specifier} declares ${name}, which is missing at runtime`);
+    }
+    for (const name of runtime) {
+      if (!declared.has(name)) mismatches.push(`${specifier} exports ${name} at runtime without a declaration`);
+    }
+  }
+  if (mismatches.length > 0) {
+    throw new Error(`Declaration/runtime export mismatch:\n${mismatches.join("\n")}`);
+  }
+  console.log(`[ok] declared value exports match runtime for ${publicSpecifiers.length} packed entries`);
+}
+
+function declaresRuntimeValue(checker, symbol) {
+  let current = symbol;
+  while (current.flags & ts.SymbolFlags.Alias) {
+    if (current.declarations?.some(isTypeOnlyAlias)) return false;
+    const next = checker.getImmediateAliasedSymbol(current);
+    if (!next) return false;
+    current = next;
+  }
+  return (current.flags & ts.SymbolFlags.Value) !== 0;
+}
+
+function isTypeOnlyAlias(declaration) {
+  if (ts.isExportSpecifier(declaration)) {
+    return declaration.isTypeOnly || declaration.parent.parent.isTypeOnly;
+  }
+  if (ts.isImportSpecifier(declaration)) {
+    return declaration.isTypeOnly || declaration.parent.parent.isTypeOnly;
+  }
+  if (ts.isImportClause(declaration) || ts.isNamespaceImport(declaration)) {
+    const clause = ts.isImportClause(declaration) ? declaration : declaration.parent;
+    return clause.isTypeOnly;
+  }
+  return false;
 }
 
 function reportArtifactSize(relative) {

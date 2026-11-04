@@ -1,9 +1,7 @@
-import {
-  HUMANOID_BONES,
-  MIXAMO_BONE_MAP,
-  REQUIRED_VRM_BONES,
-  type HumanoidBoneName,
-} from "@/retarget";
+// Import the bone tables from their own modules, not the "@/retarget" barrel,
+// so the @krapnik/retarget/profiles entry stays off the engine.
+import { MIXAMO_BONE_MAP, REQUIRED_VRM_BONES } from "@/retarget/humanoid";
+import { HUMANOID_BONES, type HumanoidBoneName } from "@/retarget/humanoid-bones";
 import {
   MMD_EXPORT_BONE_NAMES,
   resolveExportBoneName,
