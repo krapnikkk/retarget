@@ -29,6 +29,7 @@ import {
   createHumanoidRigSignature,
   readBindingRigRevision,
   isHumanoidBoneName,
+  vrm0HumanoidBoneName,
   type HumanoidBoneName,
   type RetargetSkeletonNode,
 } from "@/retarget";
@@ -310,9 +311,11 @@ function collectStructuralHumanoidBones(
     ? vrm0Humanoid.humanBones as Array<Record<string, unknown>>
     : [];
   for (const definition of vrm0Bones) {
-    const bone = definition.bone;
-    const node = definition.node;
-    if (typeof bone === "string" && isHumanoidBoneName(bone) && Number.isInteger(node)) {
+    const bone = typeof definition?.bone === "string"
+      ? vrm0HumanoidBoneName(definition.bone)
+      : undefined;
+    const node = definition?.node;
+    if (bone && Number.isInteger(node) && !bones.has(bone)) {
       const object = nodes[node as number];
       if (object) bones.set(bone, object);
     }

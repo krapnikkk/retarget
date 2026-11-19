@@ -96,6 +96,19 @@ export function deriveVRM0(bytes: Uint8Array) {
 }
 
 /**
+ * Renames every node to `node_<index>`, a name no rig profile alias matches.
+ * Bones then resolve only through the VRM humanoid bone table, as with VRoid
+ * exports, whose `J_Bip_*` node names are not aliases.
+ */
+export function withOpaqueNodeNames(bytes: Uint8Array) {
+  const glb = parseGLB(bytes);
+  glb.json.nodes.forEach((node, index) => {
+    node.name = `node_${index}`;
+  });
+  return writeGLB(glb);
+}
+
+/**
  * Short-legged VRM 1.0 variant: lower legs and feet scaled by `legScale`, hips
  * lowered so the feet stay at their original height, and inverse bind matrices
  * recomputed from the new rest pose. The mesh is not refit; the variant tests

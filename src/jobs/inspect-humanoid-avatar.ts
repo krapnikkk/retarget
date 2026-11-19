@@ -38,6 +38,7 @@ import {
   readBindingRigRevision,
   createRetargetError,
   isHumanoidBoneName,
+  vrm0HumanoidBoneName,
   type HumanoidBoneName,
   type HumanoidRestJoints,
   type RetargetSkeletonNode,
@@ -302,14 +303,10 @@ function collectRawHumanoidNodeIndices(
   if (Array.isArray(vrm0HumanBones)) {
     for (const value of vrm0HumanBones) {
       const entry = asRecord(value);
-      const bone = entry?.bone;
+      const name = entry?.bone;
+      const bone = typeof name === "string" ? vrm0HumanoidBoneName(name) : undefined;
       const index = entry?.node;
-      if (
-        typeof bone === "string" &&
-        isHumanoidBoneName(bone) &&
-        isValidNodeIndex(index, nodes.length) &&
-        !result.has(bone)
-      ) {
+      if (bone && isValidNodeIndex(index, nodes.length) && !result.has(bone)) {
         result.set(bone, index);
       }
     }

@@ -1,5 +1,6 @@
 import { WebIO, type Document, type Node } from "@gltf-transform/core";
 import {
+  VRMC,
   VRMCVRM,
   VRMC_VRM_EXTENSIONS,
   assertVRMDocument,
@@ -12,6 +13,7 @@ import { bindCanonicalClipToGLTFTarget } from "@/export/gltf-target-binding";
 import {
   HUMANOID_BONES,
   isHumanoidBoneName,
+  vrm0HumanoidBoneName,
   type HumanoidBoneName,
   type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
@@ -102,6 +104,9 @@ export function collectHumanoidNodes(document: Document) {
       }
     }
   }
+  for (const [bone, node] of readVRM0HumanoidBoneNodes(document)) {
+    if (!nodesByBone.has(bone)) nodesByBone.set(bone, node);
+  }
 
   const aliases = new Map<string, HumanoidBoneName>();
   for (const bone of HUMANOID_BONES) {
@@ -125,6 +130,33 @@ export function collectHumanoidNodes(document: Document) {
   }
 
   return nodesByBone;
+}
+
+/**
+ * The VRM 0.x `VRM` extension's humanoid bone table. The extension keeps the
+ * raw JSON and writes its node indices back unchanged, which relies on the
+ * reader keeping glTF node order; indices therefore resolve through
+ * `listNodes()`. VRoid's `J_Bip_*` node names match no profile alias, so this
+ * table is the only way to find their bones.
+ */
+function readVRM0HumanoidBoneNodes(document: Document) {
+  const bones = new Map<HumanoidBoneName, Node>();
+  const vrm0 = document
+    .getRoot()
+    .listExtensionsUsed()
+    .find((extension): extension is VRMC => extension.extensionName === VRMC.EXTENSION_NAME);
+  const humanBones = (vrm0?.data as { humanoid?: { humanBones?: unknown } } | undefined)
+    ?.humanoid?.humanBones;
+  if (!Array.isArray(humanBones)) return bones;
+  const nodes = document.getRoot().listNodes();
+  for (const definition of humanBones as Array<Record<string, unknown> | null>) {
+    const name = definition?.bone;
+    const bone = typeof name === "string" ? vrm0HumanoidBoneName(name) : undefined;
+    const index = definition?.node;
+    const node = Number.isInteger(index) ? nodes[index as number] : undefined;
+    if (bone && node && !bones.has(bone)) bones.set(bone, node);
+  }
+  return bones;
 }
 
 function createVRMWebIO() {

@@ -20,6 +20,7 @@ import {
   readHipsWorldTravel,
   readRestHipsHeight,
   readStudioMannequinVRM,
+  withOpaqueNodeNames,
 } from "../fixtures/vrm-variants";
 
 vi.mock("@/jobs/browser-retarget-job", async (importOriginal) => {
@@ -53,6 +54,10 @@ const TARGETS: ReadonlyArray<{
 }> = [
   { target: "VRM 1.0", bytes: readStudioMannequinVRM },
   { target: "VRM 0.x", bytes: async () => deriveVRM0(await readStudioMannequinVRM()) },
+  {
+    target: "VRM 0.x bone table only",
+    bytes: async () => withOpaqueNodeNames(deriveVRM0(await readStudioMannequinVRM())),
+  },
   { target: "short legs", bytes: async () => deriveShortLegs(await readStudioMannequinVRM()) },
 ];
 

@@ -60,3 +60,21 @@ export type HumanoidBoneName = (typeof HUMANOID_BONES)[number];
 export function isHumanoidBoneName(value: string): value is HumanoidBoneName {
   return (HUMANOID_BONES as readonly string[]).includes(value);
 }
+
+/**
+ * VRM 0.x names the three thumb joints Proximal, Intermediate, and Distal;
+ * VRM 1.0 names the same joints Metacarpal, Proximal, and Distal. Every other
+ * humanoid bone keeps its name.
+ */
+const VRM0_RENAMED_BONES: Readonly<Record<string, HumanoidBoneName>> = {
+  leftThumbProximal: "leftThumbMetacarpal",
+  leftThumbIntermediate: "leftThumbProximal",
+  rightThumbProximal: "rightThumbMetacarpal",
+  rightThumbIntermediate: "rightThumbProximal",
+};
+
+/** The humanoid bone for a VRM 0.x `humanBones[].bone` name, if any. */
+export function vrm0HumanoidBoneName(value: string): HumanoidBoneName | undefined {
+  const bone = VRM0_RENAMED_BONES[value] ?? value;
+  return isHumanoidBoneName(bone) ? bone : undefined;
+}
