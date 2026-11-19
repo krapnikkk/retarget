@@ -8,7 +8,7 @@ import {
   type KeyframeTrack,
   type Object3D,
 } from "three";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { FBXLoader } from "@/parsers/fbx-loader";
 import type { RigProfile } from "@/profiles";
 import {
   createRetargetError,

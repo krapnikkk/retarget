@@ -1,5 +1,5 @@
 import {LoadingManager} from "three";
-import {FBXLoader} from "three/examples/jsm/loaders/FBXLoader.js";
+import {FBXLoader} from "@/parsers/fbx-loader";
 
 export function createMixamoFBXLoader(manager = new LoadingManager()) {
   return new FBXLoader(manager);

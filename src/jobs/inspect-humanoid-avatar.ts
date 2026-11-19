@@ -9,7 +9,7 @@ import {
   type Loader,
   type Object3D,
 } from "three";
-import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
+import { FBXLoader } from "@/parsers/fbx-loader";
 import {
   assertValidParentGraph,
   collectParentChain,
