@@ -656,7 +656,7 @@ describe("Phase 4 exports", () => {
     const text = new TextDecoder().decode(bytes);
 
     expect(text).toContain("Kaydara FBX Binary");
-    expect(text).toContain("Model::mixamorig:Hips");
+    expect(text).toContain("mixamorig:Hips\u0000\u0001Model");
     await expect(validateMotionExportReload("fbx-animation", bytes)).resolves.toMatchObject({
       ok: true,
     });
@@ -742,7 +742,7 @@ describe("Phase 4 exports", () => {
     });
     const text = new TextDecoder().decode(bytes);
 
-    expect(text).toContain("Model::hips");
+    expect(text).toContain("hips\u0000\u0001Model");
     await expect(
       validateAvatarExportReload("fbx-avatar-animation", bytes),
     ).resolves.toMatchObject({ ok: true });
