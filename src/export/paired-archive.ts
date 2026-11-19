@@ -6,6 +6,7 @@ import {
   type TargetBoundSolvedHumanoidMotionClip,
 } from "@/retarget";
 import { WebIO } from "@gltf-transform/core";
+import { VRMC_VRM_EXTENSIONS } from "gltf-transform-vrm-extensions";
 import { readAvatarAsGLBDocument } from "./avatar-conversion";
 import { collectHumanoidNodes } from "./avatar-glb";
 import { createGLTFHumanoidRigSignature } from "./gltf-target-binding";
@@ -106,7 +107,9 @@ async function assertPairedAvatarIdentity(
 ) {
   const document = await readAvatarAsGLBDocument({
     avatarFile,
-    io: new WebIO(),
+    // Must read the VRM extensions, as inspection does, or the identity
+    // check sees a different bone set than the one the clip was solved for.
+    io: new WebIO().registerExtensions(VRMC_VRM_EXTENSIONS),
   });
   const nodes = collectHumanoidNodes(document);
   assertHumanoidTargetIdentity(

@@ -9,6 +9,7 @@ import {
   getMotionTargetBinding,
   HUMANOID_BONES,
   isHumanoidBoneName,
+  vrm0HumanoidBoneName,
 } from "@/retarget";
 import { normalizeBoneAlias } from "@/import/humanoid-motion";
 import { readGLBRangeInfo } from "@/import/glb-range";
@@ -387,12 +388,11 @@ function resolveRawHumanoidNodeIndices(
     ? vrm0Humanoid.humanBones as Array<Record<string, unknown>>
     : [];
   for (const definition of vrm0Bones) {
-    if (
-      typeof definition.bone === "string" &&
-      isHumanoidBoneName(definition.bone) &&
-      Number.isInteger(definition.node)
-    ) {
-      result.set(definition.bone, definition.node as number);
+    const bone = typeof definition?.bone === "string"
+      ? vrm0HumanoidBoneName(definition.bone)
+      : undefined;
+    if (bone && Number.isInteger(definition.node) && !result.has(bone)) {
+      result.set(bone, definition.node as number);
     }
   }
   const aliases = new Map<string, import("@/retarget").HumanoidBoneName>();

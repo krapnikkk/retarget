@@ -1,6 +1,10 @@
 import type { HumanoidBoneName } from "./humanoid-bones";
 
-export { HUMANOID_BONES, isHumanoidBoneName } from "./humanoid-bones";
+export {
+  HUMANOID_BONES,
+  isHumanoidBoneName,
+  vrm0HumanoidBoneName,
+} from "./humanoid-bones";
 export type { HumanoidBoneName } from "./humanoid-bones";
 
 export const MOTION_CLIP_SCHEMA_VERSION = 2 as const;
