@@ -29,6 +29,13 @@ const FBX_TIME_SECOND = 46186158000;
 const FBX_BINARY_HEADER = "Kaydara FBX Binary  \0\x1a\0";
 const FBX_NULL_RECORD_LENGTH = 13;
 const FBX_UNIT_SCALE_FACTOR_METERS = 100;
+/**
+ * FBX eEulerXYZ (RotationOrder 0) rotates about X, then Y, then Z, which is
+ * three.js "ZYX". It is the order every reader applies: Blender and the
+ * Autodesk FBX SDK ignore RotationOrder unless RotationActive is set.
+ */
+const FBX_EULER_ORDER = "ZYX";
+const FBX_ROTATION_ORDER_XYZ = 0;
 const CANONICAL_TO_FBX = createAxisCorrection(
   CANONICAL_AXIS_FRAME,
   GENERIC_FBX_HUMANOID_PROFILE,
@@ -271,8 +278,8 @@ export function createFBXAnimationBinary(
   return writeFBXFile(
     [
       ...bones.map(createModelNode),
-      node("AnimationStack", [long(stackId), string(`AnimStack::${clip.name || "retargeted-motion"}`), string("")]),
-      node("AnimationLayer", [long(layerId), string("AnimLayer::BaseLayer"), string("")]),
+      node("AnimationStack", [long(stackId), objectName(clip.name || "retargeted-motion", "AnimStack"), string("")]),
+      node("AnimationLayer", [long(layerId), objectName("BaseLayer", "AnimLayer"), string("")]),
       ...curves.flatMap(createCurveNodes),
     ],
     [
@@ -345,17 +352,24 @@ export async function validateFBXAnimationBytes(bytes: Uint8Array) {
 }
 
 function createModelNode(bone: ExportBone): FBXNode {
-  const [x, y, z] = bone.offset.map((value) => value / 100);
+  // The tree is authored in the canonical frame; the curves are converted to
+  // the FBX frame, so the rest skeleton must be converted the same way or a
+  // standard reader applies the motion to a skeleton facing the other way.
+  const { x, y, z } = new Vector3(...bone.offset)
+    .divideScalar(100)
+    .applyQuaternion(CANONICAL_TO_FBX);
   return node(
     "Model",
-    [long(bone.id), string(`Model::${bone.name}`), string(bone.parent ? "LimbNode" : "Root")],
+    // Blender only builds bones from LimbNode models; a "Root" hips would
+    // become the armature object instead. Mixamo also types its hips LimbNode.
+    [long(bone.id), objectName(bone.name, "Model"), string("LimbNode")],
     [
       single("Version", int(232)),
       node("Properties70", [], [
         property("Lcl Translation", "Lcl Translation", [double(round(x)), double(round(y)), double(round(z))]),
         property("Lcl Rotation", "Lcl Rotation", [double(0), double(0), double(0)]),
         property("Lcl Scaling", "Lcl Scaling", [double(1), double(1), double(1)]),
-        property("RotationOrder", "enum", [int(5)]),
+        property("RotationOrder", "enum", [int(FBX_ROTATION_ORDER_XYZ)]),
       ]),
     ],
   );
@@ -363,7 +377,7 @@ function createModelNode(bone: ExportBone): FBXNode {
 
 function createCurveNodes(curveNode: ExportCurveNode): FBXNode[] {
   return [
-    node("AnimationCurveNode", [long(curveNode.id), string(curveNode.kind), string("")]),
+    node("AnimationCurveNode", [long(curveNode.id), objectName(curveNode.kind, "AnimCurveNode"), string("")]),
     ...curveNode.curves.map(createCurveNode),
   ];
 }
@@ -372,7 +386,7 @@ function createCurveNode(curve: ExportCurve): FBXNode {
   const keyAttrFlags = curve.times.map(() => 24840);
   const keyAttrData = curve.times.flatMap(() => [0, 0, 0, 0]);
   const keyAttrRefCount = curve.times.map(() => 1);
-  return node("AnimationCurve", [long(curve.id), string(`AnimCurve::${curve.axis}`), string("")], [
+  return node("AnimationCurve", [long(curve.id), objectName(curve.axis, "AnimCurve"), string("")], [
     single("Default", double(0)),
     single("KeyVer", int(4008)),
     single("KeyTime", longArray(curve.times.map((time) => Math.round(time * FBX_TIME_SECOND)))),
@@ -384,7 +398,9 @@ function createCurveNode(curve: ExportCurve): FBXNode {
 }
 
 function createCurveConnections(curveNode: ExportCurveNode, layerId: number) {
-  const propertyName = curveNode.kind === "T" ? "d|Lcl Translation" : "d|Lcl Rotation";
+  // A curve node connects to its model's property by the plain property name;
+  // only the curve-to-curve-node channels carry the "d|" prefix.
+  const propertyName = curveNode.kind === "T" ? "Lcl Translation" : "Lcl Rotation";
   return [
     node("C", [string("OP"), long(curveNode.id), long(curveNode.modelId), string(propertyName)]),
     node("C", [string("OO"), long(curveNode.id), long(layerId)]),
@@ -517,7 +533,7 @@ function quaternionTrackToEulerDegrees(
         .multiply(CANONICAL_TO_FBX.clone().invert())
         .normalize();
     }
-    const euler = new Euler().setFromQuaternion(quaternion, "XYZ");
+    const euler = new Euler().setFromQuaternion(quaternion, FBX_EULER_ORDER);
     const current = [
       radiansToDegrees(euler.x),
       radiansToDegrees(euler.y),
@@ -556,8 +572,30 @@ function single(name: string, value: FBXProperty): FBXNode {
   return node(name, [value]);
 }
 
+/**
+ * Type label and flags as the Autodesk FBX SDK writes them. Readers such as
+ * Blender check the label; only animatable properties carry the "A" flag.
+ */
+const PROPERTY_LABELS: Readonly<Record<string, readonly [label: string, flags: string]>> = {
+  int: ["Integer", ""],
+  double: ["Number", ""],
+  enum: ["", ""],
+  bool: ["", ""],
+  Color: ["", "A"],
+  "Lcl Translation": ["", "A"],
+  "Lcl Rotation": ["", "A"],
+  "Lcl Scaling": ["", "A"],
+};
+
 function property(name: string, type: string, values: FBXProperty[]) {
-  return node("P", [string(name), string(type), string(""), string("A"), ...values]);
+  const labels = PROPERTY_LABELS[type];
+  if (!labels) throw new Error(`No FBX property label is defined for type ${type}.`);
+  return node("P", [string(name), string(type), string(labels[0]), string(labels[1]), ...values]);
+}
+
+/** Binary FBX stores the ASCII form "Class::Name" as Name, 0x00, 0x01, Class. */
+function objectName(name: string, className: string): FBXProperty {
+  return string(`${name}\u0000\u0001${className}`);
 }
 
 function int(value: number): FBXProperty {
@@ -657,8 +695,8 @@ export function createFBXAvatarSceneBinary(
   const layerId = 2001;
   const curves = createExportCurveNodes(clip, modelIdByBone, false);
   objects.push(
-    node("AnimationStack", [long(stackId), string(`AnimStack::${clip.name || "retargeted-motion"}`), string("")]),
-    node("AnimationLayer", [long(layerId), string("AnimLayer::BaseLayer"), string("")]),
+    node("AnimationStack", [long(stackId), objectName(clip.name || "retargeted-motion", "AnimStack"), string("")]),
+    node("AnimationLayer", [long(layerId), objectName("BaseLayer", "AnimLayer"), string("")]),
     ...curves.flatMap(createCurveNodes),
   );
   connections.push(
@@ -699,12 +737,12 @@ function createSceneModelNode(entry: SceneModelEntry): FBXNode {
   const [tx, ty, tz] = entry.node.getTranslation();
   const [rx, ry, rz, rw] = entry.node.getRotation();
   const [sx, sy, sz] = entry.node.getScale();
-  const euler = new Euler().setFromQuaternion(new Quaternion(rx, ry, rz, rw), "XYZ");
+  const euler = new Euler().setFromQuaternion(new Quaternion(rx, ry, rz, rw), FBX_EULER_ORDER);
   return node(
     "Model",
     [
       long(entry.id),
-      string(`Model::${entry.name}`),
+      objectName(entry.name, "Model"),
       string(entry.node.getMesh() ? "Mesh" : "LimbNode"),
     ],
     [
@@ -717,7 +755,7 @@ function createSceneModelNode(entry: SceneModelEntry): FBXNode {
           double(round(radiansToDegrees(euler.z))),
         ]),
         property("Lcl Scaling", "Lcl Scaling", [double(round(sx)), double(round(sy)), double(round(sz))]),
-        property("RotationOrder", "enum", [int(5)]),
+        property("RotationOrder", "enum", [int(FBX_ROTATION_ORDER_XYZ)]),
       ]),
     ],
   );
@@ -750,14 +788,14 @@ function appendMeshObjects(
       objects.push(
         node(
           "Model",
-          [long(modelId), string(`Model::${entry.name}-part-${primIndex}`), string("Mesh")],
+          [long(modelId), objectName(`${entry.name}-part-${primIndex}`, "Model"), string("Mesh")],
           [
             single("Version", int(232)),
             node("Properties70", [], [
               property("Lcl Translation", "Lcl Translation", [double(0), double(0), double(0)]),
               property("Lcl Rotation", "Lcl Rotation", [double(0), double(0), double(0)]),
               property("Lcl Scaling", "Lcl Scaling", [double(1), double(1), double(1)]),
-              property("RotationOrder", "enum", [int(5)]),
+              property("RotationOrder", "enum", [int(FBX_ROTATION_ORDER_XYZ)]),
             ]),
           ],
         ),
@@ -776,7 +814,7 @@ function appendMeshObjects(
     const baseColor = material?.getBaseColorFactor() ?? [0.8, 0.8, 0.8, 1];
     const materialName = material?.getName() || `${entry.name}-material-${primIndex}`;
     objects.push(
-      node("Material", [long(materialId), string(`Material::${materialName}`), string("")], [
+      node("Material", [long(materialId), objectName(materialName, "Material"), string("")], [
         single("Version", int(102)),
         single("ShadingModel", string("lambert")),
         single("MultiLayer", int(0)),
@@ -822,16 +860,16 @@ function appendMaterialTextureObjects(
   const videoId = ids.next++;
   const filename = `${sanitizeFBXFilename(texture.getURI() || texture.getName() || materialName || "texture")}.${textureExtension(texture)}`;
   objects.push(
-    node("Video", [long(videoId), string(`Video::${filename}`), string("Clip")], [
+    node("Video", [long(videoId), objectName(filename, "Video"), string("Clip")], [
       single("Type", string("Clip")),
       single("Filename", string(filename)),
       single("RelativeFilename", string(filename)),
       single("Content", raw(image)),
     ]),
-    node("Texture", [long(textureId), string(`Texture::${filename}`), string("TextureVideoClip")], [
+    node("Texture", [long(textureId), objectName(filename, "Texture"), string("TextureVideoClip")], [
       single("Type", string("TextureVideoClip")),
       single("Version", int(202)),
-      single("TextureName", string(`Texture::${filename}`)),
+      single("TextureName", objectName(filename, "Texture")),
       single("FileName", string(filename)),
       single("RelativeFilename", string(filename)),
     ]),
@@ -929,7 +967,7 @@ function createGeometryNode(
 
   return node(
     "Geometry",
-    [long(geometryId), string(`Geometry::${name}`), string("Mesh")],
+    [long(geometryId), objectName(name, "Geometry"), string("Mesh")],
     children,
   );
 }
@@ -990,7 +1028,7 @@ function appendSkinObjects({
 
   const skinId = ids.next++;
   objects.push(
-    node("Deformer", [long(skinId), string(`Deformer::${entry.name}-skin`), string("Skin")], [
+    node("Deformer", [long(skinId), objectName(`${entry.name}-skin`, "Deformer"), string("Skin")], [
       single("Version", int(100)),
       single("Link_DeformAcuracy", double(50)),
     ]),
@@ -1019,7 +1057,7 @@ function appendSkinObjects({
       throw new Error(`Missing FBX skin weights for joint ${jointIndex}.`);
     }
     objects.push(
-      node("Deformer", [long(clusterId), string(`SubDeformer::${jointEntry.name}`), string("Cluster")], [
+      node("Deformer", [long(clusterId), objectName(jointEntry.name, "SubDeformer"), string("Cluster")], [
         single("Version", int(100)),
         node("UserData", [string(""), string("")]),
         single("Indexes", intArray(jointWeights.indices)),
