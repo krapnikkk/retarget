@@ -331,7 +331,7 @@ function writeFBXFile(objects: FBXNode[], connections: FBXNode[]) {
 }
 
 async function parseFBXWithThree(bytes: Uint8Array) {
-  const { FBXLoader } = await import("three/examples/jsm/loaders/FBXLoader.js");
+  const { FBXLoader } = await import("@/parsers/fbx-loader");
   const arrayBuffer = bytes.buffer.slice(
     bytes.byteOffset,
     bytes.byteOffset + bytes.byteLength,

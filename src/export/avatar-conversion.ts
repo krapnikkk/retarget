@@ -1,6 +1,6 @@
 import type { Document, WebIO } from "@gltf-transform/core";
 import type { Object3D } from "three";
-import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
+import { FBXLoader } from "@/parsers/fbx-loader";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
 import type { AvatarFormatId } from "@/formats";
 import {
